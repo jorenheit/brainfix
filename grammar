@@ -1,0 +1,616 @@
+%class-name Parser
+%filenames parser
+%parsefun-source parse_bisoncpp_generated.cc
+%scanner scanner.h
+%baseclass-preinclude "bfxfunction.h"
+%tag-mismatches on
+
+%polymorphic    INT8:					uint8_t;
+				CHAR:					char;
+				INSTRUCTION:			Instruction;
+				INSTRUCTION_LIST:		std::vector<Instruction>;
+				ELEMENT:				std::pair<std::string, Instruction>;
+                STRING: 				std::string;
+				IDENTIFIER_LIST:		std::vector<std::string>;
+				BFX_FUNCTION:			BFXFunction;
+
+%expect 0
+
+// Keywords
+%token FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST
+
+%nonassoc then
+%nonassoc ELSE
+
+// Operators
+%right '=' ADD SUB MUL MOD DIV DIVMOD MODDIV
+%right AND OR 
+%nonassoc '<' '>' LE GE EQ NE
+%left '+' '-'
+%left '*' '/' '%'
+%right INC DEC '!'
+
+%token <STRING> IDENT
+%token <STRING> STR
+%token <INT8>   NUM
+%token <CHAR>	CHR
+
+%type <INSTRUCTION>			expression
+%type <INSTRUCTION>			statement
+%type <INSTRUCTION>			if_statement
+%type <INSTRUCTION>			for_statement
+%type <INSTRUCTION>			variable
+%type <STRING>				placeholder_variable
+%type <INSTRUCTION>			constant_literal
+%type <INSTRUCTION>			string_literal
+%type <INSTRUCTION>			anonymous_array
+%type <INSTRUCTION>			function_call
+%type <INSTRUCTION>			scope_block
+%type <INSTRUCTION> 		code_body
+%type <INSTRUCTION_LIST> 	expression_list
+%type <INSTRUCTION_LIST> 	optional_expression_list
+%type <INSTRUCTION_LIST>	variable_list
+%type <IDENTIFIER_LIST>	 	identifier_list
+%type <IDENTIFIER_LIST>	 	optional_identifier_list
+%type <ELEMENT>			 	array_element
+%type <BFX_FUNCTION>		function_header
+
+%%
+
+program:
+	// empty
+|
+	program function_definition
+|
+	program global_variable_list
+|
+	program include_directive
+|
+	program const_definition
+;
+
+include_directive:
+ 	INCLUDE STR
+ 	{
+ 		d_scanner.pushStream($2);
+ 	}
+;
+
+function_definition:
+	function_header scope_block
+	{
+		d_comp.addFunction($1, $2);
+	}
+;
+
+function_header:
+	FUNCTION IDENT '(' optional_identifier_list ')'
+	{
+		$$ = BFXFunction($2, $4);
+	}
+|
+	FUNCTION IDENT '=' IDENT '(' optional_identifier_list ')'
+	{
+		$$ = BFXFunction($4, $6);
+		($$).setReturnVariable($2);
+	}
+;
+
+const_definition:
+	CONST IDENT '=' NUM ';'
+	{
+		d_comp.addConstant($2, $4);
+	}
+|
+	CONST IDENT '=' CHR ';'
+	{
+		d_comp.addConstant($2, $4);
+	}
+;
+
+scope_block:
+	'{' code_body '}'
+	{
+		$$ = $2;
+	}
+;
+
+
+identifier_list:
+	IDENT
+	{
+		auto ret = std::vector<std::string>();
+		ret.push_back($1);
+		$$ = ret;
+	}
+|
+	identifier_list ',' IDENT
+	{
+		($1).push_back($3);
+		$$ = $1;
+	}
+;
+
+optional_identifier_list:
+	identifier_list
+|
+	// empty
+	{
+		$$ = std::vector<std::string>();
+	}
+;
+
+global_variable_list:
+	GLOBAL variable_list ';'
+	{
+		d_comp.addGlobals($2);
+	}
+;
+
+code_body:
+	{
+		$$ = [](){ return -1; };
+	}
+|
+	code_body statement
+	{
+		$$ = d_comp.instruction<&Compiler::mergeInstructions>($1, $2);
+	}
+;
+
+statement:
+	expression ';'
+	{
+		$$ = d_comp.instruction<&Compiler::statement>($1);
+	}
+|
+	scope_block
+|
+	INLINE_BF '(' STR ')' ';'
+	{
+		$$ = d_comp.instruction<&Compiler::inlineBF>($3);
+	}
+|
+	MOVE_PTR '(' IDENT ')' ';'
+	{
+		$$ = d_comp.instruction<&Compiler::movePtr>($3);
+	}
+|
+	for_statement
+|
+	if_statement
+|
+	while_statement
+;
+
+expression:
+	variable
+|
+	constant_literal
+|
+	string_literal
+|
+	anonymous_array
+|
+	function_call
+|
+	SIZEOF '(' IDENT ')'
+	{
+		$$ = d_comp.instruction<&Compiler::sizeOfOperator>($3);
+	}
+|
+	array_element
+	{
+		$$ = d_comp.instruction<&Compiler::fetchElement>(
+		   ($1).first,
+		   ($1).second
+		);
+	}
+|
+	placeholder_variable '=' expression
+	{
+		$$ = d_comp.instruction<&Compiler::assignPlaceholder>($1, $3);
+	}
+|
+	variable '=' expression
+	{
+		$$ = d_comp.instruction<&Compiler::assign>($1, $3);
+	}
+|
+	array_element '=' expression
+	{
+		$$ = d_comp.instruction<&Compiler::assignElement>(
+		   ($1).first,
+		   ($1).second,
+		   $3
+		);
+	}
+|
+	'(' expression ')'
+	{
+		$$ = $2;
+	}
+|
+	INC variable
+	{
+		$$ = d_comp.instruction<&Compiler::preIncrement>($2);
+	}
+|
+	DEC variable
+	{
+		$$ = d_comp.instruction<&Compiler::preDecrement>($2);
+	}
+|
+	variable INC
+	{
+		$$ = d_comp.instruction<&Compiler::postIncrement>($1);
+	}
+|
+	variable DEC
+	{
+		$$ = d_comp.instruction<&Compiler::postDecrement>($1);
+	}
+|
+	INC array_element
+	{
+		$$ = d_comp.instruction<&Compiler::applyUnaryFunctionToElement>(
+				($2).first,
+				($2).second,
+				&Compiler::preIncrement
+			);
+	}
+|
+	DEC array_element
+	{
+		$$ = d_comp.instruction<&Compiler::applyUnaryFunctionToElement>(
+				($2).first,
+				($2).second,
+				&Compiler::preDecrement
+			);
+	}
+|
+	array_element INC
+	{
+		$$ = d_comp.instruction<&Compiler::applyUnaryFunctionToElement>(
+				($1).first,
+				($1).second,
+				&Compiler::postIncrement
+			);
+	}
+|
+	array_element DEC
+	{
+		$$ = d_comp.instruction<&Compiler::applyUnaryFunctionToElement>(
+				($1).first,
+				($1).second,
+				&Compiler::postDecrement
+			);
+	}
+|
+	variable ADD expression
+	{
+		$$ = d_comp.instruction<&Compiler::addTo>($1, $3);
+	}
+|
+	array_element ADD expression
+	{
+		$$ = d_comp.instruction<&Compiler::applyBinaryFunctionToElement>(
+				($1).first,
+				($1).second,
+				$3,
+				&Compiler::addTo
+		   );
+	}
+|
+	expression '+' expression
+	{
+		$$ = d_comp.instruction<&Compiler::add>($1, $3);
+	}
+|
+	variable SUB expression
+	{
+		$$ = d_comp.instruction<&Compiler::subtractFrom>($1, $3);
+	}
+|
+	array_element SUB expression
+	{
+		$$ = d_comp.instruction<&Compiler::applyBinaryFunctionToElement>(
+				($1).first,
+				($1).second,
+				$3,
+				&Compiler::subtractFrom
+		   );
+	}
+|
+	expression '-' expression
+	{
+		$$ = d_comp.instruction<&Compiler::subtract>($1, $3);
+	}
+|
+	variable MUL expression
+	{
+		$$ = d_comp.instruction<&Compiler::multiplyBy>($1, $3);
+	}
+|
+	array_element MUL expression
+	{
+		$$ = d_comp.instruction<&Compiler::applyBinaryFunctionToElement>(
+				($1).first,
+				($1).second,
+				$3,
+				Compiler::BinaryFunction(&Compiler::multiplyBy)
+		   );
+	}
+|
+	expression '*' expression
+	{
+		$$ = d_comp.instruction<&Compiler::multiply>($1, $3);
+	}
+|
+	variable DIV expression
+	{
+		$$ = d_comp.instruction<&Compiler::divideBy>($1, $3);
+	}
+|
+	array_element DIV expression
+	{
+		$$ = d_comp.instruction<&Compiler::applyBinaryFunctionToElement>(
+				($1).first,
+			 	($1).second,
+			 	$3,
+			 	Compiler::BinaryFunction(&Compiler::divideBy)
+			);
+	}
+|
+	expression '/' expression
+	{
+		$$ = d_comp.instruction<&Compiler::divide>($1, $3);
+	}
+|
+	variable MOD expression
+	{
+		$$ = d_comp.instruction<&Compiler::moduloBy>($1, $3);
+	}
+|
+	array_element MOD expression
+	{
+		$$ = d_comp.instruction<&Compiler::applyBinaryFunctionToElement>(
+				($1).first,
+			 	($1).second,
+			 	$3,
+			 	Compiler::BinaryFunction(&Compiler::moduloBy)
+			);
+	}
+|
+	variable DIVMOD expression
+	{
+		$$ = d_comp.instruction<&Compiler::divMod>($1, $3);
+	}
+|
+	array_element DIVMOD expression
+	{
+		$$ = d_comp.instruction<&Compiler::applyBinaryFunctionToElement>(
+				($1).first,
+			 	($1).second,
+			 	$3,
+			 	Compiler::BinaryFunction(&Compiler::divMod)
+			);
+	}
+|
+	variable MODDIV expression
+	{
+		$$ = d_comp.instruction<&Compiler::modDiv>($1, $3);
+	}
+|
+	array_element MODDIV expression
+	{
+		$$ = d_comp.instruction<&Compiler::applyBinaryFunctionToElement>(
+				($1).first,
+			 	($1).second,
+			 	$3,
+			 	Compiler::BinaryFunction(&Compiler::modDiv)
+			);
+	}
+|
+	expression '%' expression
+	{
+		$$ = d_comp.instruction<&Compiler::modulo>($1, $3);
+	}
+|
+	expression '<' expression
+	{
+		$$ = d_comp.instruction<&Compiler::less>($1, $3);
+	}
+|
+	expression '>' expression
+	{
+		$$ = d_comp.instruction<&Compiler::greater>($1, $3);
+	}
+|
+	expression LE expression
+	{
+		$$ = d_comp.instruction<&Compiler::lessOrEqual>($1, $3);
+	}
+|
+	expression GE expression
+	{
+		$$ = d_comp.instruction<&Compiler::greaterOrEqual>($1, $3);
+	}
+|
+	expression NE expression
+	{
+		$$ = d_comp.instruction<&Compiler::notEqual>($1, $3);
+	}
+|
+	expression EQ expression
+	{
+		$$ = d_comp.instruction<&Compiler::equal>($1, $3);
+	}
+|
+	'!' expression
+	{
+		$$ = d_comp.instruction<&Compiler::logicalNot>($2);
+	}
+|
+	expression AND expression
+	{
+		$$ = d_comp.instruction<&Compiler::logicalAnd>($1, $3);
+	}
+|
+	expression OR expression
+	{
+		$$ = d_comp.instruction<&Compiler::logicalOr>($1, $3);
+	}
+;
+
+for_statement:
+	FOR '(' expression ';' expression ';' expression ')' statement
+	{
+		$$ = d_comp.instruction<&Compiler::forStatement>($3, $5, $7, $9);
+	}
+;
+
+if_statement:
+	IF '(' expression ')' statement
+	{
+		$$ = d_comp.instruction<&Compiler::ifStatement>($3, $5, [](){ return -1; });
+	}
+|
+	IF '(' expression ')' statement ELSE statement %prec then
+	{
+		$$ = d_comp.instruction<&Compiler::ifStatement>($3, $5, $7);	
+	}
+;
+
+while_statement:
+	WHILE '(' expression ')' statement
+	{
+		$$ = d_comp.instruction<&Compiler::whileStatement>($3, $5);
+	}
+;
+
+variable:
+	IDENT
+	{
+		$$ = d_comp.instruction<&Compiler::variable>($1, 1, false);
+	}
+|
+	'[' NUM ']' IDENT
+	{
+		$$ = d_comp.instruction<&Compiler::variable>($4, $2, true);
+	}
+|
+	'[' IDENT ']' IDENT
+	{
+		$$ = d_comp.instruction<&Compiler::variable>($4, d_comp.compileTimeConstant($2), true);
+	}
+;
+
+placeholder_variable:
+	'[' ']' IDENT
+	{
+		$$ = $3;
+	}
+;
+
+variable_list:
+	variable
+	{	
+		$$ = std::vector<Instruction>();
+		($$).push_back($1);
+	}
+|
+	variable_list ',' variable
+	{
+		($1).push_back($3);
+		$$ = $1;
+	}
+;
+
+constant_literal:
+	NUM
+	{
+		$$ = d_comp.instruction<&Compiler::constVal>($1);
+	}
+|
+	CHR
+	{
+		$$ = d_comp.instruction<&Compiler::constVal>($1);
+	}
+;
+
+expression_list:
+	expression
+	{
+		$$ = std::vector<Instruction>{};
+		($$).push_back($1);
+	}
+|
+	expression_list ',' expression
+	{
+		($1).push_back($3);
+		$$ = $1;
+	}
+;
+
+optional_expression_list:
+	// empty
+	{
+		$$ = std::vector<Instruction>{};
+	}
+|
+	expression_list
+;
+
+
+array_element:
+	IDENT '[' expression ']'
+	{
+		$$ = std::pair<std::string, Instruction>($1, $3);
+	}
+;
+
+string_literal:
+	STR
+	{
+		$$ = d_comp.instruction<&Compiler::arrayFromString>($1);
+	}
+;
+
+anonymous_array:
+	'#' '(' expression_list ')'
+	{
+		$$ = d_comp.instruction<&Compiler::arrayFromList>($3);
+	}
+|
+	'#' '[' NUM ']'
+	{
+		$$ = d_comp.instruction<&Compiler::arrayFromSizeStaticValue>($3, 0);
+	}
+|
+	'#' '[' IDENT ']'
+	{
+		uint8_t sz = d_comp.compileTimeConstant($3);
+		$$ = d_comp.instruction<&Compiler::arrayFromSizeStaticValue>(sz, 0);
+	}
+|
+	'#' '[' NUM ',' expression ']'
+	{
+		$$ = d_comp.instruction<&Compiler::arrayFromSizeDynamicValue>($3, $5);
+	}
+|
+	'#' '[' IDENT ',' expression ']'
+	{
+		uint8_t sz = d_comp.compileTimeConstant($3);
+		$$ = d_comp.instruction<&Compiler::arrayFromSizeDynamicValue>(sz, $5);
+	}
+;
+
+
+
+function_call:
+	IDENT '(' optional_expression_list ')'
+	{
+		$$ = d_comp.instruction<&Compiler::call>($1, $3);
+	}
+;

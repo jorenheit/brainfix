@@ -1,0 +1,28 @@
+include "std/io.bfx"	
+
+function main()
+{
+	prints("f[0] = ");
+	a = scand();
+
+	prints("f[1] = ");
+	b = scand();
+
+	prints("Up to n = ");
+	n = scand();
+
+	prints("0: "); printd(a); endl();
+	for (i = 0; i != n - 1; ++i)
+	{
+		printd(i + 1); prints(": ");
+		printd(b); endl();
+		
+		tmp = b; 
+		b += a;
+		a = tmp;
+	}
+
+	printd(i + 1); prints(": ");
+	printd(b); endl();
+}
+

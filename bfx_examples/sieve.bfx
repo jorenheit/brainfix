@@ -1,0 +1,44 @@
+include "std/io.bfx"
+include "std/math.bfx"
+
+const ARRAY_SIZE = 255;
+
+function x = incr(x, p, n)
+{
+	if (n - x < p) // would cause overflow
+		x = n;
+	else
+		x += p;    // safe to increment
+}
+
+function main()
+{
+	println("Welcome to the BrainF*ck prime-sieve!");
+	prints("Enter n (0-255): ");
+	n = scand();
+
+	// Initialize array and calculate maximum sieve-value
+	[ARRAY_SIZE]arr = 1;
+	s = sqrt(n);
+	
+	// Sieve
+	prime = 2;
+	while (prime <= s)
+	{
+		for (i = prime * prime; i < n; i = incr(i, prime, n)) // protect against overflow
+			arr[i] = 0;
+
+		++prime;
+		while (arr[prime] == 0)
+			++prime;
+	}
+
+	// Print results
+	for (i = 2; i < n; ++i)
+	{
+		if (arr[i])
+		{
+			printd(i);endl();
+		}
+	}
+}
