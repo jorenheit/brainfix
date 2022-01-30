@@ -1,0 +1,40 @@
+// STD MATH
+
+function y = pow(x, p)
+{
+	y = 1;
+	for (i = 0; i != p; ++i)
+		y *= x;
+}
+
+function s = sqrt(x)
+{
+	s = 1;
+	while (s * s <= x)
+	    ++s;
+
+	--s;
+}
+
+function f = factorial(x)
+{
+	f = 1;
+	for (i = 1; i <= x; ++i)
+		f *= i;
+}
+
+function m = min(x, y)
+{
+	if (x <= y)
+	    m = x;
+	else
+		m = y;
+}
+
+function m = max(x, y)
+{
+	if (x >= y)
+	    m = x;
+	else
+		m = y;
+}
