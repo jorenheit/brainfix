@@ -509,10 +509,10 @@ int Compiler::call(std::string const &functionName,
 	func.body()();
 	d_callStack.pop_back();
 
-	// Copy return variable to local scope before cleaning up (if non-void)
+	// Move return variable to local scope before cleaning up (if non-void)
 	std::string retVar = func.returnVariable();
 	int ret = -1;
-	if (retVar != "__void__")
+	if (retVar != BFXFunction::VOID)
 	{
 		ret = d_memory.findLocal(retVar, func.name());
 		assert(ret != -1 && "return value not found");
@@ -598,10 +598,7 @@ int Compiler::arrayFromSizeDynamicValue(uint8_t sz, AddressOrInstruction const &
 	assert(d_memory.sizeOf(val) == 1 &&
 		   "Array fill value must refer to a variable of size 1");
 	
-	int arr = allocateTemp(sz);
-	assign(arr, val);
-
-	return arr;
+	return assign(allocateTemp(sz), val);
 }
 
 int Compiler::arrayFromList(std::vector<Instruction> const &list)
@@ -638,12 +635,12 @@ int Compiler::fetchElement(std::string const &ident, AddressOrInstruction const 
 	// 1. to keep a copy of the index
 	// 2. to store a temporary necessary for copying
 
-	int arr = addressOf(ident);
-	uint8_t sz = d_memory.sizeOf(arr);
+	int const arr = addressOf(ident);
+	uint8_t const sz = d_memory.sizeOf(arr);
 
-	int bufSize = sz + 2;
-	int buf = allocateTemp(bufSize);
-	int dist = buf - arr;
+	int const bufSize = sz + 2;
+	int const buf = allocateTemp(bufSize);
+	int const dist = buf - arr;
 
 	std::string const arr2buf(std::abs(dist), (dist > 0 ? '>' : '<'));
 	std::string const buf2arr(std::abs(dist), (dist > 0 ? '<' : '>'));
@@ -686,7 +683,7 @@ int Compiler::fetchElement(std::string const &ident, AddressOrInstruction const 
 	// to be fetched.
 
 	// Return first element, containing fetched element
-	int ret = allocateTemp();
+	int const ret = allocateTemp();
 	d_codeBuffer << bf_assign(ret, buf);
 	return ret;
 }
@@ -696,12 +693,12 @@ int Compiler::assignElement(std::string const &ident, AddressOrInstruction const
 	static std::string const dynamicMoveRight = "[>>[->+<]<[->+<]<[->+<]>-]";
 	static std::string const dynamicMoveLeft = "[[-<+>]<-]<";
 			   
-	int arr = addressOf(ident);
-	uint8_t sz = d_memory.sizeOf(arr);
+	int const arr = addressOf(ident);
+	uint8_t const sz = d_memory.sizeOf(arr);
 
-	int bufSize = sz + 2;
-	int buf = allocateTemp(bufSize);
-	int dist = buf - arr;
+	int const bufSize = sz + 2;
+	int const buf = allocateTemp(bufSize);
+	int const dist = buf - arr;
 
 	std::string const arr2buf(std::abs(dist), (dist > 0 ? '>' : '<'));
 	std::string const buf2arr(std::abs(dist), (dist > 0 ? '<' : '>'));
@@ -739,8 +736,8 @@ int Compiler::applyUnaryFunctionToElement(std::string const &arrayIdent,
 										  AddressOrInstruction const &index,
 										  UnaryFunction func)
 {
-	int fetchedAddr = fetchElement(arrayIdent, index);
-	int returnAddr  = (this->*func)(fetchedAddr);
+	int const fetchedAddr = fetchElement(arrayIdent, index);
+	int const returnAddr  = (this->*func)(fetchedAddr);
 	assignElement(arrayIdent, index, fetchedAddr);
 	return returnAddr;
 }
@@ -750,8 +747,8 @@ int Compiler::applyBinaryFunctionToElement(std::string const &arrayIdent,
 										   AddressOrInstruction const &rhs,
 										   BinaryFunction func)
 {
-	int fetchedAddr = fetchElement(arrayIdent, index);
-	int returnAddr  = (this->*func)(fetchedAddr, rhs);
+	int const fetchedAddr = fetchElement(arrayIdent, index);
+	int const returnAddr  = (this->*func)(fetchedAddr, rhs);
 	assignElement(arrayIdent, index, fetchedAddr);
 	return returnAddr;
 }
@@ -771,7 +768,7 @@ int Compiler::preDecrement(AddressOrInstruction const &target)
 
 int Compiler::postIncrement(AddressOrInstruction const &target)
 {
-	int tmp = allocateTemp();
+	int const tmp = allocateTemp();
 	d_codeBuffer << bf_assign(tmp, target)
 				 << bf_incr(target);
 
@@ -780,7 +777,7 @@ int Compiler::postIncrement(AddressOrInstruction const &target)
 
 int Compiler::postDecrement(AddressOrInstruction const &target)
 {
-	int tmp = allocateTemp();
+	int const tmp = allocateTemp();
 	d_codeBuffer << bf_assign(tmp, target)
 				 << bf_decr(target);
 
@@ -795,7 +792,7 @@ int Compiler::addTo(AddressOrInstruction const &lhs, AddressOrInstruction const 
 
 int Compiler::add(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int ret = allocateTemp();
+	int const ret = allocateTemp();
 	d_codeBuffer << bf_assign(ret, lhs)
 				 << bf_addTo(ret, rhs);
 	return ret;
@@ -809,7 +806,7 @@ int Compiler::subtractFrom(AddressOrInstruction const &lhs, AddressOrInstruction
 
 int Compiler::subtract(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int ret = allocateTemp();
+	int const ret = allocateTemp();
 	d_codeBuffer << bf_assign(ret, lhs)
 				 << bf_subtractFrom(ret, rhs);
 	return ret;
@@ -823,7 +820,7 @@ int Compiler::multiplyBy(AddressOrInstruction const &lhs, AddressOrInstruction c
 
 int Compiler::multiply(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int ret = allocateTemp();
+	int const ret = allocateTemp();
 	d_codeBuffer << bf_multiply(lhs, rhs, ret);
 	return ret;
 }
@@ -850,28 +847,28 @@ int Compiler::modulo(AddressOrInstruction const &lhs, AddressOrInstruction const
 
 int Compiler::divMod(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	auto pr = divModPair(lhs, rhs);
+	auto const pr = divModPair(lhs, rhs);
 	assign(lhs, pr.first);
 	return pr.second;
 }
 
 int Compiler::modDiv(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	auto pr = divModPair(lhs, rhs);
+	auto const pr = divModPair(lhs, rhs);
 	assign(lhs, pr.second);
 	return pr.first;
 }
 
 std::pair<int, int> Compiler::divModPair(AddressOrInstruction const &num, AddressOrInstruction const &denom)
 {
-	int tmp = allocateTemp(4);
-    int tmp_loopflag  = tmp + 0;
-    int tmp_zeroflag  = tmp + 1;
-    int tmp_num       = tmp + 2;
-    int tmp_denom     = tmp + 3;
+	int const tmp = allocateTemp(4);
+    int const tmp_loopflag  = tmp + 0;
+    int const tmp_zeroflag  = tmp + 1;
+    int const tmp_num       = tmp + 2;
+    int const tmp_denom     = tmp + 3;
 	
-    int result_div    = allocateTemp();
-    int result_mod    = allocateTemp();
+    int const result_div    = allocateTemp();
+    int const result_mod    = allocateTemp();
 	
     // Algorithm:
 	// 1. Initialize result-cells to 0 and copy operands to temps
@@ -933,49 +930,49 @@ std::pair<int, int> Compiler::divModPair(AddressOrInstruction const &num, Addres
 
 int Compiler::equal(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int result = allocateTemp();
+	int const result = allocateTemp();
 	d_codeBuffer << bf_equal(lhs, rhs, result);
 	return result;
 }
 
 int Compiler::notEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int result = allocateTemp();
+	int const result = allocateTemp();
 	d_codeBuffer << bf_notEqual(lhs, rhs, result);
 	return result;
 }
 
 int Compiler::less(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int result = allocateTemp();
+	int const result = allocateTemp();
 	d_codeBuffer << bf_less(lhs, rhs, result);
 	return result;
 }
 
 int Compiler::greater(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int result = allocateTemp();
+	int const result = allocateTemp();
 	d_codeBuffer << bf_greater(lhs, rhs, result);
 	return result;
 }
 
 int Compiler::lessOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int result = allocateTemp();
+	int const result = allocateTemp();
 	d_codeBuffer << bf_lessOrEqual(lhs, rhs, result);
 	return result;
 }
 
 int Compiler::greaterOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int result = allocateTemp();
+	int const result = allocateTemp();
 	d_codeBuffer << bf_greaterOrEqual(lhs, rhs, result);
 	return result;
 }
 
 int Compiler::logicalNot(AddressOrInstruction const &arg)
 {
-	int result = allocateTemp();
+	int const result = allocateTemp();
 	d_codeBuffer << bf_not(arg, result);
 
 	return result;
@@ -983,22 +980,22 @@ int Compiler::logicalNot(AddressOrInstruction const &arg)
 
 int Compiler::logicalAnd(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int result = allocateTemp();
+	int const result = allocateTemp();
 	d_codeBuffer << bf_and(lhs, rhs, result);
 	return result;
 }
 
 int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-	int result = allocateTemp();
+	int const result = allocateTemp();
 	d_codeBuffer << bf_or(lhs, rhs, result);
 	return result;
 }
 
 int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody)
 {
-	int cond = condition(); 
-	int elseCond = logicalNot(cond);
+	int const cond = condition(); 
+	int const elseCond = logicalNot(cond);
 
 	pushStack(cond);
 	pushStack(elseCond); 
@@ -1036,14 +1033,14 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 {
 	init();
 	
-	int cond1 = condition();
+	int const cond1 = condition();
 	pushStack(cond1);
 	d_codeBuffer << bf_movePtr(cond1)
 				 << "[";
 
 	body();
 	increment();
-	int cond2 = condition();
+	int const cond2 = condition();
 	
 	d_codeBuffer << bf_assign(cond1, cond2)
 				 << "]";
@@ -1055,13 +1052,13 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 
 int Compiler::whileStatement(Instruction const &condition, Instruction const &body)
 {
-	int cond1 = condition();
+	int const cond1 = condition();
 	pushStack(cond1);
 	d_codeBuffer << bf_movePtr(cond1)
 				 << "[";
 	body();
 
-	int cond2 = condition();
+	int const cond2 = condition();
 	d_codeBuffer << bf_assign(cond1, cond2)
 				 << "]";
 

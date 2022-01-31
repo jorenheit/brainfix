@@ -17,12 +17,15 @@ class BFXFunction
 	std::string d_returnVar;
 
 public:
+	static std::string const VOID;
+	
 	BFXFunction() = default;
+	
 	
 	BFXFunction(std::string name, std::vector<std::string> const &params):
 		d_name(name),
 		d_params(params),
-		d_returnVar("__void__")
+		d_returnVar(VOID)
 	{}
 
 	void setBody(Instruction const &body)
