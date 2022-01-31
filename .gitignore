@@ -1,8 +1,0 @@
-*.o
-*~
-bfx
-bfint
-parserbase.h
-scannerbase.h
-*generated.cc
-*.bf
