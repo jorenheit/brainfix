@@ -86,10 +86,10 @@ The compiler targets the canonical BrainF*ck machine, where cells are single byt
 | `<` | Move pointer to the left. |
 | `+` | Increase value pointed to by 1. |
 | `-` | Decrease value pointed to by 1. |
-| '[' | If current value is nonzero, continue. Otherwise, skip to matching `]` |
-| ']' | If current value is zero, continue. Otherwise, go back to matching '[' |
-| '.' | Output current byte to stdout |
-| ',' | Read byte from stdin and store it in the current cell |
+| `[` | If current value is nonzero, continue. Otherwise, skip to matching `]` |
+| `]` | If current value is zero, continue. Otherwise, go back to matching `[` |
+| `.` | Output current byte to stdout |
+| `,` | Read byte from stdin and store it in the current cell |
 
 
 ## Language
@@ -318,3 +318,36 @@ function main()
 #### No return, break or continue?
 BrainF*ck does not contain an opcode that let's us jump to arbitrary places in the code, which makes it very hard to implement `goto`-like features like `return`, `break` and `continue`. Instead, it is up to the programmer to implement conditional blocks using `if` and `if`-`else` to emulate these jumps.
 
+### File Inclusion
+The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When, an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one. Currently, circular inclusions are not detected, and will simply crash the compiler.
+
+### Standard Library
+The standard library provides some useful functions in two categories: IO and mathematics. Below is a list of provided functions that you can use to make your programs interactive and mathematical.
+
+#### IO
+All functions below are defined in `std/io.bfx`:
+
+|     function     | description  |
+| ---------------- | ------------ |
+|   `printc(x)`	   | Print `x` as ASCII character |
+|   `printd(x)`	   | Print `x` as decimal |
+|   `prints(str)`  | Print string (stop at NULL or end of the string) |
+|   `println(str)` | Same as `prints()` but including newline |
+|   `print_vec(v)` | Print formatted vector, including newline: "(v1, v2, v3, ..., vN)" |
+|   `endl()`	   | Print a newline (same as `printc('\n')`) |
+|   `scanc()`	   | Read a single byte from stdin |
+|   `scand()`	   | Read at most 3 bytes from stdin and convert to decimal |
+|   `scans(buf)`   | Read string from stdin. sizeof(buf) determines maximum number of bytes read |
+|   `to_int(str)`  | Converts string to int |
+|   `to_string(x)` | Converts int to string |
+
+#### Math
+All functions below are defined in `std/math.bfx`:
+
+|     function     | description  |
+| ---------------- | ------------ |
+|   `pow(x,y)`	   | Calculate x raised to the power y |
+|   `sqrt(x)`	   | Calculate the square root of x, rounded down |
+|   `factorial(n)` | Calculate n! (overflows for n > 5) |
+|   `min(x,y)`     | Returns the minimum of x and y |
+|   `max(x,y)`     | Returns the maximum of x and y |
