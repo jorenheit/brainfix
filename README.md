@@ -116,6 +116,24 @@ function z = bar(x, y)
 }
 ```
 
+Arguments can only be passed by value, meaning that every argument is copied into the local scope of the function. Modifications to the arguments will therefore have no effect on the corresponding variables in the calling scope.
+
+```javascript
+function foo()
+{
+    x = 2;
+    bar(x);
+	
+    // x == 2, still
+}
+
+function bar(x)
+{
+    ++x;
+}
+```
+
+
 ### Operators
 The following operators are supported by BrainFix:
 
@@ -207,7 +225,7 @@ Once an array has a definite size, only arrays of the same size or variables of 
 function main()
 {
     [5]x = 1;     // all 1's
-    x = 4;        // x now contains only five 4's
+    x = 4;        // x now contains five 4's
 
     x = "Hello";         // fine
     x = "Hello World";   // ERROR: different sizes
@@ -233,9 +251,9 @@ function main()
 {
     []arr = #(42, 69, 123);
 
-	++arr[0];    // 42  -> 43
+    ++arr[0];    // 42  -> 43
     --arr[1];    // 69  -> 68
-	arr[2] = 0;  // 123 -> 0
+    arr[2] = 0;  // 123 -> 0
 }
 
 ```
@@ -248,9 +266,41 @@ const SIZE = 10;
 
 function main()
 
-    [SIZE]arr1 = #[SIZE, 42]; 
-	[SIZE]arr2 = #[SIZE, 69];
+    []arr1 = #[SIZE, 42]; 
+    []arr2 = #[SIZE, 69];
 
-	arr1 = arr2; // guaranteed to work, sizes will always match
+    arr1 = arr2; // guaranteed to work, sizes will always match
 }
 ```
+
+### Flow
+There are 3 ways to control flow in a BrainFix-program: `if` (-`else`), `for` and `while`. Each of these uses the same syntax as we're familiar with from other C-like programming languages:
+
+```javascript
+include "std/io.bfx"
+
+function main()
+{
+    n = 10;
+	
+    // Print 'xoxoxoxoxo' using a for-loop
+    for (i = 0; i < 10; ++i)
+	{
+        if (i % 2 == 0)
+            printc('x');  // defined in the std/io library
+        else
+            printc('o');
+    }
+    endl();               // newline (also from std/io)
+
+    // Let n go to zero
+    while (n > 0)
+        printd(n--);
+
+    endl();
+}
+```
+
+#### No return, break or continue?
+BrainF*ck does not contain an opcode that let's us jump to arbitrary places in the code, which makes it very hard to implement `goto`-like features like `return`, `break` and `continue`. Instead, it is up to the programmer to implement conditional blocks using `if` and `if`-`else` to emulate these jumps.
+
