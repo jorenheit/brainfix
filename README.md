@@ -46,3 +46,33 @@ For example:
 ```
 ./bfint 30000 output.bf
 ```
+
+### Hello World
+Every programming language tutorial starts with a "Hello, World!" program of some sort. This is no exception:
+
+```javascript
+// File: hello.bfx
+include "std/io.bfx"
+
+function main()
+{
+	println("Hello, World!");
+}
+```
+
+The program starts with an end-of-line comment (C-comment blocks between `/*` and `*/` are also allowed) and then
+includes the IO-library which is included with this project. This exposes some basic IO-facilities the sourcefile.
+
+Next, the main-function is defined. Every valid BFX-program should contain a `main` function which takes no arguments
+and does not return anything. The order in which the functions are defined in a BFX-file does not matter; the compiler
+will always try to find main and use this as the entrypoint.
+
+In `main()`, the function `println()` from the IO library is called to print the argument and a newline to the console.
+Let's try:
+
+```
+$ ./bfx hello.bfx > hello.bf
+$ ./bfint 30000 hello.bf
+$ Hello, World!
+$
+```
