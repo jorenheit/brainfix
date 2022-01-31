@@ -170,3 +170,46 @@ function modDivExample()
 }
 ```
 
+### Arrays
+BrainFix supports arrays of up to 250 elements. This upper limit exists due to the fact that the maximum value of an index is 255 (0xff), the fact that some algorithms need some additional cells to work and 250 is a nice and easy to remember number. For the compiler, there's no real difference between regular variables and arrays; variables are simply arrays of size 1. To declare and initialize an array the BrainFix language, one can use a number of different constructs:
+
+```javascript
+// Declare x as an array of 5 elements, do not initialize
+[5]x;
+
+// Declare x as an array of 5 elements, all initialized to 1
+[5]x = 1;
+
+// Initialize x with an initializer list (must contain 5 elements)
+[5]x = #(1, 2, 3, 4, 5);
+
+// Use a placeholder for the size
+[]x = #(1, 2, 3, 4, 5, 6);
+
+// Initialize with a string
+[]str = "Hello World\n";
+```
+
+Once an array has a definite size, only arrays of the same size or variables of size 1 can be assigned to it. When assigning a different array of the same size, all elements are copied. When assigning a single element, this value is copied into every element of the array.
+
+```javascript
+function main()
+{
+    [5]x = 1;     // all 1's
+	x = 4;        // x now contains only five 4's
+
+	x = "Hello";         // fine
+	x = "Hello World";   // ERROR: different sizes
+}
+```
+
+Especially when storing a string in some variable, it is recommended to use the placeholder notation and let the compiler figure out the size of the string. Keep in mind that once the string has been stored, you can only store same-sized strings into the same variable.
+
+```javascript
+function main()
+{
+	[12]str1 = "Hello World\n";     // Inconvenient
+	[]str2   = "Hello World\n";     // Easy
+}
+```
+
