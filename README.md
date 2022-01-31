@@ -32,10 +32,11 @@ make interpreter
 ```
 
 ## Usage
-Building the project results in a executable called `bfx`. It takes a single argument which is the path to the
-BrainFix file (usually .bfx) that needs to be compiled and sends its output (brainf*ck code) to stdout:
+Building the project results in a executable called `bfx`. It takes either one or two arguments: the path to the
+BrainFix file (usually .bfx) and an optional second path to the output file containing the generated BrainF*ck (usually .bf). When only one argument is provided, the BF output will be directed to stdout.
 
 ```
+./bfx path/to/file.bfx path/to/output.bf
 ./bfx path/to/file.bfx > output.bf
 ```
 
@@ -71,7 +72,7 @@ In `main()`, the function `println()` from the IO library is called to print the
 Let's try:
 
 ```
-$ ./bfx hello.bfx > hello.bf
+$ ./bfx hello.bfx hello.bf
 $ ./bfint 30000 hello.bf
 $ Hello, World!
 $
