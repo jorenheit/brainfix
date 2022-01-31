@@ -56,7 +56,7 @@ include "std/io.bfx"
 
 function main()
 {
-	println("Hello, World!");
+    println("Hello, World!");
 }
 ```
 
