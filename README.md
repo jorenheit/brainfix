@@ -279,7 +279,7 @@ BrainFix provides a simple way to define constants in your program, using the `c
 const SIZE = 10;
 
 function main()
-
+{
     []arr1 = #[SIZE, 42]; 
     []arr2 = #[SIZE, 69];
 
@@ -319,7 +319,7 @@ function main()
 BrainF*ck does not contain an opcode that let's us jump to arbitrary places in the code, which makes it very hard to implement `goto`-like features like `return`, `break` and `continue`. Instead, it is up to the programmer to implement conditional blocks using `if` and `if`-`else` to emulate these jumps.
 
 ### File Inclusion
-The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When, an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one. Currently, circular inclusions are not detected, and will simply crash the compiler.
+The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one. Currently, circular inclusions are not detected, and will simply crash the compiler.
 
 ### Standard Library
 The standard library provides some useful functions in two categories: IO and mathematics. Below is a list of provided functions that you can use to make your programs interactive and mathematical.
