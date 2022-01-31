@@ -17,6 +17,7 @@ class Compiler
 	friend class Parser;
 	
 	static constexpr size_t TAPE_SIZE_INITIAL = 1000;
+	static constexpr size_t MAX_ARRAY_SIZE = 250;
 
 	Parser d_parser;
 	size_t d_pointer{0};
@@ -28,6 +29,17 @@ class Compiler
 	std::ostringstream d_codeBuffer;
 	std::stack<int> d_stack;
 
+	enum class Stage
+		{
+		 PARSING,
+		 CODEGEN,
+		 FINISHED
+		};
+
+	Stage d_stage;
+	std::string d_instructionFilename;
+	int d_instructionLineNr;
+	
 public:
 	Compiler(std::string const &file):
 		d_parser(file, *this),
@@ -81,9 +93,15 @@ private:
 	// Instruction generator
 	template <auto Member, typename ... Args>
 	Instruction instruction(Args ... args){
-		return [=, this](){ return (this->*Member)(args ...); };
+		std::string file = d_parser.filename();
+		int line = d_parser.lineNr();
+		return Instruction([=, this](){
+							   setFilename(file);
+							   setLineNr(line);
+							   return (this->*Member)(args ...);
+						   });
 	}
-
+	
 	// Wrappers for element-modifying instructions
 	using UnaryFunction = int (Compiler::*)(AddressOrInstruction const &);
 	int applyUnaryFunctionToElement(std::string const &arrayIdent,
@@ -151,7 +169,7 @@ private:
 	{
 		if (!condition) return;
 		
-		std::cerr << "Error in " << d_parser.filename() << " on line " << d_parser.lineNr() << ": ";
+		std::cerr << "Error in " << filename() << " on line " << lineNr() << ": ";
 		if constexpr (sizeof ... (args) > 0)
 			(std::cerr << ... << args) << '\n';
 
@@ -171,7 +189,7 @@ private:
 		if (((args < 0) || ...))
 		{
 			std::cerr << "Fatal internal error while parsing " << d_parser.filename()
-					  << ", line " << d_parser.lineNr()
+					  << ", line " << lineNr()
 					  << ": negative address passed to " << function << "()\n\n"
 					  << "Compilation terminated\n";
 			std::exit(1);
@@ -180,13 +198,18 @@ private:
 		if ((((int)args >= (int)d_memory.size()) || ...))
 		{
 			std::cerr << "Fatal internal error while parsing " << d_parser.filename()
-					  << ", line " << d_parser.lineNr()
+					  << ", line " << lineNr()
 					  << ": address out of bounds passed to " << function << "()\n\n"
 					  << "Compilation terminated\n";
 			
 			std::exit(1);
 		}
 	}
+
+	void setFilename(std::string const &file);
+	void setLineNr(int line);
+	int lineNr() const;
+	std::string filename() const;
 };
 
 #endif //COMPILER_H

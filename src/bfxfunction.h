@@ -20,8 +20,6 @@ public:
 	static std::string const VOID;
 	
 	BFXFunction() = default;
-	
-	
 	BFXFunction(std::string name, std::vector<std::string> const &params):
 		d_name(name),
 		d_params(params),

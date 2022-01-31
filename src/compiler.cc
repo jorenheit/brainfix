@@ -5,6 +5,7 @@
 
 int Compiler::compile()
 {
+	d_stage = Stage::PARSING;
 	int err = d_parser.parse();
 	if (err)
 	{
@@ -15,7 +16,9 @@ int Compiler::compile()
 	errorIf(d_functionMap.find("main") == d_functionMap.end(),
 			"No entrypoint provided. The entrypoint should be main().");
 
+	d_stage = Stage::CODEGEN;
 	call("main");
+	d_stage = Stage::FINISHED;
 	return 0;
 }
 
@@ -575,8 +578,10 @@ int Compiler::variable(std::string const &ident, uint8_t sz, bool checkSize)
 {
 	if (isCompileTimeConstant(ident))
 		return constVal(compileTimeConstant(ident));
-	
+
 	errorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
+	errorIf(sz > MAX_ARRAY_SIZE,
+			"Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
 	
 	int arr = allocateOrGet(ident, sz);
 	errorIf(checkSize && d_memory.sizeOf(arr) != sz,
@@ -630,6 +635,9 @@ int Compiler::assignPlaceholder(std::string const &lhs, AddressOrInstruction con
 
 int Compiler::arrayFromSizeStaticValue(uint8_t sz, uint8_t val)
 {
+	errorIf(sz > MAX_ARRAY_SIZE,
+			"Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
+	
 	int arr = allocateTemp(sz);
 	for (int idx = 0; idx != sz; ++idx)
 	{
@@ -642,6 +650,9 @@ int Compiler::arrayFromSizeStaticValue(uint8_t sz, uint8_t val)
 
 int Compiler::arrayFromSizeDynamicValue(uint8_t sz, AddressOrInstruction const &val)
 {
+	errorIf(sz > MAX_ARRAY_SIZE,
+			"Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
+
 	errorIf(d_memory.sizeOf(val) > 1,
 			"Array fill-value must refer to a variable of size 1, but it is of size ",
 			d_memory.sizeOf(val), ".");
@@ -652,6 +663,10 @@ int Compiler::arrayFromSizeDynamicValue(uint8_t sz, AddressOrInstruction const &
 int Compiler::arrayFromList(std::vector<Instruction> const &list)
 {
 	uint8_t sz = list.size();
+
+	errorIf(sz > MAX_ARRAY_SIZE,
+			"Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
+	
 	int start = allocateTemp(sz);
 	for (int idx = 0; idx != sz; ++idx)
 		d_codeBuffer << bf_assign(start + idx, list[idx]());
@@ -662,6 +677,10 @@ int Compiler::arrayFromList(std::vector<Instruction> const &list)
 int Compiler::arrayFromString(std::string const &str)
 {
 	uint8_t sz = str.size();
+
+	errorIf(sz > MAX_ARRAY_SIZE,
+			"Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
+
 	int start = allocateTemp(sz);
 	for (int idx = 0; idx != sz; ++idx)
 		d_codeBuffer << bf_setToValue(start + idx, str[idx]);
@@ -1146,4 +1165,36 @@ std::string Compiler::cancelOppositeCommands(std::string const &bf)
 
 	std::string result	= cancel(bf, '>', '<');
 	return cancel(result, '+', '-');
+}
+
+void Compiler::setFilename(std::string const &file)
+{
+	d_instructionFilename = file;
+}
+
+void Compiler::setLineNr(int line)
+{
+	d_instructionLineNr = line;
+}
+
+int Compiler::lineNr() const
+{
+	if (d_stage == Stage::PARSING)
+		return d_parser.lineNr();
+	else if (d_stage == Stage::CODEGEN)
+		return d_instructionLineNr;
+
+	assert(false && "Unreachable");
+	return -1;
+}
+
+std::string Compiler::filename() const
+{
+	if (d_stage == Stage::PARSING)
+		return d_parser.filename();
+	else if (d_stage == Stage::CODEGEN)
+		return d_instructionFilename;
+
+	assert(false && "Unreachable");
+	return "";
 }

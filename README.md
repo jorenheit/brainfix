@@ -149,24 +149,24 @@ Most of these operators are commonplace and use well known notation. The excepti
 ```javascript
 function divModExample()
 {
-	x = 42;
-	y = 5;
+    x = 42;
+    y = 5;
 
-	z = (x /=% y);
+    z = (x /=% y);
 
-	// x -> x / y (8) and
-	// z -> x % y (2)
+    // x -> x / y (8) and
+    // z -> x % y (2)
 }
 
 function modDivExample()
 {
-	x = 42;
-	y = 5;
+    x = 42;
+    y = 5;
 
-	z = (x %=/ y);
+    z = (x %=/ y);
 	
-	// x -> x % y (2) and
-	// z -> x / y (8)
+    // x -> x % y (2) and
+    // z -> x / y (8)
 }
 ```
 

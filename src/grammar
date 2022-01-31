@@ -151,7 +151,7 @@ global_variable_list:
 
 code_body:
 	{
-		$$ = [](){ return -1; };
+		$$ = Instruction([](){ return -1; });
 	}
 |
 	code_body statement
@@ -477,7 +477,7 @@ for_statement:
 if_statement:
 	IF '(' expression ')' statement
 	{
-		$$ = d_comp.instruction<&Compiler::ifStatement>($3, $5, [](){ return -1; });
+		$$ = d_comp.instruction<&Compiler::ifStatement>($3, $5, Instruction([](){ return -1; }));
 	}
 |
 	IF '(' expression ')' statement ELSE statement %prec then
