@@ -32,6 +32,7 @@ public:
 		d_memory(TAPE_SIZE_INITIAL)
 	{}
 
+	// TODO: clean this up
 	void compile(std::istream &in = std::cin, std::ostream &out = std::cout)
 	{
 		Parser parser(in, *this);
