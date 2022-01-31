@@ -1,7 +1,7 @@
 #include "parser.ih"
 
-Parser::Parser(std::istream &in, Compiler &comp):
-	d_scanner(in),
+Parser::Parser(std::string const &filename, Compiler &comp):
+	d_scanner(filename, "scannerlog.txt"),
 	d_comp(comp)
 {}
 
@@ -33,4 +33,12 @@ int Parser::lex()
 
 	return token;
 }
+
+void Parser::error()
+{
+	std::cerr << "ERROR: Syntax error on line "
+			  << d_scanner.lineNr() << " of file "
+			  << d_scanner.filename() << '\n';
+}
+
 

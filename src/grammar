@@ -60,6 +60,8 @@
 program:
 	// empty
 |
+	program error
+|
 	program function_definition
 |
 	program global_variable_list
@@ -159,6 +161,8 @@ code_body:
 ;
 
 statement:
+	error ';' // continue parsing at the next statement
+|
 	expression ';'
 	{
 		$$ = d_comp.instruction<&Compiler::statement>($1);

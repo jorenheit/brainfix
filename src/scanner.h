@@ -15,14 +15,10 @@ public:
 					 std::ostream &out = std::cout);
 
 	Scanner(std::string const &infile, std::string const &outfile);
+	using ScannerBase::pushStream;
         
 	// $insert lexFunctionDecl
 	int lex();
-
-	void pushStream(std::string const &filename)
-	{
-		ScannerBase::pushStream(filename);
-	}
 
 private:
 	int lex_();
@@ -71,7 +67,6 @@ inline void Scanner::print()
 {
     print_();
 }
-
 
 #endif // Scanner_H_INCLUDED_
 

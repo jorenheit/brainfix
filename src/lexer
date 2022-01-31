@@ -1,12 +1,12 @@
-%class-name Scanner
+ %class-name Scanner
 %filenames scanner
 %lex-source = "lex_flexcpp_generated.cc"
 
 ident [_a-zA-Z][_a-zA-Z0-9]*
-escap ["\\n""\\t"]
 blanks [[:blank:]\n]
 
 %x string
+%x character
 %x eolcomment
 %x ccomment
 

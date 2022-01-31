@@ -1,11 +1,35 @@
 #include "compiler.h"
 #include <algorithm>
 
+#define validateAddr(...) validateAddr__(__func__, __VA_ARGS__)
+
+int Compiler::compile()
+{
+	int err = d_parser.parse();
+	if (err)
+	{
+		std::cerr << "Compilation terminated due to error(s)\n";
+		return err;
+	}
+	
+	errorIf(d_functionMap.find("main") == d_functionMap.end(),
+			"No entrypoint provided. The entrypoint should be main().");
+
+	call("main");
+	return 0;
+}
+
+void Compiler::write(std::ostream &out)
+{
+	out << cancelOppositeCommands(d_codeBuffer.str()) << '\n';
+}
+
 void Compiler::addFunction(BFXFunction bfxFunc, Instruction const &body)
 {
 	bfxFunc.setBody(body);
 	auto result = d_functionMap.insert({bfxFunc.name(), bfxFunc});
-	assert(result.second && "Redefinition of function not allowed");
+	errorIf(!result.second,
+			"Redefinition of function ", bfxFunc.name(), " is not allowed.");
 }
 
 void Compiler::addGlobals(std::vector<Instruction> const &variables)
@@ -20,12 +44,15 @@ void Compiler::addGlobals(std::vector<Instruction> const &variables)
 void Compiler::addConstant(std::string const &ident, uint8_t num)
 {
 	auto result = d_constMap.insert({ident, num});
-	assert(result.second && "Redefinition of constant not allowed");
+	errorIf(!result.second,
+			"Redefinition of constant ", ident, " is not allowed.");
 }
 
 uint8_t Compiler::compileTimeConstant(std::string const &ident) const
 {
-	assert(isCompileTimeConstant(ident) && "Not a constant");
+	errorIf(!isCompileTimeConstant(ident),
+			ident, " is being used as a const but was not defined as such.");
+	
 	return d_constMap.at(ident);
 }
 
@@ -88,6 +115,8 @@ void Compiler::freeLocals()
 
 std::string Compiler::bf_setToValue(int addr, int val)
 {
+	validateAddr(addr, val);
+	
 	std::string ops;
 	ops += bf_movePtr(addr);        // go to address
 	ops += "[-]";                   // reset cell to 0
@@ -98,6 +127,8 @@ std::string Compiler::bf_setToValue(int addr, int val)
 
 std::string Compiler::bf_setToValue(int start, int val, size_t n)
 {
+	validateAddr(start, val);
+	
 	std::string ops;
 	for (size_t i = 0; i != n; ++i)
 		ops += bf_setToValue(start + i, val);
@@ -107,8 +138,7 @@ std::string Compiler::bf_setToValue(int start, int val, size_t n)
 
 std::string Compiler::bf_assign(int lhs, int rhs)
 {
-	assert(lhs >= 0 && rhs >= 0 &&
-		   "Invalid address. Did you try to use the result of a void function?");
+	validateAddr(lhs, rhs);
 	
 	int tmp = allocateTemp();
 
@@ -142,6 +172,8 @@ std::string Compiler::bf_assign(int lhs, int rhs)
 
 std::string Compiler::bf_assign(int dest, int src, size_t n)
 {
+	validateAddr(dest, src);
+	
 	std::string result;
 	for (size_t idx = 0; idx != n; ++idx)
 		result += bf_assign(dest + idx, src + idx);
@@ -149,25 +181,10 @@ std::string Compiler::bf_assign(int dest, int src, size_t n)
 	return result;
 }
 
-std::string Compiler::bf_assign(std::vector<int> const &dest,
-								std::vector<int> const &src)
-{
-	assert(dest.size() == src.size() &&
-		   "Destination and source-vectors have different sizes.");
-
-	std::string result;
-	size_t const sz = dest.size();
-	for (size_t idx = 0; idx != sz; ++idx)
-		result += bf_assign(dest[idx], src[idx]);
-
-	return result;
-}
-
 std::string Compiler::bf_movePtr(size_t addr)
 {
-	assert(addr >= 0 && "bf_movePtr: got invalid (negative) address");
-	assert(addr < d_memory.size() && "bf_movePtr: pointer out of bounds during compilation.");
-
+	validateAddr(addr);
+	
 	int diff = (int)addr - (int)d_pointer;
 	d_pointer = addr;
 	return (diff >= 0) ? std::string(diff, '>')	: std::string(-diff, '<');
@@ -175,6 +192,8 @@ std::string Compiler::bf_movePtr(size_t addr)
 
 std::string Compiler::bf_addTo(int target, int rhs)
 {
+	validateAddr(target, rhs);
+	
 	std::string result;
 
 	int tmp = allocateTemp();
@@ -192,6 +211,8 @@ std::string Compiler::bf_addTo(int target, int rhs)
 
 std::string Compiler::bf_subtractFrom(int target, int rhs)
 {
+	validateAddr(target, rhs);
+	
 	std::string result;
 
 	int tmp = allocateTemp();
@@ -209,18 +230,21 @@ std::string Compiler::bf_subtractFrom(int target, int rhs)
 
 std::string Compiler::bf_incr(int target)
 {
+	validateAddr(target);
 	return bf_movePtr(target) + "+";
 }
 
 std::string Compiler::bf_decr(int target)
 {
+	validateAddr(target);
 	return bf_movePtr(target) + "-";
 }
 
 std::string Compiler::bf_multiply(int lhs, int rhs, int result)
 {
-	std::string ops;
+	validateAddr(lhs, rhs, result);
 	
+	std::string ops;
 	int tmp = allocateTemp(); // can I use rhs if this is a temp?
 
 	ops += bf_setToValue(result, 0);
@@ -236,8 +260,9 @@ std::string Compiler::bf_multiply(int lhs, int rhs, int result)
 
 std::string Compiler::bf_multiplyBy(int target, int factor)
 {
+	validateAddr(target, factor);
+	
 	std::string ops;
-
 	int tmp = allocateTemp();
 	ops += bf_multiply(target, factor, tmp);
 	ops += bf_assign(target, tmp);
@@ -247,8 +272,9 @@ std::string Compiler::bf_multiplyBy(int target, int factor)
 
 std::string Compiler::bf_not(int addr, int result)
 {
+	validateAddr(addr, result);
+	
 	std::string ops;
-
 	int tmp = allocateTemp();
 	
 	ops += bf_setToValue(result, 1);
@@ -264,6 +290,8 @@ std::string Compiler::bf_not(int addr, int result)
 
 std::string Compiler::bf_and(int lhs, int rhs, int result)
 {
+	validateAddr(lhs, rhs, result);
+
 	int x = allocateTemp();
 	int y = allocateTemp();
 	
@@ -286,6 +314,8 @@ std::string Compiler::bf_and(int lhs, int rhs, int result)
 
 std::string Compiler::bf_or(int lhs, int rhs, int result)
 {
+	validateAddr(lhs, rhs, result);
+
 	int x = allocateTemp();
 	int y = allocateTemp();
 
@@ -308,6 +338,8 @@ std::string Compiler::bf_or(int lhs, int rhs, int result)
 
 std::string Compiler::bf_equal(int lhs, int rhs, int result)
 {
+	validateAddr(lhs, rhs, result);
+
 	std::string ops;
 
 	int tmpL = allocateTemp();
@@ -332,6 +364,8 @@ std::string Compiler::bf_equal(int lhs, int rhs, int result)
 
 std::string Compiler::bf_notEqual(int lhs, int rhs, int result)
 {
+	validateAddr(lhs, rhs, result);
+
 	std::string ops;
 	int result2 = allocateTemp();
 	
@@ -343,6 +377,8 @@ std::string Compiler::bf_notEqual(int lhs, int rhs, int result)
 
 std::string Compiler::bf_greater(int lhs, int rhs, int result)
 {
+	validateAddr(lhs, rhs, result);
+
 	int x = allocateTemp();
 	int y = allocateTemp();
 	int tmp1 = allocateTemp();
@@ -382,11 +418,14 @@ std::string Compiler::bf_greater(int lhs, int rhs, int result)
 
 std::string Compiler::bf_less(int lhs, int rhs, int result)
 {
+	validateAddr(lhs, rhs, result);
 	return bf_greater(rhs, lhs, result);
 }
 
 std::string Compiler::bf_greaterOrEqual(int lhs, int rhs, int result)
 {
+	validateAddr(lhs, rhs, result);
+
 	int isEqual = allocateTemp();
 	int isGreater = allocateTemp();
 
@@ -401,16 +440,16 @@ std::string Compiler::bf_greaterOrEqual(int lhs, int rhs, int result)
 
 std::string Compiler::bf_lessOrEqual(int lhs, int rhs, int result)
 {
+	validateAddr(lhs, rhs, result);
 	return bf_greaterOrEqual(rhs, lhs, result);
 }
 
 
 int Compiler::inlineBF(std::string const &code)
 {
-	assert(validateInlineBF(code) &&
-		   "Inline BF must not alter pointer-position. "
-		   "Left and right shifts must cancel within each set of []"
-		   );
+	errorIf(!validateInlineBF(code),
+		   "Inline BF may not have a net-effect on pointer-position. "
+		   "Make sure left and right shifts cancel out within each set of [].");
 	
 	d_codeBuffer << code;
 	return -1;
@@ -451,7 +490,7 @@ int Compiler::sizeOfOperator(std::string const &ident)
 {
 	int tmp = allocateTemp();
 	int addr = addressOf(ident);
-	assert(addr >= 0 && "Unknown identifier passed to sizeof()");
+	errorIf(addr < 0, "Unknown identifier \"", ident ,"\" passed to sizeof().");
 	
 	int sz = d_memory.sizeOf(addr);
 	d_codeBuffer << bf_setToValue(tmp, sz);
@@ -461,7 +500,7 @@ int Compiler::sizeOfOperator(std::string const &ident)
 int Compiler::movePtr(std::string const &ident)
 {
 	int addr = addressOf(ident);
-	assert(addr >= 0 && "Unknown identifier");
+	errorIf(addr < 0 &&	"Unknown identifier \"", ident, "\" passed to movePtr().");
 
 	d_codeBuffer << bf_movePtr(addr);
 	return -1;
@@ -477,23 +516,25 @@ int Compiler::statement(Instruction const &instr)
 int Compiler::call(std::string const &functionName,
 				   std::vector<Instruction> const &args)
 {
-	auto it = d_functionMap.find(functionName);
-	if (it  == d_functionMap.end())
-		assert(false && "Error: unknown function.");
-	BFXFunction &func = it->second;
+	errorIf(d_functionMap.find(functionName) == d_functionMap.end(),
+			"Call to unknown function \"", functionName, "\"");
+	errorIf(std::find(d_callStack.begin(), d_callStack.end(), functionName) != d_callStack.end(),
+			"Function \"", functionName, "\" is called recursively. Recursion is not allowed."); 
 
-	// Check for recursion
-	if (std::find(d_callStack.begin(), d_callStack.end(), functionName) != d_callStack.end())
-		throw std::string("Error: recursion not allowed.");
-			   
-	// Allocate parameters and copy arguments into them
+	BFXFunction &func = d_functionMap.at(functionName);
 	auto const &params = func.params();
-	assert(params.size() == args.size() && "Calling function with invalid number of arguments");
+	errorIf(params.size() != args.size(),
+			"Calling function \"", func.name(), "\" with invalid number of arguments. "
+			"Expected ", params.size(), ", got ", args.size(), ".");
+
 	for (size_t idx = 0; idx != args.size(); ++idx)
 	{
 		// Evaluate argument that's passed in and get its size
 		int argAddr = args[idx]();
-		assert(argAddr >= 0 && "Unknown variable in argument to function");
+		errorIf(argAddr < 0,
+				"Invalid argument argument to function \"", func.name(),
+				"\": the expression passed as argument ", idx, " returns void.");
+		
 		uint8_t sz = d_memory.sizeOf(argAddr);
 		
 		// Allocate local variable for the function of the correct size
@@ -515,7 +556,9 @@ int Compiler::call(std::string const &functionName,
 	if (retVar != BFXFunction::VOID)
 	{
 		ret = d_memory.findLocal(retVar, func.name());
-		assert(ret != -1 && "return value not found");
+		errorIf(ret == -1,
+				"Returnvalue of function \"", func.name(),
+				"\"seems not to have been declared in the function-body.");
 
 		// Pull the variable into local scope as a temp
 		d_memory.changeScope(ret, d_callStack.back());
@@ -533,10 +576,12 @@ int Compiler::variable(std::string const &ident, uint8_t sz, bool checkSize)
 	if (isCompileTimeConstant(ident))
 		return constVal(compileTimeConstant(ident));
 	
-	assert(sz > 0 && "variable size must be at least 1");
+	errorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
+	
 	int arr = allocateOrGet(ident, sz);
-	if (checkSize)
-		assert(d_memory.sizeOf(arr) == sz && "Specified size of array does not match value in memory");
+	errorIf(checkSize && d_memory.sizeOf(arr) != sz,
+			"Variable \"", ident, "\" was previously declared with a different size.");
+
 	return arr;
 }
 
@@ -565,7 +610,7 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
 	}
 	else
 	{
-		assert(false && "Cannot assign variables of unequal sizes");
+		errorIf(true, "Cannot assign variables of unequal sizes");
 	}
 
 	return lhs;
@@ -573,7 +618,9 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
 
 int Compiler::assignPlaceholder(std::string const &lhs, AddressOrInstruction const &rhs)
 {
-	assert(addressOf(lhs) == -1 && "Placeholder-size can not be attached to already existing variable");
+	errorIf(addressOf(lhs) != -1,
+			"Placeholder size brackets can not be attached to previously declared variable \"",
+			lhs, "\".");
 	
 	int const sz = d_memory.sizeOf(rhs);
 	int lhsAddr = allocateOrGet(lhs, sz);
@@ -595,8 +642,9 @@ int Compiler::arrayFromSizeStaticValue(uint8_t sz, uint8_t val)
 
 int Compiler::arrayFromSizeDynamicValue(uint8_t sz, AddressOrInstruction const &val)
 {
-	assert(d_memory.sizeOf(val) == 1 &&
-		   "Array fill value must refer to a variable of size 1");
+	errorIf(d_memory.sizeOf(val) > 1,
+			"Array fill-value must refer to a variable of size 1, but it is of size ",
+			d_memory.sizeOf(val), ".");
 	
 	return assign(allocateTemp(sz), val);
 }

@@ -25,8 +25,14 @@ class Parser: public ParserBase
 	Compiler &d_comp;
 	
 public:
-	Parser(std::istream &in, Compiler &comp);
+	Parser(std::string const &filename, Compiler &comp);
+	using ParserBase::ERROR;
+	using ParserBase::ABORT;
+
 	int parse();
+
+	int lineNr() const;
+	std::string filename() const;
 
 private:
 	void error();                   // called on (syntax) errors
@@ -43,5 +49,14 @@ private:
 	void print_();
 };
 
+inline int Parser::lineNr() const
+{
+	return d_scanner.lineNr();
+}
+
+inline std::string Parser::filename() const
+{
+	return d_scanner.filename();
+}
 
 #endif

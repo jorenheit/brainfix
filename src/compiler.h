@@ -18,6 +18,7 @@ class Compiler
 	
 	static constexpr size_t TAPE_SIZE_INITIAL = 1000;
 
+	Parser d_parser;
 	size_t d_pointer{0};
 	Memory d_memory;
 
@@ -28,33 +29,13 @@ class Compiler
 	std::stack<int> d_stack;
 
 public:
-	Compiler():
+	Compiler(std::string const &file):
+		d_parser(file, *this),
 		d_memory(TAPE_SIZE_INITIAL)
 	{}
 
-	// TODO: clean this up
-	void compile(std::istream &in = std::cin, std::ostream &out = std::cout)
-	{
-		Parser parser(in, *this);
-		parser.setDebug(Parser::ACTIONCASES);
-		parser.parse();
-
-		if (d_functionMap.find("main") == d_functionMap.end())
-			assert(false && "Error: no entrypoint provided. The entrypoint should be called \"main\".");
-
-		call("main");
-
-		out << cancelOppositeCommands(d_codeBuffer.str());
-	}
-
-	void check()
-	{
-		for (size_t idx = 0; idx != d_memory.size(); ++idx)
-		{
-			std::cerr << " | " << d_memory.cellString(idx);
-		}
-		std::cerr << '\n';
-	}
+	int compile();
+	void write(std::ostream &out = std::cout);
 
 private:
 	void addFunction(BFXFunction bfxFunc, Instruction const &body);
@@ -81,7 +62,6 @@ private:
 	std::string bf_setToValue(int start, int val, size_t n);
 	std::string bf_assign(int lhs, int rhs);
 	std::string bf_assign(int dest, int src, size_t n);
-	std::string bf_assign(std::vector<int> const &dest, std::vector<int> const &src);
 	std::string bf_addTo(int target, int rhs);
 	std::string bf_incr(int target);
 	std::string bf_decr(int target);
@@ -164,7 +144,49 @@ private:
 	int forStatement(Instruction const &init, Instruction const &condition,
 					 Instruction const &increment, Instruction const &body);	
 	int whileStatement(Instruction const &condition, Instruction const &body);
-	
+
+
+	template <typename ... Args>
+	void errorIf(bool condition, Args&& ... args) const
+	{
+		if (!condition) return;
+		
+		std::cerr << "Error in " << d_parser.filename() << " on line " << d_parser.lineNr() << ": ";
+		if constexpr (sizeof ... (args) > 0)
+			(std::cerr << ... << args) << '\n';
+
+		try {
+			d_parser.ERROR();
+		}
+		catch (...)
+		{
+			std::cerr << "Unable to recover: compilation terminated\n";
+			std::exit(1);
+		}
+	}
+
+	template <typename ... Args>
+	void validateAddr__(std::string const &function, Args&& ... args) const
+	{
+		if (((args < 0) || ...))
+		{
+			std::cerr << "Fatal internal error while parsing " << d_parser.filename()
+					  << ", line " << d_parser.lineNr()
+					  << ": negative address passed to " << function << "()\n\n"
+					  << "Compilation terminated\n";
+			std::exit(1);
+		}
+		
+		if ((((int)args >= (int)d_memory.size()) || ...))
+		{
+			std::cerr << "Fatal internal error while parsing " << d_parser.filename()
+					  << ", line " << d_parser.lineNr()
+					  << ": address out of bounds passed to " << function << "()\n\n"
+					  << "Compilation terminated\n";
+			
+			std::exit(1);
+		}
+	}
 };
 
 #endif //COMPILER_H

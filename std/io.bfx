@@ -8,6 +8,7 @@
    printd(x)	- Print byte as decimal
    prints(str)	- Print string (stop at NULL or end of the string)
    println(str) - Same as prints() but with appended newline
+   print_vec(v) - Print formatted vector, including newline: (v1, v2, v3, ..., vn)
    endl()		- Print a newline (same as printc('\n'))
    
    INPUT
@@ -48,6 +49,18 @@ function println(x)
 	printc('\n');
 }
 
+function print_vec(v)
+{
+	sz = sizeof(v);
+	printc('(');
+	for (i = 0; i != sz; ++i)
+	{
+		printd(v[i]);
+		if (i != sz - 1)
+			prints(", ");
+	}
+	println(")");
+}
 
 function endl()
 {

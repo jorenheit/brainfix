@@ -6,19 +6,14 @@
 #include "parser.h"
 #include "compiler.h"
 
-inline void Parser::error()
-{
-    std::cerr << "Syntax error\n";
-}
-
-
 inline void Parser::print()         
 {
 }
 
-inline void Parser::exceptionHandler(std::exception const &exc)         
+inline void Parser::exceptionHandler(std::exception const &exc)
 {
-    throw;              // re-implement to handle exceptions thrown by actions
+	//	++d_errCount;
+	throw;
 }
 
 

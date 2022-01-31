@@ -89,7 +89,6 @@ int Memory::allocateLocalSafe(std::string const &ident, std::string const &scope
 
 int Memory::allocateGlobalSafe(std::string const &ident, uint8_t sz)
 {
-	/* Note: global arrays are not allowes (yet?) */
 	assert(findGlobal(ident) == -1 && "Variable already allocated globally");
 	return allocateGlobalUnsafe(ident, sz);
 }
