@@ -117,28 +117,56 @@ function z = bar(x, y)
 ### Operators
 The following operators are supported by BrainFix:
 
-| Operator | Effect |
+| Operator | Description |
 | --- | --- |
-| ++   |  post- and pre-increment |
-| --   |  post- and pre-decrement |
-| +    |  add |
-| -    |  subtract |
-| *    |  multiply |
-| /    |  divide |
-| %    |  modulo |
-| +=   |  add to left-hand-side (lhs), returns lhs |
-| -=   |  subtract from lhs, returns lhs |
-| *=   |  multiply lhs by rhs, returns lhs |
-| /=   |  divide lhs by rhs, returns lhs |
-| %=   |  assigns the remainder of lhs / rhs and assigns it to lhs |
-| /=%  |  divides lhs by rhs, returns the remainder |
-| %=/  |  assignes the remainder to lhs, returns the result of the division |
-| &&   |  logical AND |
-| \|\| |  logical OR |
-| !    |  (unary) logical NOT |
-| ==   |  equal to |
-| !=   |  not equal to |
-| <    |  less than |
-| >    |  greater than |
-| <=   |  less than or equal to |
-| >=   |  greater than or equal to |
+| `++`  |  post- and pre-increment |
+| `--`   |  post- and pre-decrement |
+| `+`    |  add |
+| `-`    |  subtract |
+| `*`    |  multiply |
+| `/`    |  divide |
+| `%`    |  modulo |
+| `+=`   |  add to left-hand-side (lhs), returns lhs |
+| `-=`   |  subtract from lhs, returns lhs |
+| `*=`   |  multiply lhs by rhs, returns lhs |
+| `/=`   |  divide lhs by rhs, returns lhs |
+| `%=`   |  assigns the remainder of lhs / rhs and assigns it to lhs |
+| `/=%`  |  divides lhs by rhs, returns the remainder |
+| `%=/`  |  assignes the remainder to lhs, returns the result of the division |
+| `&&`   |  logical AND |
+| `\|\|` |  logical OR |
+| `!`    |  (unary) logical NOT |
+| `==`   |  equal to |
+| `!=`   |  not equal to |
+| `<`    |  less than |
+| `>`    |  greater than |
+| `<=`   |  less than or equal to |
+| `>=`   |  greater than or equal to |
+
+#### The div-mod and mod-div operators
+Most of these operators are commonplace and use well known notation. The exception might be the div-mod and mod-div operators, which were added as a small optimizing feature. The BF-algorithm that is implemented to execute a division, calculates the remainder in the process. These operators reflect this fact, and let you collect both results in a single operation.
+
+```javascript
+function divModExample()
+{
+	x = 42;
+	y = 5;
+
+	z = (x /=% y);
+
+	// x -> x / y (8) and
+	// z -> x % y (2)
+}
+
+function modDivExample()
+{
+	x = 42;
+	y = 5;
+
+	z = (x %=/ y);
+	
+	// x -> x % y (2) and
+	// z -> x / y (8)
+}
+```
+
