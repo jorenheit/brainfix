@@ -78,7 +78,8 @@ $ Hello, World!
 $
 ```
 
-## Functions
+## Language
+### Functions
 A BrainFix program consists of a series of functions (one of which is called `main()`). Apart from global variable declarations, `const` declarations and file inclusion (more on those later), no other syntax is allowed at global scope. In other words: BF code is only generated in function-bodies.
 
 A function without a return-value is defined like we saw in the Hello World example and may take any number of parameters:
@@ -93,24 +94,51 @@ When a function has a return-value, it is defined as follows:
 ```javascript
 function [returnVariable] = [functionName]([param1], ..., [paramN])
 {
-	// body --> must contain instantiation of [returnVariable]!
+    // body --> must contain instantiation of [returnVariable]!
 }
 ```
 
-It does not matter where a function is defined. The sourcecode is parsed entirely before the call to `main()` is made, so by the time a function call is actually executed, the instructions making up the function are already stored, no matter if the function was defined after the call.
-
+It does not matter where a function is defined with respect to the call:
 ```javascript
 function foo()
 {
-	x = 31;
-	y = 38;
+    x = 31;
+    y = 38;
 
-	nice = bar(x, y); // works, even if bar is defined below
+    nice = bar(x, y); // works, even if bar is defined below
 }
 
 function z = bar(x, y)
 {
-	z = x + y;
+    z = x + y; // return variable is instantiated here
 }
 ```
 
+### Operators
+The following operators are supported by BrainFix:
+
+| Operator | Effect |
+| --- | --- |
+| ++   |  post- and pre-increment |
+| --   |  post- and pre-decrement |
+| +    |  add |
+| -    |  subtract |
+| *    |  multiply |
+| /    |  divide |
+| %    |  modulo |
+| +=   |  add to left-hand-side (lhs), returns lhs |
+| -=   |  subtract from lhs, returns lhs |
+| *=   |  multiply lhs by rhs, returns lhs |
+| /=   |  divide lhs by rhs, returns lhs |
+| %=   |  assigns the remainder of lhs / rhs and assigns it to lhs |
+| /=%  |  divides lhs by rhs, returns the remainder |
+| %=/  |  assignes the remainder to lhs, returns the result of the division |
+| &&   |  logical AND |
+| \|\| |  logical OR |
+| !    |  (unary) logical NOT |
+| ==   |  equal to |
+| !=   |  not equal to |
+| <    |  less than |
+| >    |  greater than |
+| <=   |  less than or equal to |
+| >=   |  greater than or equal to |
