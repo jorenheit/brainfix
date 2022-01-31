@@ -514,18 +514,16 @@ int Compiler::call(std::string const &functionName,
 	int ret = -1;
 	if (retVar != "__void__")
 	{
-		int addr = d_memory.findLocal(retVar, func.name());
-		assert(addr != -1 && "return value not found");
-		uint8_t sz = d_memory.sizeOf(addr);
-		
-		// Allocate local variable and copy
-		ret = allocateTemp(sz);
-		assign(ret, addr);
+		ret = d_memory.findLocal(retVar, func.name());
+		assert(ret != -1 && "return value not found");
+
+		// Pull the variable into local scope as a temp
+		d_memory.changeScope(ret, d_callStack.back());
+		d_memory.markAsTemp(ret);
 	}
 
 	// Clean up and return
-	if (func.name() != "main")
-		d_memory.freeLocals(func.name());
+	d_memory.freeLocals(func.name());
 
 	return ret;
 }

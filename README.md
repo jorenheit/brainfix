@@ -40,14 +40,14 @@ BrainFix file (usually .bfx) that needs to be compiled and sends its output (bra
 ```
 
 To run the resulting BF, call the included interpreter or any other utility that was designed to run or compile
-BF. The included interpreter takes 2 arguments: the size of the machine (number of bytes) and the input-file.
-For example:
+BF. The included interpreter takes 2 arguments: the size of the machine (number of bytes, canonically at least 30000)
+and the input-file. For example:
 
 ```
 ./bfint 30000 output.bf
 ```
 
-### Hello World
+### Example: Hello World
 Every programming language tutorial starts with a "Hello, World!" program of some sort. This is no exception:
 
 ```javascript
@@ -76,3 +76,5 @@ $ ./bfint 30000 hello.bf
 $ Hello, World!
 $
 ```
+
+

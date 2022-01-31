@@ -242,3 +242,10 @@ void Memory::markAsGlobal(int addr)
 	Cell &cell = d_memory[addr];
 	cell.assign(cell.ident(),"", cell.size(), CellSpec::GLOBAL);
 }
+
+void Memory::changeScope(int addr, std::string const &newScope)
+{
+	assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+	Cell &cell = d_memory[addr];
+	cell.assign(cell.ident(), newScope, cell.size(), cell.type());
+}

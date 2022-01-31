@@ -75,6 +75,7 @@ public:
 	void freeLocals(std::string const &scope);
 	void markAsTemp(int addr);
 	void markAsGlobal(int addr);
+	void changeScope(int addr, std::string const &newScope);
 	
 	
 	size_t size() const { return d_memory.size(); }
