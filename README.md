@@ -82,19 +82,21 @@ $
 ### Functions
 A BrainFix program consists of a series of functions (one of which is called `main()`). Apart from global variable declarations, `const` declarations and file inclusion (more on those later), no other syntax is allowed at global scope. In other words: BF code is only generated in function-bodies.
 
-A function without a return-value is defined like we saw in the Hello World example and may take any number of parameters:
+A function without a return-value is defined like we saw in the Hello World example and may take any number of parameters. For example:
+
 ```javascript
-function [functionName]([param1], ... [paramN])
+function foo(x, y, z)
 {
     // body
 }
 ```
 
-When a function has a return-value, it is defined as follows:
+When a function has a return-value, the syntax becomes:
+
 ```javascript
-function [returnVariable] = [functionName]([param1], ..., [paramN])
+function ret = bar(x, y, z)
 {
-    // body --> must contain instantiation of [returnVariable]!
+    // body --> must contain instantiation of 'ret' !
 }
 ```
 
@@ -170,24 +172,33 @@ function modDivExample()
 }
 ```
 
-### Arrays
+### Arrays and Strings
+#### Creating Arrays
 BrainFix supports arrays of up to 250 elements. This upper limit exists due to the fact that the maximum value of an index is 255 (0xff), the fact that some algorithms need some additional cells to work and 250 is a nice and easy to remember number. For the compiler, there's no real difference between regular variables and arrays; variables are simply arrays of size 1. To declare and initialize an array the BrainFix language, one can use a number of different constructs:
 
 ```javascript
+// Anonymous array from initializer list
+#(1, 2, 3, 4, 5);
+
+// Anonymous array from a given size, zero initialized
+#[5]
+
+// Anonymous array from a given size, value initialized
+#[5, value]
+
 // Declare x as an array of 5 elements, do not initialize
 [5]x;
 
-// Declare x as an array of 5 elements, all initialized to 1
+// Declare x as an array of 5 elements, then initialized all elements to 1
 [5]x = 1;
 
-// Initialize x with an initializer list (must contain 5 elements)
-[5]x = #(1, 2, 3, 4, 5);
-
 // Use a placeholder for the size
-[]x = #(1, 2, 3, 4, 5, 6);
+[]x = #(1, 2, 3, 4, 5, 6, 7);
+[]x = #[10, 42];
 
 // Initialize with a string
 []str = "Hello World\n";
+
 ```
 
 Once an array has a definite size, only arrays of the same size or variables of size 1 can be assigned to it. When assigning a different array of the same size, all elements are copied. When assigning a single element, this value is copied into every element of the array.
@@ -196,10 +207,10 @@ Once an array has a definite size, only arrays of the same size or variables of 
 function main()
 {
     [5]x = 1;     // all 1's
-	x = 4;        // x now contains only five 4's
+    x = 4;        // x now contains only five 4's
 
-	x = "Hello";         // fine
-	x = "Hello World";   // ERROR: different sizes
+    x = "Hello";         // fine
+    x = "Hello World";   // ERROR: different sizes
 }
 ```
 
@@ -208,8 +219,38 @@ Especially when storing a string in some variable, it is recommended to use the 
 ```javascript
 function main()
 {
-	[12]str1 = "Hello World\n";     // Inconvenient
-	[]str2   = "Hello World\n";     // Easy
+    [12]str1 = "Hello World\n";     // Inconvenient
+    []str2   = "Hello World\n";     // Easy
 }
 ```
+The size of an array has to be known at compiletime and may not be given by a runtime variable, not even if the value of this variable is strictly known at compiletime (BrainFix does not do any compiletime processing).
 
+#### Indexing
+Once an array is created, it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator:
+
+```javascript
+function main()
+{
+    []arr = #(42, 69, 123);
+
+	++arr[0];    // 42  -> 43
+    --arr[1];    // 69  -> 68
+	arr[2] = 0;  // 123 -> 0
+}
+
+```
+
+### Constants
+BrainFix provides a simple way to define constants in your program, using the `const` keyword. `const` declarations can only appear at global scope. Throughout the program, occurrences of the variable are replaced at compiletime by the literal value they've been assigned. This means that `const` variables can be used as array-sizes (which is their most common usecase):
+
+```javascript
+const SIZE = 10;
+
+function main()
+
+    [SIZE]arr1 = #[SIZE, 42]; 
+	[SIZE]arr2 = #[SIZE, 69];
+
+	arr1 = arr2; // guaranteed to work, sizes will always match
+}
+```
