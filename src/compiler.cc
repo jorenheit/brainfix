@@ -1017,25 +1017,26 @@ int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction co
 
 int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody)
 {
-    int const cond = condition(); 
-    int const elseCond = logicalNot(cond);
+    int const ifFlag = allocateTemp();
+    assign(ifFlag, condition());
+    int const elseFlag = logicalNot(ifFlag);
 
-    pushStack(cond);
-    pushStack(elseCond); 
+    pushStack(ifFlag);
+    pushStack(elseFlag); 
 
-    d_codeBuffer << bf_movePtr(cond)
+    d_codeBuffer << bf_movePtr(ifFlag)
                  << "[";
 
     ifBody();
     
-    d_codeBuffer << bf_setToValue(cond, 0)
+    d_codeBuffer << bf_setToValue(ifFlag, 0)
                  << "]"
-                 <<  bf_movePtr(elseCond)
+                 <<  bf_movePtr(elseFlag)
                  << "[";
 
     elseBody();
     
-    d_codeBuffer << bf_setToValue(elseCond, 0)
+    d_codeBuffer << bf_setToValue(elseFlag, 0)
                  << "]";
 
     popStack();
@@ -1054,18 +1055,17 @@ int Compiler::mergeInstructions(Instruction const &instr1, Instruction const &in
 int Compiler::forStatement(Instruction const &init, Instruction const &condition,
                            Instruction const &increment, Instruction const &body)
 {
+    int const flag = allocateTemp();
+    pushStack(flag);
+    
     init();
     
-    int const cond1 = condition();
-    pushStack(cond1);
-    d_codeBuffer << bf_movePtr(cond1)
+    d_codeBuffer << bf_assign(flag, condition())
                  << "[";
 
     body();
     increment();
-    int const cond2 = condition();
-    
-    d_codeBuffer << bf_assign(cond1, cond2)
+    d_codeBuffer << bf_assign(flag, condition())
                  << "]";
 
     popStack();
@@ -1075,14 +1075,14 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 
 int Compiler::whileStatement(Instruction const &condition, Instruction const &body)
 {
-    int const cond1 = condition();
-    pushStack(cond1);
-    d_codeBuffer << bf_movePtr(cond1)
+    int const flag = allocateTemp();
+
+    pushStack(flag);
+    d_codeBuffer << bf_assign(flag, condition())
                  << "[";
     body();
 
-    int const cond2 = condition();
-    d_codeBuffer << bf_assign(cond1, cond2)
+    d_codeBuffer << bf_assign(flag, condition())
                  << "]";
 
     popStack();

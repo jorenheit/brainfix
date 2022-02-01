@@ -1,0 +1,104 @@
+include "std/io.bfx"
+
+const MAX_SIZE = 250;
+const true = 1;
+const false = 0;
+
+global [MAX_SIZE]bf_tape;
+global [MAX_SIZE]bf_code;
+global [MAX_SIZE]jmp_stack;
+global tape_pointer, stack_pointer;
+
+function main()
+{
+    bf_tape = 0;
+    pointer = 0;
+    programSize = load();
+    run(programSize);
+}
+
+function count = load()
+{
+    count = 0;
+    running = true;
+    while (running && count < MAX_SIZE)
+    {
+        c = scanc();
+        if (c == '\n')
+            running = false;
+        else
+            bf_code[count++] = c;
+    }
+}
+
+function run(programSize)
+{
+    i = 0;
+    while (i < programSize)
+    {
+        op = bf_code[i];
+        if (op == '>')
+        {
+            ++tape_pointer;
+        }
+        else if (op == '<')
+        {
+            --tape_pointer;
+        }
+        else if (op == '[')
+        {
+            if (bf_tape[tape_pointer])
+                pushStack(i);
+            else
+                i = jumpToClosing(i);
+        }
+        else if (op == ']')
+        {
+            if (bf_tape[tape_pointer])
+                i = jmp_stack[stack_pointer - 1];
+            else
+                popStack();
+        }
+        else if (op == '+')
+        {
+            ++bf_tape[tape_pointer];
+        }
+        else if (op == '-')
+        {
+            --bf_tape[tape_pointer];
+        }
+        else if (op == '.')
+        {
+            printc(bf_tape[tape_pointer]);
+        }
+        else if (op == ',')
+        {
+            bf_tape[tape_pointer] = scanc(); 
+        }
+
+        ++i;
+    }
+}
+        
+function pushStack(value)
+{
+    jmp_stack[stack_pointer++] = value;
+}
+
+function value = popStack()
+{
+    value = jmp_stack[stack_pointer--];
+}
+
+function idx = jumpToClosing(idx)
+{
+    count = 1;
+    while (count > 0)
+    {
+        op = bf_code[++idx];
+        if (op == '[')
+            ++count;
+        else if (op == ']')
+            --count;
+    }
+}
