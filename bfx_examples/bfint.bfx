@@ -1,3 +1,16 @@
+/*
+  Proof of concept: brainfuck interpreter written in brainfix.
+  Can only handle BF code under 250 characters long and a tape 
+  of at most 250 cells. This is very very slow, but it works.
+
+  Demo: Hello World (BF sample from wikipedia)
+
+  $ bfx bfint.bfx interpreter.bf                      # compile this bfx file to bfint.bf
+  $ echo "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++." > hello.bf
+  $ cat hello.bf | ./bfint 1000 interpreter.bf        # Run
+    Hello World!
+*/
+
 include "std/io.bfx"
 
 const MAX_SIZE = 250;
