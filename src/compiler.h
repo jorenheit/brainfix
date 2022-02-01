@@ -162,7 +162,7 @@ private:
 					 Instruction const &increment, Instruction const &body);	
 	int whileStatement(Instruction const &condition, Instruction const &body);
 
-	// Error handling (templates defined in compiler.ih)
+	// Error handling (implementations below)
 	template <typename First, typename ... Args>
 	void errorIf(bool const condition, First const &first, Args&& ... rest) const;
 
@@ -174,5 +174,51 @@ private:
 	int lineNr() const;
 	std::string filename() const;
 };
+
+
+// Implementation of the errorIf<> and validateAddr__<> function templates
+
+template <typename First, typename ... Args>
+void Compiler::errorIf(bool const condition, First const &first, Args&& ... rest) const
+{
+	if (!condition) return;
+
+	std::cerr << "Error in " << filename() << " on line " << lineNr() << ": " << first;
+	(std::cerr << ... << rest) << '\n';
+
+	try {
+		d_parser.ERROR();
+	}
+	catch (...)
+	{
+		std::cerr << "Unable to recover: compilation terminated.\n";
+		std::exit(1);
+	}
+}
+
+template <typename ... Args>
+void Compiler::validateAddr__(std::string const &function, Args&& ... args) const
+{
+	if (((args < 0) || ...))
+	{
+		std::cerr << "Fatal internal error while compiling " << filename()
+				  << ", line " << lineNr()
+				  << ": negative address passed to " << function << "()\n\n"
+				  << "Compilation terminated\n";
+		std::exit(1);
+	}
+
+	if ((((int)args >= (int)d_memory.size()) || ...))
+	{
+		std::cerr << "Fatal internal error while compiling " << filename()
+				  << ", line " << lineNr()
+				  << ": address out of bounds passed to " << function << "()\n\n"
+				  << "Compilation terminated.\n";
+
+		std::exit(1);
+	}
+}
+
+
 
 #endif //COMPILER_H
