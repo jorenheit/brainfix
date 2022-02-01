@@ -180,42 +180,16 @@ std::string Memory::cellString(int addr) const
 
 void Memory::freeTemps(std::string const &scope)
 {
-    for (size_t idx = 0; idx != d_memory.size(); ++idx)
-    {
-        Cell &cell = d_memory[idx];
-        if (cell.isTemp() && cell.scope() == scope)
-        {
-            for (int offset = 1; offset < cell.size(); ++offset)
-            {
-                Cell &referenced = d_memory[idx + offset];
-                assert(referenced.isReferenced() &&
-                       "Trying to free a referenced cell that is not marked as referenced");
-                
-                referenced.clear();
-            }
-            cell.clear();
-        }
-    }
+    freeIf([&](Cell const &cell){
+               return cell.isTemp() && cell.scope() == scope;
+           });
 }
 
 void Memory::freeLocals(std::string const &scope)
 {
-    for (size_t idx = 0; idx != d_memory.size(); ++idx)
-    {
-        Cell &cell = d_memory[idx];
-        if (cell.scope() == scope)
-        {
-            for (int offset = 1; offset != cell.size(); ++offset)
-            {
-                Cell &referenced = d_memory[idx + offset];
-                assert(referenced.isReferenced() &&
-                       "Trying to free a referenced cell that is not marked as referenced");
-                
-                referenced.clear();
-            }
-            cell.clear();
-        }
-    }
+    freeIf([&](Cell const &cell){
+               return cell.scope() == scope;
+           });
 }
 
 uint8_t Memory::sizeOf(int addr) const

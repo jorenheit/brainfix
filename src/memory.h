@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <iostream>
+#include <functional>
 
 class Memory
 {
@@ -61,6 +62,7 @@ public:
         d_memory(sz)
     {}
 
+    size_t size() const;
     int getTemp(std::string const &scope, uint8_t sz = 1);
     int allocateLocalSafe(std::string const &ident, std::string const &scope, uint8_t sz = 1);
     int allocateGlobalSafe(std::string const &ident, uint8_t sz = 1);
@@ -76,15 +78,41 @@ public:
     void markAsTemp(int addr);
     void markAsGlobal(int addr);
     void changeScope(int addr, std::string const &newScope);
-    
-    
-    size_t size() const { return d_memory.size(); }
     std::string cellString(int addr) const;
-
-
 
 private:    
     int findFree(uint8_t sz = 1);
+
+    template <typename Predicate>
+    void freeIf(Predicate &&pred);
 };
+
+inline size_t Memory::size() const
+{
+    return d_memory.size();
+}
+
+template <typename Predicate>
+void Memory::freeIf(Predicate&& pred)
+{
+    for (size_t idx = 0; idx != d_memory.size(); ++idx)
+    {
+        Cell &cell = d_memory[idx];
+        if (pred(cell))
+        {
+            for (int offset = 1; offset < cell.size(); ++offset)
+            {
+                Cell &referenced = d_memory[idx + offset];
+                assert(referenced.isReferenced() &&
+                       "Trying to free a referenced cell that is not marked as referenced");
+                
+                referenced.clear();
+            }
+            cell.clear();
+        }
+    }
+
+}
+
 
 #endif
