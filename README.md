@@ -380,17 +380,17 @@ The standard library uses the inline BF intrinsic in its definition of the `prin
 ```javascript
 function printc(c)
 {
-	__movePtr(c);
-	__bf(".");
+    __movePtr(c);
+    __bf(".");
 }
 
 function c = scanc()
 {
-	/* The argument to __movePtr() is not evaluated,
-	so the return value has to be instantiated explicitly. */
+    /* The argument to __movePtr() is not evaluated,
+    so the return value has to be instantiated explicitly. */
 
-	c; __movePtr(c);
-	__bf(",");
+    c; __movePtr(c);
+    __bf(",");
 }
 ```
 
