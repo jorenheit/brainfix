@@ -279,7 +279,7 @@ The `sizeof()` operator (not really a function, as it's a compiler intrinsic and
 function looper(arr)
 {
     for (i = 0; i != sizeof(arr); ++i)
-	    printd(arr);
+        printd(arr[i]);
 }
 
 function main()
