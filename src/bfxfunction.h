@@ -11,84 +11,84 @@ using Instruction = std::function<int()>;
 
 class BFXFunction
 {
-	std::string d_name;
-	Instruction d_body;
-	std::vector<std::string> d_params;
-	std::string d_returnVar;
+    std::string d_name;
+    Instruction d_body;
+    std::vector<std::string> d_params;
+    std::string d_returnVar;
 
 public:
-	static std::string const VOID;
-	
-	BFXFunction() = default;
-	BFXFunction(std::string name, std::vector<std::string> const &params):
-		d_name(name),
-		d_params(params),
-		d_returnVar(VOID)
-	{}
+    static std::string const VOID;
+    
+    BFXFunction() = default;
+    BFXFunction(std::string name, std::vector<std::string> const &params):
+        d_name(name),
+        d_params(params),
+        d_returnVar(VOID)
+    {}
 
-	void setBody(Instruction const &body)
-	{
-		d_body = body;
-	}
-	
-	void setReturnVariable(std::string const &ident)
-	{
-		d_returnVar = ident;
-	}
+    void setBody(Instruction const &body)
+    {
+        d_body = body;
+    }
+    
+    void setReturnVariable(std::string const &ident)
+    {
+        d_returnVar = ident;
+    }
 
-	Instruction const &body() const
-	{
-		return d_body;
-	}
+    Instruction const &body() const
+    {
+        return d_body;
+    }
 
-	std::vector<std::string> const &params() const
-	{
-		return d_params;
-	}
+    std::vector<std::string> const &params() const
+    {
+        return d_params;
+    }
 
-	std::string const &returnVariable() const
-	{
-		return d_returnVar;
-	}
+    std::string const &returnVariable() const
+    {
+        return d_returnVar;
+    }
 
-	std::string const &name() const
-	{
-		return d_name;
-	}
+    std::string const &name() const
+    {
+        return d_name;
+    }
 };
-	
+    
 class AddressOrInstruction
 {
-	std::variant<int, Instruction> d_variant;
-	mutable bool d_ready{false};
-	mutable int d_value{-1};
-	
+    std::variant<int, Instruction> d_variant;
+    mutable bool d_ready{false};
+    mutable int d_value{-1};
+    
 public:
-	AddressOrInstruction(int i):
-		d_variant(i)
-	{}
-	
-	AddressOrInstruction(Instruction const &f):
-		d_variant(f)
-	{}
+    AddressOrInstruction(int i):
+        d_variant(i)
+    {}
+    
+    AddressOrInstruction(Instruction const &f):
+        d_variant(f)
+    {}
 
-	int get() const
-	{
-		if (!d_ready)
-		{
-			d_value = std::holds_alternative<int>(d_variant) ?
-				std::get<int>(d_variant) :
-				std::get<Instruction>(d_variant)();
+    int get() const
+    {
+        if (!d_ready)
+        {
+            d_value = std::holds_alternative<int>(d_variant) ?
+                std::get<int>(d_variant) :
+                std::get<Instruction>(d_variant)();
 
-			d_ready = true;
-		}
-		return d_value;
-	}
+            d_ready = true;
+        }
+        return d_value;
+    }
 
-	operator int() const
-	{
-		return get();
-	}
+    operator int() const
+    {
+        return get();
+    }
 };
 
 

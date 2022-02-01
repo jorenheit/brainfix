@@ -12,8 +12,8 @@ inline void Parser::print()
 
 inline void Parser::exceptionHandler(std::exception const &exc)
 {
-	//	++d_errCount;
-	throw;
+    //  ++d_errCount;
+    throw;
 }
 
 

@@ -14,14 +14,14 @@ blanks [[:blank:]\n]
 
 {blanks}                    // ignore
 
-"include"					return ParserBase::INCLUDE;
-"function"		    		return ParserBase::FUNCTION;
-"global"					return ParserBase::GLOBAL;
-"const"						return ParserBase::CONST;
-"for"						return ParserBase::FOR;
-"if"						return ParserBase::IF;
-"else"						return ParserBase::ELSE;
-"while"						return ParserBase::WHILE;
+"include"                   return ParserBase::INCLUDE;
+"function"                  return ParserBase::FUNCTION;
+"global"                    return ParserBase::GLOBAL;
+"const"                     return ParserBase::CONST;
+"for"                       return ParserBase::FOR;
+"if"                        return ParserBase::IF;
+"else"                      return ParserBase::ELSE;
+"while"                     return ParserBase::WHILE;
 "++"                        return ParserBase::INC;
 "--"                        return ParserBase::DEC;
 "+="                        return ParserBase::ADD;
@@ -29,28 +29,28 @@ blanks [[:blank:]\n]
 "*="                        return ParserBase::MUL;
 "/="                        return ParserBase::DIV;
 "%="                        return ParserBase::MOD;
-"/=%"						return ParserBase::DIVMOD;
-"%=/"						return ParserBase::MODDIV;
+"/=%"                       return ParserBase::DIVMOD;
+"%=/"                       return ParserBase::MODDIV;
 "<="                        return ParserBase::LE;
 ">="                        return ParserBase::GE;
 "=="                        return ParserBase::EQ;
 "!="                        return ParserBase::NE;
 "&&"                        return ParserBase::AND;
 "||"                        return ParserBase::OR;
-"__bf"						return ParserBase::INLINE_BF;
-"__movePtr"					return ParserBase::MOVE_PTR;
-"sizeof"					return ParserBase::SIZEOF;
+"__bf"                      return ParserBase::INLINE_BF;
+"__movePtr"                 return ParserBase::MOVE_PTR;
+"sizeof"                    return ParserBase::SIZEOF;
 
 
 [[:digit:]]+                return ParserBase::NUM;
 {ident}                     return ParserBase::IDENT;
 
 "'"."'"                     {
-								setMatched(matched().substr(1, 1));
+                                setMatched(matched().substr(1, 1));
                                 return ParserBase::CHR;
                             }
 "'\\"."'"                   {
-								setMatched(escape(matched()[2]));
+                                setMatched(escape(matched()[2]));
                                 return ParserBase::CHR;
                             }
 
@@ -74,12 +74,12 @@ blanks [[:blank:]\n]
 <string>{
 \"                          {
                                 begin(StartCondition_::INITIAL);
-								setMatched(matched().substr(1, matched().size() - 2));
+                                setMatched(matched().substr(1, matched().size() - 2));
                                 return ParserBase::STR;
                             }
 
 "\\".                       {
-								setMatched(escape(matched()));
+                                setMatched(escape(matched()));
                                 more();
                             }
                             

@@ -4,149 +4,149 @@
 
    OUTPUT
 
-   printc(x)	- Print byte as ASCII character
-   printd(x)	- Print byte as decimal
-   prints(str)	- Print string (stop at NULL or end of the string)
+   printc(x)    - Print byte as ASCII character
+   printd(x)    - Print byte as decimal
+   prints(str)  - Print string (stop at NULL or end of the string)
    println(str) - Same as prints() but with appended newline
    print_vec(v) - Print formatted vector, including newline: (v1, v2, v3, ..., vn)
-   endl()		- Print a newline (same as printc('\n'))
+   endl()       - Print a newline (same as printc('\n'))
    
    INPUT
 
-   scanc()		- Read a single byte from stdin
-   scand()		- Read at most 3 bytes from stdin and convert to decimal
-   scans(buf)	- Read string from stdin. sizeof(buf) determines maximum number of bytes read
+   scanc()      - Read a single byte from stdin
+   scand()      - Read at most 3 bytes from stdin and convert to decimal
+   scans(buf)   - Read string from stdin. sizeof(buf) determines maximum number of bytes read
    
    CONVERSIONS
 
-   to_int(str)	- Converts string to int
+   to_int(str)  - Converts string to int
    to_string(x) - Converts int to string
 
 */
 
 function printc(c)
 {
-	__movePtr(c);
-	__bf(".");
+    __movePtr(c);
+    __bf(".");
 }
 
 function printd(x)
 {
-	prints(to_string(x));
+    prints(to_string(x));
 }
 
 function prints(x)
 {
-	i = 0;
-	while (i < sizeof(x) && x[i] != 0)
-		printc(x[i++]);
+    i = 0;
+    while (i < sizeof(x) && x[i] != 0)
+        printc(x[i++]);
 }
 
 
 function println(x)
 {
-	prints(x);
-	printc('\n');
+    prints(x);
+    printc('\n');
 }
 
 function print_vec(v)
 {
-	sz = sizeof(v);
-	printc('(');
-	for (i = 0; i != sz; ++i)
-	{
-		printd(v[i]);
-		if (i != sz - 1)
-			prints(", ");
-	}
-	println(")");
+    sz = sizeof(v);
+    printc('(');
+    for (i = 0; i != sz; ++i)
+    {
+        printd(v[i]);
+        if (i != sz - 1)
+            prints(", ");
+    }
+    println(")");
 }
 
 function endl()
 {
-	printc('\n');
+    printc('\n');
 }
 
 function c = scanc()
 {
-	/* The argument to __movePtr() is not evaluated,
-	so the return value has to be instantiated explicitly. */
+    /* The argument to __movePtr() is not evaluated,
+    so the return value has to be instantiated explicitly. */
 
-	c; __movePtr(c);
-	__bf(",");
+    c; __movePtr(c);
+    __bf(",");
 }
 
 function result = scand()
 {
-	[3]input = 0;
-	input = scans(input);
+    [3]input = 0;
+    input = scans(input);
 
-	[]powers = #(1, 10, 100);
-	result = 0;
-	j = 0;
-	for (i = 0; i != 3; ++i)
-	{
-		x = input[2 - i];
-		if (x != 0)
-			result += (x - '0') * powers[j++];
-	}
+    []powers = #(1, 10, 100);
+    result = 0;
+    j = 0;
+    for (i = 0; i != 3; ++i)
+    {
+        x = input[2 - i];
+        if (x != 0)
+            result += (x - '0') * powers[j++];
+    }
 }
 
 function buf = scans(buf)
 {
-	i = 0;
-	done = 0;
-	while (i < sizeof(buf) && !done)
-	{
-		c = scanc();
-		if (c != '\n')
-		{
-			buf[i] = c;
-			++i;
-		}
-		else
-		{
-			buf[i] = 0;
-			done = 1;
-		}
-	}
+    i = 0;
+    done = 0;
+    while (i < sizeof(buf) && !done)
+    {
+        c = scanc();
+        if (c != '\n')
+        {
+            buf[i] = c;
+            ++i;
+        }
+        else
+        {
+            buf[i] = 0;
+            done = 1;
+        }
+    }
 }
 
 function str = to_string(x)
 {
-	hundreds = (x %=/ 100);
-	tens = (x %=/ 10);
-	ones = x;
+    hundreds = (x %=/ 100);
+    tens = (x %=/ 10);
+    ones = x;
 
-	idx = 0;
-	[3]str = 0;
-	
-	if (hundreds != 0)
-	{
-		str[idx++] = hundreds + '0';
-		str[idx++] = tens + '0';
-	}
-	else if (tens != 0)
-	{
-		str[idx++] = tens + '0';
-	}
+    idx = 0;
+    [3]str = 0;
+    
+    if (hundreds != 0)
+    {
+        str[idx++] = hundreds + '0';
+        str[idx++] = tens + '0';
+    }
+    else if (tens != 0)
+    {
+        str[idx++] = tens + '0';
+    }
 
-	str[idx] = ones + '0';
+    str[idx] = ones + '0';
 }
 
 function result = to_int(str)
 {
-	nDigits = sizeof(str);
-	if (nDigits > 3) nDigits = 3;
+    nDigits = sizeof(str);
+    if (nDigits > 3) nDigits = 3;
 
-	[]powers = #(1, 10, 100);
-	result = 0;
-	j = 0;
-	for (i = 0; i != nDigits; ++i)
-	{
-		x = str[nDigits - 1 - i];
-		if (x != 0)
-			result += (x - '0') * powers[j++];
-	}
-	
+    []powers = #(1, 10, 100);
+    result = 0;
+    j = 0;
+    for (i = 0; i != nDigits; ++i)
+    {
+        x = str[nDigits - 1 - i];
+        if (x != 0)
+            result += (x - '0') * powers[j++];
+    }
+    
 }
