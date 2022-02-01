@@ -48,7 +48,7 @@ public:
     void write(std::ostream &out = std::cout);
 
 private:
-    void addFunction(BFXFunction bfxFunc, Instruction const &body);
+    void addFunction(BFXFunction const &bfxFunc);
     void addGlobals(std::vector<Instruction> const &vars);
     void addConstant(std::string const &ident, uint8_t const num);
 

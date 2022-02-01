@@ -1,4 +1,3 @@
-#include <cassert>
 #include "memory.h"
 
 void Memory::Cell::assign(std::string const &ident,

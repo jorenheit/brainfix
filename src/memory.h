@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <functional>
+#include <cassert>
 
 class Memory
 {

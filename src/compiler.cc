@@ -24,9 +24,8 @@ void Compiler::write(std::ostream &out)
     out << cancelOppositeCommands(d_codeBuffer.str()) << '\n';
 }
 
-void Compiler::addFunction(BFXFunction bfxFunc, Instruction const &body)
+void Compiler::addFunction(BFXFunction const &bfxFunc)
 {
-    bfxFunc.setBody(body);
     auto result = d_functionMap.insert({bfxFunc.name(), bfxFunc});
     errorIf(!result.second,
             "Redefinition of function ", bfxFunc.name(), " is not allowed.");
@@ -541,10 +540,10 @@ int Compiler::call(std::string const &functionName,
     d_callStack.pop_back();
 
     // Move return variable to local scope before cleaning up (if non-void)
-    std::string retVar = func.returnVariable();
     int ret = -1;
-    if (retVar != BFXFunction::VOID)
+    if (!func.isVoid())
     {
+        std::string retVar = func.returnVariable();
         ret = d_memory.findLocal(retVar, func.name());
         errorIf(ret == -1,
                 "Returnvalue \"", retVar, "\" of function \"", func.name(),
@@ -557,7 +556,6 @@ int Compiler::call(std::string const &functionName,
 
     // Clean up and return
     d_memory.freeLocals(func.name());
-
     return ret;
 }
 

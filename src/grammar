@@ -81,7 +81,7 @@ include_directive:
 function_definition:
     function_header scope_block
     {
-        d_comp.addFunction($1, $2);
+        d_comp.addFunction(($1).setBody($2));
     }
 ;
 

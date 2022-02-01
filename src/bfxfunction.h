@@ -26,14 +26,16 @@ public:
         d_returnVar(VOID)
     {}
 
-    void setBody(Instruction const &body)
+    BFXFunction &setBody(Instruction const &body)
     {
         d_body = body;
+        return *this;
     }
     
-    void setReturnVariable(std::string const &ident)
+    BFXFunction &setReturnVariable(std::string const &ident)
     {
         d_returnVar = ident;
+        return *this;
     }
 
     Instruction const &body() const
@@ -54,6 +56,11 @@ public:
     std::string const &name() const
     {
         return d_name;
+    }
+
+    bool isVoid() const
+    {
+        return d_returnVar == VOID;
     }
 };
     
