@@ -117,7 +117,7 @@ private:
     int inlineBF(std::string const &str);
     int sizeOfOperator(std::string const &ident);
     int movePtr(std::string const &ident);
-    int variable(std::string const &ident, uint8_t sz, bool checkSize);
+    int variable(std::string const &ident, uint8_t const sz, bool const checkSize);
     int constVal(uint8_t const val);
     int statement(Instruction const &instr);
     int mergeInstructions(Instruction const &instr1, Instruction const &instr2);

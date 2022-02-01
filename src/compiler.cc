@@ -34,10 +34,7 @@ void Compiler::addFunction(BFXFunction const &bfxFunc)
 void Compiler::addGlobals(std::vector<Instruction> const &variables)
 {
     for (auto const &var: variables)
-    {
-        int const addr = var(); // execute instruction
-        d_memory.markAsGlobal(addr);
-    }
+        d_memory.markAsGlobal(var());
 }
 
 void Compiler::addConstant(std::string const &ident, uint8_t const num)
@@ -57,8 +54,7 @@ uint8_t Compiler::compileTimeConstant(std::string const &ident) const
 
 bool Compiler::isCompileTimeConstant(std::string const &ident) const
 {
-    auto it = d_constMap.find(ident);
-    return it != d_constMap.end();
+    return d_constMap.find(ident) != d_constMap.end();
 }
 
 int Compiler::allocateOrGet(std::string const &ident, uint8_t const sz)
@@ -72,19 +68,12 @@ int Compiler::addressOf(std::string const &ident)
 {
     std::string const scope = d_callStack.empty() ? "" : d_callStack.back();
     int addr = d_memory.findLocal(ident, scope);
-    if (addr == -1)
-    {
-        // variable not defined in local scope -> look for globals
-        addr = d_memory.findGlobal(ident);
-    }
-
-    return addr;
+    return (addr != -1) ? addr : d_memory.findGlobal(ident);
 }
 
 int Compiler::allocateTemp(uint8_t const sz)
 {
-    int const addr = d_memory.getTemp(d_callStack.back(), sz);
-    return addr;
+    return d_memory.getTemp(d_callStack.back(), sz);
 }
 
 void Compiler::pushStack(int const addr)
@@ -108,8 +97,7 @@ void Compiler::freeTemps()
 
 void Compiler::freeLocals()
 {
-    if (d_callStack.back() != "main")
-        d_memory.freeLocals(d_callStack.back());
+    d_memory.freeLocals(d_callStack.back());
 }
 
 std::string Compiler::bf_setToValue(int const addr, int const val)
@@ -408,6 +396,7 @@ std::string Compiler::bf_greater(int const lhs, int const rhs, int const result)
 std::string Compiler::bf_less(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
+    
     return bf_greater(rhs, lhs, result); // reverse arguments
 }
 
@@ -430,6 +419,7 @@ std::string Compiler::bf_greaterOrEqual(int const lhs, int const rhs, int const 
 std::string Compiler::bf_lessOrEqual(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
+    
     return bf_greaterOrEqual(rhs, lhs, result); // reverse arguments
 }
 
@@ -477,18 +467,18 @@ bool Compiler::validateInlineBF(std::string const &code)
 
 int Compiler::sizeOfOperator(std::string const &ident)
 {
-    int tmp = allocateTemp();
-    int addr = addressOf(ident);
+    int const addr = addressOf(ident);
     errorIf(addr < 0, "Unknown identifier \"", ident ,"\" passed to sizeof().");
-    
-    int sz = d_memory.sizeOf(addr);
+
+    int const tmp = allocateTemp();
+    int const sz = d_memory.sizeOf(addr);
     d_codeBuffer << bf_setToValue(tmp, sz);
     return tmp;
 }
 
 int Compiler::movePtr(std::string const &ident)
 {
-    int addr = addressOf(ident);
+    int const addr = addressOf(ident);
     errorIf(addr < 0 &&    "Unknown identifier \"", ident, "\" passed to movePtr().");
 
     d_codeBuffer << bf_movePtr(addr);
@@ -559,7 +549,7 @@ int Compiler::call(std::string const &functionName,
     return ret;
 }
 
-int Compiler::variable(std::string const &ident, uint8_t sz, bool checkSize)
+int Compiler::variable(std::string const &ident, uint8_t const sz, bool const checkSize)
 {
     if (isCompileTimeConstant(ident))
         return constVal(compileTimeConstant(ident));
@@ -568,7 +558,7 @@ int Compiler::variable(std::string const &ident, uint8_t sz, bool checkSize)
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
     
-    int arr = allocateOrGet(ident, sz);
+    int const arr = allocateOrGet(ident, sz);
     errorIf(checkSize && d_memory.sizeOf(arr) != sz,
             "Variable \"", ident, "\" was previously declared with a different size.");
 
@@ -614,7 +604,7 @@ int Compiler::assignPlaceholder(std::string const &lhs, AddressOrInstruction con
             lhs, "\".");
     
     int const sz = d_memory.sizeOf(rhs);
-    int lhsAddr = allocateOrGet(lhs, sz);
+    int const lhsAddr = allocateOrGet(lhs, sz);
     return assign(lhsAddr, rhs);
 }
 
@@ -624,13 +614,11 @@ int Compiler::arrayFromSizeStaticValue(uint8_t const sz, uint8_t const val)
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
     
-    int const arr = allocateTemp(sz);
+    int const start = allocateTemp(sz);
     for (int idx = 0; idx != sz; ++idx)
-    {
-        d_codeBuffer << bf_setToValue(arr + idx, val);
-    }
+        d_codeBuffer << bf_setToValue(start + idx, val);
 
-    return arr;
+    return start;
 }
 
 
