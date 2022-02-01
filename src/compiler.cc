@@ -611,7 +611,8 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
 	}
 	else
 	{
-		errorIf(true, "Cannot assign variables of unequal sizes");
+		errorIf(true, "Cannot assign variables of unequal sizes (sizeof(lhs) = ", leftSize,
+				" vs sizeof(rhs) = ", rightSize, ").");
 	}
 
 	return lhs;
