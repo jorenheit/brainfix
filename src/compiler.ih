@@ -1,0 +1,5 @@
+#include "compiler.h"
+#include <algorithm>
+
+// Error handling
+#define validateAddr(...) validateAddr__(__func__, __VA_ARGS__)

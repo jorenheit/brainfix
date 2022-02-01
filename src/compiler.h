@@ -2,13 +2,12 @@
 #define COMPILER_H
 
 #include <fstream>
-#include <cassert>
 #include <string>
 #include <map>
 #include <deque>
 #include <stack>
 #include <sstream>
-#include <variant>
+
 #include "memory.h"
 #include "parser.h"
 
@@ -17,17 +16,17 @@ class Compiler
 	friend class Parser;
 	
 	static constexpr size_t TAPE_SIZE_INITIAL = 1000;
-	static constexpr size_t MAX_ARRAY_SIZE = 250;
+	static constexpr size_t MAX_ARRAY_SIZE    = 250;
 
 	Parser d_parser;
 	size_t d_pointer{0};
 	Memory d_memory;
 
-	std::map<std::string, BFXFunction> d_functionMap;
-	std::map<std::string, uint8_t> d_constMap;
-	std::deque<std::string> d_callStack;
-	std::ostringstream d_codeBuffer;
-	std::stack<int> d_stack;
+	std::map<std::string, BFXFunction>	d_functionMap;
+	std::map<std::string, uint8_t>		d_constMap;
+	std::deque<std::string>				d_callStack;
+	std::ostringstream					d_codeBuffer;
+	std::stack<int>						d_stack;
 
 	enum class Stage
 		{
@@ -36,9 +35,9 @@ class Compiler
 		 FINISHED
 		};
 
-	Stage d_stage;
+	Stage		d_stage;
 	std::string d_instructionFilename;
-	int d_instructionLineNr;
+	int			d_instructionLineNr;
 	
 public:
 	Compiler(std::string const &file):
@@ -164,21 +163,20 @@ private:
 	int whileStatement(Instruction const &condition, Instruction const &body);
 
 
-	template <typename ... Args>
-	void errorIf(bool condition, Args&& ... args) const
+	template <typename First, typename ... Args>
+	void errorIf(bool condition, First const &first, Args&& ... rest) const
 	{
 		if (!condition) return;
 		
-		std::cerr << "Error in " << filename() << " on line " << lineNr() << ": ";
-		if constexpr (sizeof ... (args) > 0)
-			(std::cerr << ... << args) << '\n';
+		std::cerr << "Error in " << filename() << " on line " << lineNr() << ": " << first;
+		(std::cerr << ... << rest) << '\n';
 
 		try {
 			d_parser.ERROR();
 		}
 		catch (...)
 		{
-			std::cerr << "Unable to recover: compilation terminated\n";
+			std::cerr << "Unable to recover: compilation terminated.\n";
 			std::exit(1);
 		}
 	}
@@ -188,7 +186,7 @@ private:
 	{
 		if (((args < 0) || ...))
 		{
-			std::cerr << "Fatal internal error while parsing " << d_parser.filename()
+			std::cerr << "Fatal internal error while compiling " << filename()
 					  << ", line " << lineNr()
 					  << ": negative address passed to " << function << "()\n\n"
 					  << "Compilation terminated\n";
@@ -197,10 +195,10 @@ private:
 		
 		if ((((int)args >= (int)d_memory.size()) || ...))
 		{
-			std::cerr << "Fatal internal error while parsing " << d_parser.filename()
+			std::cerr << "Fatal internal error while compiling " << filename()
 					  << ", line " << lineNr()
 					  << ": address out of bounds passed to " << function << "()\n\n"
-					  << "Compilation terminated\n";
+					  << "Compilation terminated.\n";
 			
 			std::exit(1);
 		}

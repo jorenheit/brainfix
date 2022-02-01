@@ -221,7 +221,7 @@ BrainFix supports arrays of up to 250 elements. This upper limit exists due to t
 // Declare x as an array of 5 elements, do not initialize
 [5]x;
 
-// Declare x as an array of 5 elements, then initialized all elements to 1
+// Declare x as an array of 5 elements, then initialize all elements to 1
 [5]x = 1;
 
 // Use a placeholder for the size
@@ -270,6 +270,26 @@ function main()
     arr[2] = 0;  // 123 -> 0
 }
 
+```
+
+#### `sizeof()`
+The `sizeof()` operator (not really a function, as it's a compiler intrinsic and not defined in the BrainFix language itself) returns the size of a variable and can be used, for example, to loop over an array. 
+
+```javascript
+function looper(arr)
+{
+    for (i = 0; i != sizeof(arr); ++i)
+	    printd(arr);
+}
+
+function main()
+{
+    []x1 = #(1, 2, 3);
+    []x2 = #(4, 5, 6, 7, 8);
+
+    looper(x1);
+    looper(x2); // different sized arrays can be passed to the same function
+}
 ```
 
 ### Constants
@@ -351,3 +371,28 @@ All functions below are defined in `std/math.bfx`:
 |   `factorial(n)` | Calculate n! (overflows for n > 5) |
 |   `min(x,y)`     | Returns the minimum of x and y |
 |   `max(x,y)`     | Returns the maximum of x and y |
+
+### Direct Control With `__bf()` and `__movePtr()`
+For even more control, the intrinsics `__bf(code)` and `__movePtr(identifier)` are provided. The first injects BF code directly, provided that this code has no net effect on the pointer position (which must be known to the compiler at all times). The latter moves to pointer the the address of the provided identifier.
+
+The standard library uses the inline BF intrinsic in its definition of the `printc()` and `scanc()` functions. The language has no built-in facilities or operators that allow you to write or read bytes, so inline BF is used to make this happen:
+
+```javascript
+function printc(c)
+{
+	__movePtr(c);
+	__bf(".");
+}
+
+function c = scanc()
+{
+	/* The argument to __movePtr() is not evaluated,
+	so the return value has to be instantiated explicitly. */
+
+	c; __movePtr(c);
+	__bf(",");
+}
+```
+
+
+

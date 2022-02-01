@@ -1,7 +1,4 @@
-#include "compiler.h"
-#include <algorithm>
-
-#define validateAddr(...) validateAddr__(__func__, __VA_ARGS__)
+#include "compiler.ih"
 
 int Compiler::compile()
 {
@@ -560,8 +557,8 @@ int Compiler::call(std::string const &functionName,
 	{
 		ret = d_memory.findLocal(retVar, func.name());
 		errorIf(ret == -1,
-				"Returnvalue of function \"", func.name(),
-				"\"seems not to have been declared in the function-body.");
+				"Returnvalue \"", retVar, "\" of function \"", func.name(),
+				"\" seems not to have been declared in the function-body.");
 
 		// Pull the variable into local scope as a temp
 		d_memory.changeScope(ret, d_callStack.back());
