@@ -1,7 +1,6 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
-#include <fstream>
 #include <string>
 #include <map>
 #include <deque>
@@ -51,26 +50,27 @@ public:
 private:
 	void addFunction(BFXFunction bfxFunc, Instruction const &body);
 	void addGlobals(std::vector<Instruction> const &vars);
-	void addConstant(std::string const &ident, uint8_t num);
+	void addConstant(std::string const &ident, uint8_t const num);
+
 	uint8_t compileTimeConstant(std::string const &ident) const;
-	bool isCompileTimeConstant(std::string const &ident) const;
+	bool    isCompileTimeConstant(std::string const &ident) const;
 
 	static bool validateInlineBF(std::string const &ident);
 	static std::string cancelOppositeCommands(std::string const &bf);
 	
 	// Memory management uitilities
-	int allocateOrGet(std::string const &ident, uint8_t sz = 1);
-	int allocateTemp(uint8_t sz = 1);
-	int addressOf(std::string const &ident);
+	int  allocateOrGet(std::string const &ident, uint8_t const sz = 1);
+	int  allocateTemp(uint8_t const sz = 1);
+	int  addressOf(std::string const &ident);
 	void freeTemps();
 	void freeLocals();
-	void pushStack(int addr);
-	int popStack();
+	void pushStack(int const addr);
+	int  popStack();
 
 	// BF generators
 	std::string bf_movePtr(int const addr);
 	std::string bf_setToValue(int const addr, int const val);
-	std::string bf_setToValue(int const start, int const val, size_t n);
+	std::string bf_setToValue(int const start, int const val, size_t const n);
 	std::string bf_assign(int const lhs, int const rhs);
 	std::string bf_assign(int const dest, int const src, size_t n);
 	std::string bf_addTo(int const target, int const rhs);
@@ -162,47 +162,12 @@ private:
 					 Instruction const &increment, Instruction const &body);	
 	int whileStatement(Instruction const &condition, Instruction const &body);
 
-
+	// Error handling (templates defined in compiler.ih)
 	template <typename First, typename ... Args>
-	void errorIf(bool const condition, First const &first, Args&& ... rest) const
-	{
-		if (!condition) return;
-		
-		std::cerr << "Error in " << filename() << " on line " << lineNr() << ": " << first;
-		(std::cerr << ... << rest) << '\n';
-
-		try {
-			d_parser.ERROR();
-		}
-		catch (...)
-		{
-			std::cerr << "Unable to recover: compilation terminated.\n";
-			std::exit(1);
-		}
-	}
+	void errorIf(bool const condition, First const &first, Args&& ... rest) const;
 
 	template <typename ... Args>
-	void validateAddr__(std::string const &function, Args&& ... args) const
-	{
-		if (((args < 0) || ...))
-		{
-			std::cerr << "Fatal internal error while compiling " << filename()
-					  << ", line " << lineNr()
-					  << ": negative address passed to " << function << "()\n\n"
-					  << "Compilation terminated\n";
-			std::exit(1);
-		}
-		
-		if ((((int)args >= (int)d_memory.size()) || ...))
-		{
-			std::cerr << "Fatal internal error while compiling " << filename()
-					  << ", line " << lineNr()
-					  << ": address out of bounds passed to " << function << "()\n\n"
-					  << "Compilation terminated.\n";
-			
-			std::exit(1);
-		}
-	}
+	void validateAddr__(std::string const &function, Args&& ... args) const;
 
 	void setFilename(std::string const &file);
 	void setLineNr(int const line);

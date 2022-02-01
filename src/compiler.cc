@@ -36,12 +36,12 @@ void Compiler::addGlobals(std::vector<Instruction> const &variables)
 {
 	for (auto const &var: variables)
 	{
-		int addr = var(); // execute instruction
+		int const addr = var(); // execute instruction
 		d_memory.markAsGlobal(addr);
 	}
 }
 
-void Compiler::addConstant(std::string const &ident, uint8_t num)
+void Compiler::addConstant(std::string const &ident, uint8_t const num)
 {
 	auto result = d_constMap.insert({ident, num});
 	errorIf(!result.second,
@@ -62,7 +62,7 @@ bool Compiler::isCompileTimeConstant(std::string const &ident) const
 	return it != d_constMap.end();
 }
 
-int Compiler::allocateOrGet(std::string const &ident, uint8_t sz)
+int Compiler::allocateOrGet(std::string const &ident, uint8_t const sz)
 {
 	std::string const scope = d_callStack.empty() ? "" : d_callStack.back();
 	int addr = addressOf(ident);
@@ -82,13 +82,13 @@ int Compiler::addressOf(std::string const &ident)
 	return addr;
 }
 
-int Compiler::allocateTemp(uint8_t sz)
+int Compiler::allocateTemp(uint8_t const sz)
 {
-	int addr = d_memory.getTemp(d_callStack.back(), sz);
+	int const addr = d_memory.getTemp(d_callStack.back(), sz);
 	return addr;
 }
 
-void Compiler::pushStack(int addr)
+void Compiler::pushStack(int const addr)
 {
 	d_memory.stack(addr);
 	d_stack.push(addr);
@@ -96,7 +96,7 @@ void Compiler::pushStack(int addr)
 
 int Compiler::popStack()
 {
-	int addr = d_stack.top();
+	int const addr = d_stack.top();
 	d_memory.unstack(addr);
 	d_stack.pop();
 	return addr;
@@ -113,7 +113,7 @@ void Compiler::freeLocals()
 		d_memory.freeLocals(d_callStack.back());
 }
 
-std::string Compiler::bf_setToValue(int addr, int val)
+std::string Compiler::bf_setToValue(int const addr, int const val)
 {
 	validateAddr(addr, val);
 	
@@ -125,7 +125,7 @@ std::string Compiler::bf_setToValue(int addr, int val)
 	return ops;
 }
 
-std::string Compiler::bf_setToValue(int const start, int const val, size_t n)
+std::string Compiler::bf_setToValue(int const start, int const val, size_t const n)
 {
 	validateAddr(start, val);
 	
