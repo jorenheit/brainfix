@@ -163,11 +163,11 @@ private:
 	int whileStatement(Instruction const &condition, Instruction const &body);
 
 	// Error handling (implementations below)
-	template <typename First, typename ... Args>
-	void errorIf(bool const condition, First const &first, Args&& ... rest) const;
+	template <typename First, typename ... Rest>
+	void errorIf(bool const condition, First const &first, Rest&& ... rest) const;
 
-	template <typename ... Args>
-	void validateAddr__(std::string const &function, Args&& ... args) const;
+	template <typename ... Rest>
+	void validateAddr__(std::string const &function, int first, Rest&& ... rest) const;
 
 	void setFilename(std::string const &file);
 	void setLineNr(int const line);
@@ -178,8 +178,8 @@ private:
 
 // Implementation of the errorIf<> and validateAddr__<> function templates
 
-template <typename First, typename ... Args>
-void Compiler::errorIf(bool const condition, First const &first, Args&& ... rest) const
+template <typename First, typename ... Rest>
+void Compiler::errorIf(bool const condition, First const &first, Rest&& ... rest) const
 {
 	if (!condition) return;
 
@@ -196,10 +196,10 @@ void Compiler::errorIf(bool const condition, First const &first, Args&& ... rest
 	}
 }
 
-template <typename ... Args>
-void Compiler::validateAddr__(std::string const &function, Args&& ... args) const
+template <typename ... Rest>
+void Compiler::validateAddr__(std::string const &function, int first, Rest&& ... rest) const
 {
-	if (((args < 0) || ...))
+	if (first < 0 || ((rest < 0) || ...))
 	{
 		std::cerr << "Fatal internal error while compiling " << filename()
 				  << ", line " << lineNr()
@@ -208,7 +208,8 @@ void Compiler::validateAddr__(std::string const &function, Args&& ... args) cons
 		std::exit(1);
 	}
 
-	if ((((int)args >= (int)d_memory.size()) || ...))
+	int const sz = (int)d_memory.size();
+	if (first > sz || (((int)rest >= sz) || ...))
 	{
 		std::cerr << "Fatal internal error while compiling " << filename()
 				  << ", line " << lineNr()
