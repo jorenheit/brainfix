@@ -373,7 +373,7 @@ All functions below are defined in `std/math.bfx`:
 |   `max(x,y)`     | Returns the maximum of x and y |
 
 ### Direct Control With `__bf()` and `__movePtr()`
-For even more control, the intrinsics `__bf(code)` and `__movePtr(identifier)` are provided. The first injects BF code directly, provided that this code has no net effect on the pointer position (which must be known to the compiler at all times). The latter moves to pointer the the address of the provided identifier.
+For even more control, the intrinsics `__bf(code)` and `__movePtr(identifier)` are provided. The first injects BF code directly, provided that this code has no net effect on the pointer position (which must be known to the compiler at all times). The latter moves the pointer to the address of the provided identifier.
 
 The standard library uses the inline BF intrinsic in its definition of the `printc()` and `scanc()` functions. The language has no built-in facilities or operators that allow you to write or read bytes, so inline BF is used to make this happen:
 
