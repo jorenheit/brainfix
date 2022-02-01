@@ -68,26 +68,26 @@ private:
 	int popStack();
 
 	// BF generators
-	std::string bf_movePtr(size_t addr);
-	std::string bf_setToValue(int addr, int val);
-	std::string bf_setToValue(int start, int val, size_t n);
-	std::string bf_assign(int lhs, int rhs);
-	std::string bf_assign(int dest, int src, size_t n);
-	std::string bf_addTo(int target, int rhs);
-	std::string bf_incr(int target);
-	std::string bf_decr(int target);
-	std::string bf_subtractFrom(int target, int rhs);
-	std::string bf_multiply(int lhs, int rhs, int result);
-	std::string bf_multiplyBy(int target, int rhs);
-	std::string bf_equal(int lhs, int rhs, int result);
-	std::string bf_notEqual(int lhs, int rhs, int result);
-	std::string bf_greater(int lhs, int rhs, int result);
-	std::string bf_less(int lhs, int rhs, int result);
-	std::string bf_greaterOrEqual(int lhs, int rhs, int result);
-	std::string bf_lessOrEqual(int lhs, int rhs, int result);
-	std::string bf_not(int operand, int result);
-	std::string bf_and(int lhs, int rhs, int result);
-	std::string bf_or(int lhs, int rhs, int result);
+	std::string bf_movePtr(int const addr);
+	std::string bf_setToValue(int const addr, int const val);
+	std::string bf_setToValue(int const start, int const val, size_t n);
+	std::string bf_assign(int const lhs, int const rhs);
+	std::string bf_assign(int const dest, int const src, size_t n);
+	std::string bf_addTo(int const target, int const rhs);
+	std::string bf_incr(int const target);
+	std::string bf_decr(int const target);
+	std::string bf_subtractFrom(int const target, int const rhs);
+	std::string bf_multiply(int const lhs, int const rhs, int const result);
+	std::string bf_multiplyBy(int const target, int const rhs);
+	std::string bf_equal(int const lhs, int const rhs, int const result);
+	std::string bf_notEqual(int const lhs, int const rhs, int const result);
+	std::string bf_greater(int const lhs, int const rhs, int const result);
+	std::string bf_less(int const lhs, int const rhs, int const result);
+	std::string bf_greaterOrEqual(int const lhs, int const rhs, int const result);
+	std::string bf_lessOrEqual(int const lhs, int const rhs, int const result);
+	std::string bf_not(int const operand, int const result);
+	std::string bf_and(int const lhs, int const rhs, int const result);
+	std::string bf_or(int const lhs, int const rhs, int const result);
 	
 	// Instruction generator
 	template <auto Member, typename ... Args>
@@ -118,11 +118,11 @@ private:
 	int sizeOfOperator(std::string const &ident);
 	int movePtr(std::string const &ident);
 	int variable(std::string const &ident, uint8_t sz, bool checkSize);
-	int constVal(uint8_t val);
+	int constVal(uint8_t const val);
 	int statement(Instruction const &instr);
 	int mergeInstructions(Instruction const &instr1, Instruction const &instr2);
-	int arrayFromSizeStaticValue(uint8_t sz, uint8_t val = 0);
-	int arrayFromSizeDynamicValue(uint8_t sz, AddressOrInstruction const &val);
+	int arrayFromSizeStaticValue(uint8_t const sz, uint8_t const val = 0);
+	int arrayFromSizeDynamicValue(uint8_t const sz, AddressOrInstruction const &val);
 	int arrayFromList(std::vector<Instruction> const &list);
 	int arrayFromString(std::string const &str);
 	int call(std::string const &functionName, std::vector<Instruction> const &args = {});	
@@ -164,7 +164,7 @@ private:
 
 
 	template <typename First, typename ... Args>
-	void errorIf(bool condition, First const &first, Args&& ... rest) const
+	void errorIf(bool const condition, First const &first, Args&& ... rest) const
 	{
 		if (!condition) return;
 		
@@ -205,7 +205,7 @@ private:
 	}
 
 	void setFilename(std::string const &file);
-	void setLineNr(int line);
+	void setLineNr(int const line);
 	int lineNr() const;
 	std::string filename() const;
 };

@@ -125,7 +125,7 @@ std::string Compiler::bf_setToValue(int addr, int val)
 	return ops;
 }
 
-std::string Compiler::bf_setToValue(int start, int val, size_t n)
+std::string Compiler::bf_setToValue(int const start, int const val, size_t n)
 {
 	validateAddr(start, val);
 	
@@ -136,11 +136,11 @@ std::string Compiler::bf_setToValue(int start, int val, size_t n)
 	return ops;
 }
 
-std::string Compiler::bf_assign(int lhs, int rhs)
+std::string Compiler::bf_assign(int const lhs, int const rhs)
 {
 	validateAddr(lhs, rhs);
 	
-	int tmp = allocateTemp();
+	int const tmp = allocateTemp();
 
 	std::string ops;
 	ops += bf_movePtr(lhs) + "[-]"; // reset LHS
@@ -170,7 +170,7 @@ std::string Compiler::bf_assign(int lhs, int rhs)
 	return ops;
 }
 
-std::string Compiler::bf_assign(int dest, int src, size_t n)
+std::string Compiler::bf_assign(int const dest, int const src, size_t n)
 {
 	validateAddr(dest, src);
 	
@@ -181,22 +181,21 @@ std::string Compiler::bf_assign(int dest, int src, size_t n)
 	return result;
 }
 
-std::string Compiler::bf_movePtr(size_t addr)
+std::string Compiler::bf_movePtr(int const addr)
 {
 	validateAddr(addr);
 	
-	int diff = (int)addr - (int)d_pointer;
+	int const diff = (int)addr - (int)d_pointer;
 	d_pointer = addr;
 	return (diff >= 0) ? std::string(diff, '>')	: std::string(-diff, '<');
 }
 
-std::string Compiler::bf_addTo(int target, int rhs)
+std::string Compiler::bf_addTo(int const target, int const rhs)
 {
 	validateAddr(target, rhs);
 	
 	std::string result;
-
-	int tmp = allocateTemp();
+	int const tmp = allocateTemp();
 	result += bf_assign(tmp, rhs);
 	result += bf_movePtr(tmp);
 	result += "[-";
@@ -209,13 +208,13 @@ std::string Compiler::bf_addTo(int target, int rhs)
 	return result;
 }
 
-std::string Compiler::bf_subtractFrom(int target, int rhs)
+std::string Compiler::bf_subtractFrom(int const target, int const rhs)
 {
 	validateAddr(target, rhs);
 	
 	std::string result;
 
-	int tmp = allocateTemp();
+	int const tmp = allocateTemp();
 	result += bf_assign(tmp, rhs);
 	result += bf_movePtr(tmp);
 	result += "[-";
@@ -228,24 +227,24 @@ std::string Compiler::bf_subtractFrom(int target, int rhs)
 	return result;
 }
 
-std::string Compiler::bf_incr(int target)
+std::string Compiler::bf_incr(int const target)
 {
 	validateAddr(target);
 	return bf_movePtr(target) + "+";
 }
 
-std::string Compiler::bf_decr(int target)
+std::string Compiler::bf_decr(int const target)
 {
 	validateAddr(target);
 	return bf_movePtr(target) + "-";
 }
 
-std::string Compiler::bf_multiply(int lhs, int rhs, int result)
+std::string Compiler::bf_multiply(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 	
 	std::string ops;
-	int tmp = allocateTemp(); // can I use rhs if this is a temp?
+	int const tmp = allocateTemp(); // can I use rhs if this is a temp?
 
 	ops += bf_setToValue(result, 0);
 	ops += bf_assign(tmp, rhs);
@@ -258,24 +257,24 @@ std::string Compiler::bf_multiply(int lhs, int rhs, int result)
 	return ops;
 }
 
-std::string Compiler::bf_multiplyBy(int target, int factor)
+std::string Compiler::bf_multiplyBy(int const target, int const factor)
 {
 	validateAddr(target, factor);
 	
 	std::string ops;
-	int tmp = allocateTemp();
+	int const tmp = allocateTemp();
 	ops += bf_multiply(target, factor, tmp);
 	ops += bf_assign(target, tmp);
 
 	return ops;
 }
 
-std::string Compiler::bf_not(int addr, int result)
+std::string Compiler::bf_not(int const addr, int const result)
 {
 	validateAddr(addr, result);
 	
 	std::string ops;
-	int tmp = allocateTemp();
+	int const tmp = allocateTemp();
 	
 	ops += bf_setToValue(result, 1);
 	ops += bf_assign(tmp, addr);
@@ -288,12 +287,12 @@ std::string Compiler::bf_not(int addr, int result)
 	return ops;
 }
 
-std::string Compiler::bf_and(int lhs, int rhs, int result)
+std::string Compiler::bf_and(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 
-	int x = allocateTemp();
-	int y = allocateTemp();
+	int const x = allocateTemp();
+	int const y = allocateTemp();
 	
 	std::string ops;
 	ops += bf_setToValue(result, 0);
@@ -312,12 +311,12 @@ std::string Compiler::bf_and(int lhs, int rhs, int result)
 	return ops;
 }
 
-std::string Compiler::bf_or(int lhs, int rhs, int result)
+std::string Compiler::bf_or(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 
-	int x = allocateTemp();
-	int y = allocateTemp();
+	int const x = allocateTemp();
+	int const y = allocateTemp();
 
 	std::string ops;
 	ops += bf_setToValue(result, 0);
@@ -336,14 +335,14 @@ std::string Compiler::bf_or(int lhs, int rhs, int result)
 	return ops;
 }
 
-std::string Compiler::bf_equal(int lhs, int rhs, int result)
+std::string Compiler::bf_equal(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 
 	std::string ops;
 
-	int tmpL = allocateTemp();
-	int tmpR = allocateTemp();
+	int const tmpL = allocateTemp();
+	int const tmpR = allocateTemp();
 
 	ops += bf_setToValue(result, 1);
 	ops += bf_assign(tmpR, rhs);
@@ -362,12 +361,12 @@ std::string Compiler::bf_equal(int lhs, int rhs, int result)
 	return ops;
 }
 
-std::string Compiler::bf_notEqual(int lhs, int rhs, int result)
+std::string Compiler::bf_notEqual(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 
 	std::string ops;
-	int result2 = allocateTemp();
+	int const result2 = allocateTemp();
 	
 	ops += bf_equal(lhs, rhs, result2);
 	ops += bf_not(result2, result);
@@ -375,14 +374,14 @@ std::string Compiler::bf_notEqual(int lhs, int rhs, int result)
 	return ops;
 }
 
-std::string Compiler::bf_greater(int lhs, int rhs, int result)
+std::string Compiler::bf_greater(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 
-	int x = allocateTemp();
-	int y = allocateTemp();
-	int tmp1 = allocateTemp();
-	int tmp2 = allocateTemp();
+	int const x = allocateTemp();
+	int const y = allocateTemp();
+	int const tmp1 = allocateTemp();
+	int const tmp2 = allocateTemp();
 		
 	std::string ops;
 	ops += bf_setToValue(tmp1, 0);
@@ -416,18 +415,18 @@ std::string Compiler::bf_greater(int lhs, int rhs, int result)
 	return ops;
 }
 
-std::string Compiler::bf_less(int lhs, int rhs, int result)
+std::string Compiler::bf_less(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 	return bf_greater(rhs, lhs, result);
 }
 
-std::string Compiler::bf_greaterOrEqual(int lhs, int rhs, int result)
+std::string Compiler::bf_greaterOrEqual(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 
-	int isEqual = allocateTemp();
-	int isGreater = allocateTemp();
+	int const isEqual = allocateTemp();
+	int const isGreater = allocateTemp();
 
 	std::string ops;
 	ops += bf_equal(lhs, rhs, isEqual);
@@ -438,7 +437,7 @@ std::string Compiler::bf_greaterOrEqual(int lhs, int rhs, int result)
 	return ops;
 }
 
-std::string Compiler::bf_lessOrEqual(int lhs, int rhs, int result)
+std::string Compiler::bf_lessOrEqual(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 	return bf_greaterOrEqual(rhs, lhs, result);
@@ -587,9 +586,9 @@ int Compiler::variable(std::string const &ident, uint8_t sz, bool checkSize)
 	return arr;
 }
 
-int Compiler::constVal(uint8_t num)
+int Compiler::constVal(uint8_t const num)
 {
-	int tmp = allocateTemp();
+	int const tmp = allocateTemp();
 	d_codeBuffer << bf_setToValue(tmp, num);
    	return tmp;
 }
@@ -630,12 +629,12 @@ int Compiler::assignPlaceholder(std::string const &lhs, AddressOrInstruction con
 }
 
 
-int Compiler::arrayFromSizeStaticValue(uint8_t sz, uint8_t val)
+int Compiler::arrayFromSizeStaticValue(uint8_t const sz, uint8_t const val)
 {
 	errorIf(sz > MAX_ARRAY_SIZE,
 			"Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
 	
-	int arr = allocateTemp(sz);
+	int const arr = allocateTemp(sz);
 	for (int idx = 0; idx != sz; ++idx)
 	{
 		d_codeBuffer << bf_setToValue(arr + idx, val);
@@ -645,7 +644,7 @@ int Compiler::arrayFromSizeStaticValue(uint8_t sz, uint8_t val)
 }
 
 
-int Compiler::arrayFromSizeDynamicValue(uint8_t sz, AddressOrInstruction const &val)
+int Compiler::arrayFromSizeDynamicValue(uint8_t const sz, AddressOrInstruction const &val)
 {
 	errorIf(sz > MAX_ARRAY_SIZE,
 			"Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
@@ -659,7 +658,7 @@ int Compiler::arrayFromSizeDynamicValue(uint8_t sz, AddressOrInstruction const &
 
 int Compiler::arrayFromList(std::vector<Instruction> const &list)
 {
-	uint8_t sz = list.size();
+	uint8_t const sz = list.size();
 
 	errorIf(sz > MAX_ARRAY_SIZE,
 			"Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
@@ -673,12 +672,12 @@ int Compiler::arrayFromList(std::vector<Instruction> const &list)
 
 int Compiler::arrayFromString(std::string const &str)
 {
-	uint8_t sz = str.size();
+	uint8_t const sz = str.size();
 
 	errorIf(sz > MAX_ARRAY_SIZE,
 			"Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
 
-	int start = allocateTemp(sz);
+	int const start = allocateTemp(sz);
 	for (int idx = 0; idx != sz; ++idx)
 		d_codeBuffer << bf_setToValue(start + idx, str[idx]);
 
@@ -1169,7 +1168,7 @@ void Compiler::setFilename(std::string const &file)
 	d_instructionFilename = file;
 }
 
-void Compiler::setLineNr(int line)
+void Compiler::setLineNr(int const line)
 {
 	d_instructionLineNr = line;
 }
