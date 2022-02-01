@@ -72,7 +72,7 @@ private:
 	std::string bf_setToValue(int const addr, int const val);
 	std::string bf_setToValue(int const start, int const val, size_t const n);
 	std::string bf_assign(int const lhs, int const rhs);
-	std::string bf_assign(int const dest, int const src, size_t n);
+	std::string bf_assign(int const dest, int const src, size_t const n);
 	std::string bf_addTo(int const target, int const rhs);
 	std::string bf_incr(int const target);
 	std::string bf_decr(int const target);

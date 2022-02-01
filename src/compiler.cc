@@ -116,24 +116,24 @@ void Compiler::freeLocals()
 std::string Compiler::bf_setToValue(int const addr, int const val)
 {
 	validateAddr(addr, val);
-	
-	std::string ops;
-	ops += bf_movePtr(addr);        // go to address
-	ops += "[-]";                   // reset cell to 0
-	ops += std::string(val, '+');   // increment to value
 
-	return ops;
+	std::ostringstream ops;
+	ops << bf_movePtr(addr)        // go to address
+		<< "[-]"                   // reset cell to 0
+		<< std::string(val, '+');  // increment to value
+
+	return ops.str();
 }
 
 std::string Compiler::bf_setToValue(int const start, int const val, size_t const n)
 {
 	validateAddr(start, val);
 	
-	std::string ops;
+	std::ostringstream ops;
 	for (size_t i = 0; i != n; ++i)
-		ops += bf_setToValue(start + i, val);
+		ops << bf_setToValue(start + i, val);
 
-	return ops;
+	return ops.str();
 }
 
 std::string Compiler::bf_assign(int const lhs, int const rhs)
@@ -142,43 +142,40 @@ std::string Compiler::bf_assign(int const lhs, int const rhs)
 	
 	int const tmp = allocateTemp();
 
-	std::string ops;
-	ops += bf_movePtr(lhs) + "[-]"; // reset LHS
-	ops += bf_movePtr(tmp) + "[-]"; // reset TMP
+	std::ostringstream ops;
+	ops	<< bf_setToValue(lhs, 0)
+		<< bf_setToValue(tmp, 0)
 
-	// Move contents of RHS to both LHS and TMP (backup)
-	ops += bf_movePtr(rhs);         
-	ops += "[-";
-	ops += bf_movePtr(lhs);
-	ops += "+";
-	ops += bf_movePtr(tmp);
-	ops += "+";
-	ops += bf_movePtr(rhs);
-	ops += "]";
+		// Move contents of RHS to both LHS and TMP (backup)
+		<< bf_movePtr(rhs)         
+		<< "["
+		<<     bf_incr(lhs)
+		<<     bf_incr(tmp)
+		<<     bf_decr(rhs)
+		<< "]"
 
-	// Restore RHS by moving TMP back into it
-	ops += bf_movePtr(tmp);
-	ops += "[-";
-	ops += bf_movePtr(rhs);
-	ops += "+";
-	ops += bf_movePtr(tmp);
-	ops += "]";
+		// Restore RHS by moving TMP back into it
+		<< bf_movePtr(tmp)
+		<< "["
+		<<     bf_incr(rhs)
+		<<     bf_decr(tmp)
+		<< "]"
 
-	// Leave pointer at lhs
-	ops += bf_movePtr(lhs);
+		// Leave pointer at lhs
+		<< bf_movePtr(lhs);
 
-	return ops;
+	return ops.str();
 }
 
-std::string Compiler::bf_assign(int const dest, int const src, size_t n)
+std::string Compiler::bf_assign(int const dest, int const src, size_t const n)
 {
 	validateAddr(dest, src);
 	
-	std::string result;
+	std::ostringstream ops;
 	for (size_t idx = 0; idx != n; ++idx)
-		result += bf_assign(dest + idx, src + idx);
+		ops << bf_assign(dest + idx, src + idx);
 
-	return result;
+	return ops.str();
 }
 
 std::string Compiler::bf_movePtr(int const addr)
@@ -194,37 +191,32 @@ std::string Compiler::bf_addTo(int const target, int const rhs)
 {
 	validateAddr(target, rhs);
 	
-	std::string result;
+	std::ostringstream ops;
 	int const tmp = allocateTemp();
-	result += bf_assign(tmp, rhs);
-	result += bf_movePtr(tmp);
-	result += "[-";
-	result += bf_movePtr(target);
-	result += "+";
-	result += bf_movePtr(tmp);
-	result += "]";
-	result += bf_movePtr(target);
+	ops	<< bf_assign(tmp, rhs)
+		<< "["
+		<<     bf_incr(target)
+		<<     bf_decr(tmp)
+		<< "]"
+		<< bf_movePtr(target);
 	
-	return result;
+	return ops.str();
 }
 
 std::string Compiler::bf_subtractFrom(int const target, int const rhs)
 {
 	validateAddr(target, rhs);
 	
-	std::string result;
-
 	int const tmp = allocateTemp();
-	result += bf_assign(tmp, rhs);
-	result += bf_movePtr(tmp);
-	result += "[-";
-	result += bf_movePtr(target);
-	result += "-";
-	result += bf_movePtr(tmp);
-	result += "]";
-	result += bf_movePtr(target);
+	std::ostringstream ops;
+	ops	<< bf_assign(tmp, rhs)
+		<< "["
+		<<     bf_decr(target)
+		<<     bf_decr(tmp)
+		<< "]"
+		<< bf_movePtr(target);
 	
-	return result;
+	return ops.str();
 }
 
 std::string Compiler::bf_incr(int const target)
@@ -242,49 +234,50 @@ std::string Compiler::bf_decr(int const target)
 std::string Compiler::bf_multiply(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
-	
-	std::string ops;
-	int const tmp = allocateTemp(); // can I use rhs if this is a temp?
 
-	ops += bf_setToValue(result, 0);
-	ops += bf_assign(tmp, rhs);
-	ops += "[-";
-	ops += bf_addTo(result, lhs);
-	ops += bf_movePtr(tmp);
-	ops += "]";
-	ops += bf_movePtr(result);
+	std::ostringstream ops;
+	ops << bf_assign(result, lhs)
+		<< bf_multiplyBy(result, rhs);
 
-	return ops;
+	return ops.str();
 }
 
 std::string Compiler::bf_multiplyBy(int const target, int const factor)
 {
 	validateAddr(target, factor);
-	
-	std::string ops;
-	int const tmp = allocateTemp();
-	ops += bf_multiply(target, factor, tmp);
-	ops += bf_assign(target, tmp);
 
-	return ops;
+	int const targetCopy = allocateTemp();
+	int const count  = allocateTemp();
+
+	std::ostringstream ops;
+	ops << bf_assign(targetCopy, target)
+		<< bf_setToValue(target, 0)
+		<< bf_assign(count, factor)
+		<< "["
+		<<     bf_addTo(target, targetCopy)
+		<<     bf_decr(count)
+		<< "]"
+		<< bf_movePtr(target);
+	
+	return ops.str();
 }
 
 std::string Compiler::bf_not(int const addr, int const result)
 {
 	validateAddr(addr, result);
 	
-	std::string ops;
 	int const tmp = allocateTemp();
+	std::ostringstream ops;
 	
-	ops += bf_setToValue(result, 1);
-	ops += bf_assign(tmp, addr);
-	ops += "[";
-	ops += bf_setToValue(result, 0);
-	ops += bf_setToValue(tmp, 0);
-	ops += "]";
-	ops += bf_movePtr(result);
+	ops	<< bf_setToValue(result, 1)
+		<< bf_assign(tmp, addr)
+		<< "["
+		<<     bf_setToValue(result, 0)
+		<<     bf_setToValue(tmp, 0)
+		<< "]"
+		<< bf_movePtr(result);
 
-	return ops;
+	return ops.str();
 }
 
 std::string Compiler::bf_and(int const lhs, int const rhs, int const result)
@@ -294,21 +287,21 @@ std::string Compiler::bf_and(int const lhs, int const rhs, int const result)
 	int const x = allocateTemp();
 	int const y = allocateTemp();
 	
-	std::string ops;
-	ops += bf_setToValue(result, 0);
-	ops += bf_assign(y, rhs);
-	ops += bf_assign(x, lhs);
-	ops += "[";
-	ops +=     bf_movePtr(y);
-	ops +=     "[";
-	ops +=         bf_setToValue(result, 1);
-	ops +=         bf_setToValue(y, 0);
-	ops +=     "]";
-	ops +=     bf_setToValue(x, 0);
-	ops += "]";
-	ops += bf_movePtr(result);
+	std::ostringstream ops;
+	ops	<< bf_setToValue(result, 0)
+		<< bf_assign(y, rhs)
+		<< bf_assign(x, lhs)
+		<< "["
+		<<     bf_movePtr(y)
+		<<     "["
+		<<         bf_setToValue(result, 1)
+		<<         bf_setToValue(y, 0)
+		<<     "]"
+		<<     bf_setToValue(x, 0)
+		<< "]"
+		<< bf_movePtr(result);
 
-	return ops;
+	return ops.str();
 }
 
 std::string Compiler::bf_or(int const lhs, int const rhs, int const result)
@@ -318,107 +311,105 @@ std::string Compiler::bf_or(int const lhs, int const rhs, int const result)
 	int const x = allocateTemp();
 	int const y = allocateTemp();
 
-	std::string ops;
-	ops += bf_setToValue(result, 0);
-	ops += bf_assign(x, lhs);
-	ops += "[";
-	ops +=     bf_setToValue(result, 1);
-	ops +=     bf_setToValue(x, 0);
-	ops += "]";
-	ops += bf_assign(y, rhs);
-	ops += "[";
-	ops +=     bf_setToValue(result, 1);
-	ops +=     bf_setToValue(y, 0);
-	ops += "]";
-	ops += bf_movePtr(result);
+	std::ostringstream ops;
+	ops	<< bf_setToValue(result, 0)
+		<< bf_assign(x, lhs)
+		<< "["
+		<<     bf_setToValue(result, 1)
+		<<     bf_setToValue(x, 0)
+		<< "]"
+		<< bf_assign(y, rhs)
+		<< "["
+		<<     bf_setToValue(result, 1)
+		<<     bf_setToValue(y, 0)
+		<< "]"
+		<< bf_movePtr(result);
 
-	return ops;
+	return ops.str();
 }
 
 std::string Compiler::bf_equal(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 
-	std::string ops;
-
 	int const tmpL = allocateTemp();
 	int const tmpR = allocateTemp();
 
-	ops += bf_setToValue(result, 1);
-	ops += bf_assign(tmpR, rhs);
-	ops += bf_assign(tmpL, lhs);
-	ops += "[";
-	ops +=     bf_decr(tmpR);
-	ops +=     bf_decr(tmpL);
-	ops += "]";
-	ops += bf_movePtr(tmpR);
-	ops += "[";
-	ops +=     bf_setToValue(result, 0);
-	ops +=     bf_setToValue(tmpR, 0);
-	ops += "]";
-	ops += bf_movePtr(result);
+	std::ostringstream ops;
+	ops << bf_setToValue(result, 1)
+		<< bf_assign(tmpR, rhs)
+		<< bf_assign(tmpL, lhs)
+		<< "["
+		<<     bf_decr(tmpR)
+		<<     bf_decr(tmpL)
+		<< "]"
+		<< bf_movePtr(tmpR)
+		<< "["
+		<<     bf_setToValue(result, 0)
+		<<     bf_setToValue(tmpR, 0)
+		<< "]"
+		<< bf_movePtr(result);
 
-	return ops;
+	return ops.str();
 }
 
 std::string Compiler::bf_notEqual(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
-
-	std::string ops;
-	int const result2 = allocateTemp();
 	
-	ops += bf_equal(lhs, rhs, result2);
-	ops += bf_not(result2, result);
+	int const isEqual = allocateTemp();
+	std::ostringstream ops;
+	ops << bf_equal(lhs, rhs, isEqual)
+		<< bf_not(isEqual, result);
 
-	return ops;
+	return ops.str();
 }
 
 std::string Compiler::bf_greater(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
 
-	int const x = allocateTemp();
-	int const y = allocateTemp();
-	int const tmp1 = allocateTemp();
-	int const tmp2 = allocateTemp();
+	int const x		= allocateTemp();
+	int const y		= allocateTemp();
+	int const tmp1	= allocateTemp();
+	int const tmp2	= allocateTemp();
 		
-	std::string ops;
-	ops += bf_setToValue(tmp1, 0);
-	ops += bf_setToValue(tmp2, 0);
-	ops += bf_setToValue(result, 0);
-	ops += bf_assign(y, rhs);
-	ops += bf_assign(x, lhs);
-	ops += "[";
-	ops +=     bf_incr(tmp1);
-	ops +=     bf_movePtr(y);
-	ops +=     "[";
-	ops +=         bf_setToValue(tmp1, 0);
-	ops +=         bf_incr(tmp2);
-	ops +=         bf_decr(y);
-	ops +=     "]";
-	ops +=     bf_movePtr(tmp1);
-	ops +=     "[";
-	ops +=         bf_incr(result);
-	ops +=         bf_decr(tmp1);
-	ops +=     "]";
-	ops +=     bf_movePtr(tmp2);
-	ops +=     "[";
-	ops +=         bf_incr(y);
-	ops +=         bf_decr(tmp2);
-	ops +=     "]";
-	ops +=     bf_decr(y);
-	ops +=     bf_decr(x);
-	ops += "]";
-	ops += bf_movePtr(result);
+	std::ostringstream ops;
+	ops	<< bf_setToValue(tmp1, 0)
+		<< bf_setToValue(tmp2, 0)
+		<< bf_setToValue(result, 0)
+		<< bf_assign(y, rhs)
+		<< bf_assign(x, lhs)
+		<< "["
+		<<     bf_incr(tmp1)
+		<<     bf_movePtr(y)
+		<<     "["
+		<<         bf_setToValue(tmp1, 0)
+		<<         bf_incr(tmp2)
+		<<         bf_decr(y)
+		<<     "]"
+		<<     bf_movePtr(tmp1)
+		<<     "["
+		<<         bf_incr(result)
+		<<         bf_decr(tmp1)
+		<<     "]"
+		<<     bf_movePtr(tmp2)
+		<<     "["
+		<<         bf_incr(y)
+		<<         bf_decr(tmp2)
+		<<     "]"
+		<<     bf_decr(y)
+		<<     bf_decr(x)
+		<< "]"
+		<< bf_movePtr(result);
 	
-	return ops;
+	return ops.str();
 }
 
 std::string Compiler::bf_less(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
-	return bf_greater(rhs, lhs, result);
+	return bf_greater(rhs, lhs, result); // reverse arguments
 }
 
 std::string Compiler::bf_greaterOrEqual(int const lhs, int const rhs, int const result)
@@ -428,19 +419,19 @@ std::string Compiler::bf_greaterOrEqual(int const lhs, int const rhs, int const 
 	int const isEqual = allocateTemp();
 	int const isGreater = allocateTemp();
 
-	std::string ops;
-	ops += bf_equal(lhs, rhs, isEqual);
-	ops += bf_greater(lhs, rhs, isGreater);
-	ops += bf_or(isEqual, isGreater, result);
-	ops += bf_movePtr(result);
+	std::ostringstream ops;
+	ops	<< bf_equal(lhs, rhs, isEqual)
+		<< bf_greater(lhs, rhs, isGreater)
+		<< bf_or(isEqual, isGreater, result)
+		<< bf_movePtr(result);
 
-	return ops;
+	return ops.str();
 }
 
 std::string Compiler::bf_lessOrEqual(int const lhs, int const rhs, int const result)
 {
 	validateAddr(lhs, rhs, result);
-	return bf_greaterOrEqual(rhs, lhs, result);
+	return bf_greaterOrEqual(rhs, lhs, result); // reverse arguments
 }
 
 
