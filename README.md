@@ -158,7 +158,7 @@ A procedure can be viewed as a set of statements that are injected in the call-s
 ```javascript
 procedure triple(x)
 {
-    x *= 2;
+    x *= 3;
 }
 
 function main()
@@ -191,7 +191,7 @@ function main()
 }
 ```
 
-#### Recursion
+### Recursion
 Unfortunately, recursion (in both functions and procedures) is not allowed in BrainFix. Most compilers implement function calls as jumps. However, this is not possible in BF code because there is no JMP instruction that allows us to jump to arbitrary places in the code. It should be possible in principle, but would be very hard to implement (and would probably require a lot more memory to accomodate the algorithms that could make it happen). Therefore, the compiler will throw an error when recursion is detected.
 
 ### Operators
