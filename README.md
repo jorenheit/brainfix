@@ -405,6 +405,8 @@ All functions below are defined in `std/io.bfx`:
 |   `scans(buf)`   | Read string from stdin. sizeof(buf) determines maximum number of bytes read |
 |   `to_int(str)`  | Converts string to int |
 |   `to_string(x)` | Converts int to string |
+|   `to_binary_str(x)` | Returns binary representation of `x` as a string |
+|   `to_hex_str(x)` | Returns hexadecimal representation of `x` as a string |
 
 #### Math
 All functions below are defined in `std/math.bfx`:
