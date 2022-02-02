@@ -35,16 +35,26 @@ public:
 
 class BFXFunction
 {
+public:   
+    enum class ParameterType
+        {
+         Value,
+         Reference
+        };
+
+    using Parameter = std::pair<std::string, ParameterType>;
+    
+private:
+    
     std::string d_name;
     Instruction d_body;
-    std::vector<std::string> d_params;
+    std::vector<Parameter> d_params;
     std::string d_returnVar;
+    static std::string const VOID;
 
 public:
-    static std::string const VOID;
-    
     BFXFunction() = default;
-    BFXFunction(std::string name, std::vector<std::string> const &params):
+    BFXFunction(std::string name, std::vector<Parameter> const &params):
         d_name(name),
         d_params(params),
         d_returnVar(VOID)
@@ -67,7 +77,7 @@ public:
         return d_body;
     }
 
-    std::vector<std::string> const &params() const
+    std::vector<Parameter> const &params() const
     {
         return d_params;
     }

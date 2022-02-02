@@ -24,18 +24,18 @@
 
 */
 
-procedure printc(c)
+function printc(&c)
 {
     __movePtr(c);
     __bf(".");
 }
 
-procedure printd(x)
+function printd(&x)
 {
     prints(to_string(x));
 }
 
-procedure prints(str)
+function prints(&str)
 {
     i = 0;
     while (i < sizeof(str) && str[i] != 0)
@@ -43,13 +43,13 @@ procedure prints(str)
 }
 
 
-procedure println(x)
+function println(&x)
 {
     prints(x);
     printc('\n');
 }
 
-procedure print_vec(v)
+function print_vec(&v)
 {
     sz = sizeof(v);
     printc('(');
@@ -92,7 +92,7 @@ function result = scand()
     }
 }
 
-procedure scans(buf)
+function scans(&buf)
 {
     i = 0;
     done = 0;
@@ -134,7 +134,7 @@ function str = to_string(x)
     str[idx] = ones + '0';
 }
 
-function result = to_int(str)
+function result = to_int(&str)
 {
     nDigits = sizeof(str);
     if (nDigits > 3) nDigits = 3;

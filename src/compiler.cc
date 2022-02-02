@@ -29,19 +29,7 @@ void Compiler::addFunction(BFXFunction const &bfxFunc)
     auto result = d_functionMap.insert({bfxFunc.name(), bfxFunc});
     errorIf(!result.second,
             "Redefinition of function ", bfxFunc.name(), " is not allowed.");
-    errorIf(d_procedureMap.find(bfxFunc.name()) != d_procedureMap.end(),
-            "Function-name matched previously defined procedure-name.");
 }
-
-void Compiler::addProcedure(BFXFunction const &bfxFunc)
-{
-    auto result = d_procedureMap.insert({bfxFunc.name(), bfxFunc});
-    errorIf(!result.second,
-            "Redefinition of procedure ", bfxFunc.name(), " is not allowed.");
-    errorIf(d_functionMap.find(bfxFunc.name()) != d_functionMap.end(),
-            "Procedure-name matched previously defined function-name.");
-}
-
 
 void Compiler::addGlobals(std::vector<Instruction> const &variables)
 {
@@ -504,29 +492,22 @@ int Compiler::statement(Instruction const &instr)
     return -1;
 }
 
-int Compiler::call(std::string const &name,
-                           std::vector<Instruction> const &args)
+int Compiler::call(std::string const &name, std::vector<Instruction> const &args)
 {
+    // Check if the function exists
     bool const isFunction = d_functionMap.find(name) != d_functionMap.end();
-    bool const isProcedure = d_procedureMap.find(name) != d_procedureMap.end();
-    
-    errorIf(!isFunction && !isProcedure,
-            "Call to unknown function or procedure \"", name, "\"");
+    errorIf(!isFunction,"Call to unknown function \"", name, "\"");
     errorIf(std::find(d_callStack.begin(), d_callStack.end(), name) != d_callStack.end(),
-            "Function or procedure \"", name, "\" is called recursively. Recursion is not allowed.");
+            "Function \"", name, "\" is called recursively. Recursion is not allowed.");
 
-    return isFunction ? callFunction(name, args) : callProcedure(name, args);
-}
-
-int Compiler::callFunction(std::string const &functionName,
-                           std::vector<Instruction> const &args)
-{
-    BFXFunction &func = d_functionMap.at(functionName);
+    // Get the list of parameters
+    BFXFunction &func = d_functionMap.at(name);
     auto const &params = func.params();
     errorIf(params.size() != args.size(),
             "Calling function \"", func.name(), "\" with invalid number of arguments. "
             "Expected ", params.size(), ", got ", args.size(), ".");
 
+    std::vector<std::pair<int, std::string>> references;
     for (size_t idx = 0; idx != args.size(); ++idx)
     {
         // Evaluate argument that's passed in and get its size
@@ -534,15 +515,27 @@ int Compiler::callFunction(std::string const &functionName,
         errorIf(argAddr < 0,
                 "Invalid argument argument to function \"", func.name(),
                 "\": the expression passed as argument ", idx, " returns void.");
-        
-        int const sz = d_memory.sizeOf(argAddr);
-        
-        // Allocate local variable for the function of the correct size
-        std::string const &p = params[idx];
-        int paramAddr = d_memory.allocateLocalSafe(p, func.name(), sz);
 
-        // Assign argument to parameter
-        assign(paramAddr, argAddr);
+        // Check if the parameter is passed by value or reference
+        BFXFunction::Parameter const &p = params[idx];
+        std::string const &paramIdent = p.first;
+        BFXFunction::ParameterType paramType = p.second;
+        if (paramType == BFXFunction::ParameterType::Value)
+        {
+            // Allocate local variable for the function of the correct size
+            // and copy argument to this location
+            int const sz = d_memory.sizeOf(argAddr);
+            int paramAddr = d_memory.allocateLocalSafe(paramIdent, func.name(), sz);
+            assign(paramAddr, argAddr);
+        }
+        else // Reference
+        {
+            // Change scope of the argument to that of the procedure
+            references.push_back({argAddr, d_memory.identifier(argAddr)});
+            d_memory.changeScope(argAddr, func.name());
+            d_memory.changeIdent(argAddr, paramIdent);
+            pushStack(argAddr);
+        }
     }
     
     // Execute body of the function
@@ -554,63 +547,45 @@ int Compiler::callFunction(std::string const &functionName,
     int ret = -1;
     if (!func.isVoid())
     {
+        // Locate the address of the return-variable
         std::string retVar = func.returnVariable();
         ret = d_memory.findLocal(retVar, func.name());
         errorIf(ret == -1,
                 "Returnvalue \"", retVar, "\" of function \"", func.name(),
                 "\" seems not to have been declared in the function-body.");
 
-        // Pull the variable into local scope as a temp
-        d_memory.changeScope(ret, d_callStack.back());
-        d_memory.markAsTemp(ret);
+        // Check if the return variable was passed into the function as a reference
+        bool returnVariableIsReferenceParameter = false;
+        for (auto const &pr: references)
+            if (pr.first == ret)
+                returnVariableIsReferenceParameter = true;
+
+        if (returnVariableIsReferenceParameter)
+        {
+            // Return a copy
+            int const tmp = allocateTemp();
+            assign(tmp, ret);
+            ret = tmp;
+        }
+        else
+        {
+            // Pull the variable into local scope as a temp
+            d_memory.changeScope(ret, d_callStack.back());
+            d_memory.markAsTemp(ret);
+        }
     }
 
-    // Clean up and return
-    d_memory.freeLocals(func.name());
-    return ret;
-}
-
-int Compiler::callProcedure(std::string const &procName,
-                            std::vector<Instruction> const &args)
-{
-    BFXFunction &proc = d_procedureMap.at(procName);
-    auto const &params = proc.params();
-    errorIf(params.size() != args.size(),
-            "Calling procedure \"", proc.name(), "\" with invalid number of arguments. "
-            "Expected ", params.size(), ", got ", args.size(), ".");
-
-    
-    std::vector<std::pair<int, std::string>> arguments;
-    for (size_t idx = 0; idx != args.size(); ++idx)
-    {
-        // Evaluate argument that's passed in and get its size
-        int const argAddr = args[idx]();
-        errorIf(argAddr < 0,
-                "Invalid argument argument to procedure \"", proc.name(),
-                "\": the expression passed as argument ", idx, " returns void.");
-
-        // Change scope of the argument to that of the procedure
-        arguments.push_back({argAddr, d_memory.identifier(argAddr)});
-        d_memory.changeScope(argAddr, proc.name());
-        d_memory.changeIdent(argAddr, params[idx]);
-        pushStack(argAddr);
-    }
-
-    // Execute procedure
-    d_callStack.push_back(proc.name());
-    proc.body()();
-    d_callStack.pop_back();
-
-    // Pull arguments back into calling scope under their original identifiers
-    for (auto const &pr: arguments)
+    // Pull referenced arguments back into calling scope
+    for (auto const &pr: references)
     {
         d_memory.changeScope(pr.first, d_callStack.back());
         d_memory.changeIdent(pr.first, pr.second);
         popStack();
     }
-
-    d_memory.freeLocals(proc.name());
-    return -1;
+    
+    // Clean up and return
+    d_memory.freeLocals(func.name());
+    return ret;
 }
 
 int Compiler::variable(std::string const &ident, int const sz, bool const checkSize)

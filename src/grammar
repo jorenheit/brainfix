@@ -11,13 +11,14 @@
                 INSTRUCTION_LIST:       std::vector<Instruction>;
                 ELEMENT:                std::pair<std::string, Instruction>;
                 STRING:                 std::string;
-                IDENTIFIER_LIST:        std::vector<std::string>;
+                PARAMETER:              BFXFunction::Parameter;
+                PARAMETER_LIST:         std::vector<BFXFunction::Parameter>;
                 BFX_FUNCTION:           BFXFunction;
 
 %expect 0
 
 // Keywords
-%token FUNCTION PROCEDURE GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST
+%token FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST
 
 %nonassoc then
 %nonassoc ELSE
@@ -44,17 +45,18 @@
 %type <INSTRUCTION>         constant_literal
 %type <INSTRUCTION>         string_literal
 %type <INSTRUCTION>         anonymous_array
-%type <INSTRUCTION>         function_or_procedure_call
+%type <INSTRUCTION>         function_call
 %type <INSTRUCTION>         scope_block
 %type <INSTRUCTION>         code_body
 %type <INSTRUCTION_LIST>    expression_list
 %type <INSTRUCTION_LIST>    optional_expression_list
 %type <INSTRUCTION_LIST>    variable_list
-%type <IDENTIFIER_LIST>     identifier_list
-%type <IDENTIFIER_LIST>     optional_identifier_list
+%type <PARAMETER>           parameter
+%type <PARAMETER_LIST>      parameter_list
+%type <PARAMETER_LIST>      optional_parameter_list
 %type <ELEMENT>             array_element
 %type <BFX_FUNCTION>        function_header
-%type <BFX_FUNCTION>        proc_header
+
 
 %%
 
@@ -64,8 +66,6 @@ program:
     program error
 |
     program function_definition
-|
-    program proc_definition
 |
     program global_variable_list
 |
@@ -88,30 +88,16 @@ function_definition:
     }
 ;
 
-proc_definition:
-    proc_header scope_block
-    {
-        d_comp.addProcedure(($1).setBody($2));
-    }
-;
-
 function_header:
-    FUNCTION IDENT '(' optional_identifier_list ')'
+    FUNCTION IDENT '(' optional_parameter_list ')'
     {
         $$ = BFXFunction($2, $4);
     }
 |
-    FUNCTION IDENT '=' IDENT '(' optional_identifier_list ')'
+    FUNCTION IDENT '=' IDENT '(' optional_parameter_list ')'
     {
         $$ = BFXFunction($4, $6);
         ($$).setReturnVariable($2);
-    }
-;
-
-proc_header:
-    PROCEDURE IDENT '(' optional_identifier_list ')'
-    {
-        $$ = BFXFunction($2, $4);       
     }
 ;
 
@@ -134,28 +120,45 @@ scope_block:
     }
 ;
 
-
-identifier_list:
+parameter:
     IDENT
     {
-        auto ret = std::vector<std::string>();
+        $$ = BFXFunction::Parameter(
+             $1,
+             BFXFunction::ParameterType::Value
+        );
+    }
+|
+    '&' IDENT
+    {
+        $$ = BFXFunction::Parameter(
+             $2,
+             BFXFunction::ParameterType::Reference
+        );
+    }
+;
+
+parameter_list:
+    parameter
+    {
+        auto ret = std::vector<BFXFunction::Parameter>();
         ret.push_back($1);
         $$ = ret;
     }
 |
-    identifier_list ',' IDENT
+    parameter_list ',' parameter
     {
         ($1).push_back($3);
         $$ = $1;
     }
 ;
 
-optional_identifier_list:
-    identifier_list
+optional_parameter_list:
+    parameter_list
 |
     // empty
     {
-        $$ = std::vector<std::string>();
+        $$ = std::vector<BFXFunction::Parameter>();
     }
 ;
 
@@ -213,7 +216,7 @@ expression:
 |
     anonymous_array
 |
-    function_or_procedure_call
+    function_call
 |
     SIZEOF '(' IDENT ')'
     {
@@ -631,7 +634,7 @@ anonymous_array:
     }
 ;
 
-function_or_procedure_call:
+function_call:
     IDENT '(' optional_expression_list ')'
     {
        $$ = d_comp.instruction<&Compiler::call>($1, $3);

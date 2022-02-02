@@ -22,7 +22,6 @@ class Compiler
     Memory d_memory;
 
     std::map<std::string, BFXFunction>  d_functionMap;
-    std::map<std::string, BFXFunction>  d_procedureMap;
     std::map<std::string, uint8_t>      d_constMap;
     std::deque<std::string>             d_callStack;
     std::ostringstream                  d_codeBuffer;
@@ -50,7 +49,6 @@ public:
 
 private:
     void addFunction(BFXFunction const &bfxFunc);
-    void addProcedure(BFXFunction const &bfxFunc);
     void addGlobals(std::vector<Instruction> const &vars);
     void addConstant(std::string const &ident, uint8_t const num);
 
@@ -64,6 +62,7 @@ private:
     // Memory management uitilities
     int  allocateOrGet(std::string const &ident, int const sz = 1);
     int  allocateTemp(int const sz = 1);
+    // Todo; allocateTempBlock
     int  addressOf(std::string const &ident);
     void freeTemps();
     void freeLocals();
@@ -129,8 +128,6 @@ private:
     int arrayFromList(std::vector<Instruction> const &list);
     int arrayFromString(std::string const &str);
     int call(std::string const &functionName, std::vector<Instruction> const &args = {});
-    int callFunction(std::string const &functionName, std::vector<Instruction> const &args = {});   
-    int callProcedure(std::string const &functionName, std::vector<Instruction> const &args = {});   
     int assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int assignPlaceholder(std::string const &lhs, AddressOrInstruction const &rhs);
     int assignElement(std::string const &ident, AddressOrInstruction const &index, AddressOrInstruction const &rhs);
