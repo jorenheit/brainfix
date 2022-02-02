@@ -396,13 +396,13 @@ All functions below are defined in `std/io.bfx`:
 | ---------------- | ------------ |
 |   `printc(x)`	   | Print `x` as ASCII character |
 |   `printd(x)`	   | Print `x` as decimal |
-|   `prints(str)`  | Print string (stop at NULL or end of the string) |
+|   `prints(str)`  | Print string (stop at `\0` or end of the string) |
 |   `println(str)` | Same as `prints()` but including newline |
-|   `print_vec(v)` | Print formatted vector, including newline: "(v1, v2, v3, ..., vN)" |
+|   `print_vec(v)` | Print formatted vector, including newline: `(v1, v2, v3, ..., vN)` |
 |   `endl()`	   | Print a newline (same as `printc('\n')`) |
 |   `scanc()`	   | Read a single byte from stdin |
 |   `scand()`	   | Read at most 3 bytes from stdin and convert to decimal |
-|   `scans(buf)`   | Read string from stdin. sizeof(buf) determines maximum number of bytes read |
+|   `scans(buf)`   | Read string from stdin. `sizeof(buf)` determines maximum number of bytes to read |
 |   `to_int(str)`  | Converts string to int |
 |   `to_string(x)` | Converts int to string |
 |   `to_binary_str(x)` | Returns binary representation of `x` as a string |
