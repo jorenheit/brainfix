@@ -12,22 +12,25 @@
 */
 
 include "std/io.bfx"
+include "std/bool.bfx"
 
 const MAX_SIZE = 250;
-const true = 1;
-const false = 0;
 
-global [MAX_SIZE]bf_tape;
-global [MAX_SIZE]bf_code;
-global [MAX_SIZE]jmp_stack;
+global [MAX_SIZE] bf_tape;
+global [MAX_SIZE] bf_code;
+global [MAX_SIZE] jmp_stack;
 global tape_pointer, stack_pointer;
 
 function main()
 {
-    bf_tape = 0;
-    pointer = 0;
     programSize = load();
     run(programSize);
+}
+
+function init()
+{
+    bf_tape = 0;
+    pointer = 0;
 }
 
 function count = load()
@@ -61,16 +64,16 @@ function run(programSize)
         else if (op == '[')
         {
             if (bf_tape[tape_pointer])
-                pushStack(i);
+                jmp_stack[stack_pointer++] = i;
             else
-                i = jumpToClosing(i);
+                skipToClosing(i);
         }
         else if (op == ']')
         {
             if (bf_tape[tape_pointer])
                 i = jmp_stack[stack_pointer - 1];
             else
-                popStack();
+                jmp_stack[stack_pointer--];
         }
         else if (op == '+')
         {
@@ -93,17 +96,7 @@ function run(programSize)
     }
 }
         
-function pushStack(value)
-{
-    jmp_stack[stack_pointer++] = value;
-}
-
-function value = popStack()
-{
-    value = jmp_stack[stack_pointer--];
-}
-
-function idx = jumpToClosing(idx)
+function skipToClosing(&idx)
 {
     count = 1;
     while (count > 0)
