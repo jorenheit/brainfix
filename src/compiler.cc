@@ -76,6 +76,11 @@ int Compiler::allocateTemp(int const sz)
     return d_memory.getTemp(d_callStack.back(), sz);
 }
 
+int Compiler::allocateTempBlock(int const sz)
+{
+    return d_memory.getTempBlock(d_callStack.back(), sz);
+}
+
 void Compiler::pushStack(int const addr)
 {
     d_memory.stack(addr);
@@ -233,8 +238,9 @@ std::string Compiler::bf_multiplyBy(int const target, int const factor)
 {
     validateAddr(target, factor);
 
-    int const targetCopy = allocateTemp();
-    int const count  = allocateTemp();
+    int const tmp = allocateTempBlock(2);
+    int const targetCopy = tmp + 0;
+    int const count      = tmp + 1;
 
     std::ostringstream ops;
     ops << bf_assign(targetCopy, target)
@@ -271,8 +277,9 @@ std::string Compiler::bf_and(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
 
-    int const x = allocateTemp();
-    int const y = allocateTemp();
+    int const tmp = allocateTempBlock(2);
+    int const x = tmp + 0;
+    int const y = tmp + 1;
     
     std::ostringstream ops;
     ops    << bf_setToValue(result, 0)
@@ -295,8 +302,9 @@ std::string Compiler::bf_or(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
 
-    int const x = allocateTemp();
-    int const y = allocateTemp();
+    int const tmp = allocateTempBlock(2);
+    int const x = tmp + 0;
+    int const y = tmp + 1;
 
     std::ostringstream ops;
     ops    << bf_setToValue(result, 0)
@@ -319,21 +327,22 @@ std::string Compiler::bf_equal(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
 
-    int const tmpL = allocateTemp();
-    int const tmpR = allocateTemp();
+    int const tmp = allocateTempBlock(2);
+    int const x = tmp + 0;
+    int const y = tmp + 1;
 
     std::ostringstream ops;
     ops << bf_setToValue(result, 1)
-        << bf_assign(tmpR, rhs)
-        << bf_assign(tmpL, lhs)
+        << bf_assign(y, rhs)
+        << bf_assign(x, lhs)
         << "["
-        <<     bf_decr(tmpR)
-        <<     bf_decr(tmpL)
+        <<     bf_decr(y)
+        <<     bf_decr(x)
         << "]"
-        << bf_movePtr(tmpR)
+        << bf_movePtr(y)
         << "["
         <<     bf_setToValue(result, 0)
-        <<     bf_setToValue(tmpR, 0)
+        <<     bf_setToValue(y, 0)
         << "]"
         << bf_movePtr(result);
 
@@ -356,10 +365,11 @@ std::string Compiler::bf_greater(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
 
-    int const x        = allocateTemp();
-    int const y        = allocateTemp();
-    int const tmp1    = allocateTemp();
-    int const tmp2    = allocateTemp();
+    int const tmp  = allocateTempBlock(4);
+    int const x    = tmp + 0;
+    int const y    = tmp + 1;
+    int const tmp1 = tmp + 2;
+    int const tmp2 = tmp + 3;
         
     std::ostringstream ops;
     ops    << bf_setToValue(tmp1, 0)
@@ -404,14 +414,14 @@ std::string Compiler::bf_greaterOrEqual(int const lhs, int const rhs, int const 
 {
     validateAddr(lhs, rhs, result);
 
-    int const isEqual = allocateTemp();
-    int const isGreater = allocateTemp();
+    int const tmp       = allocateTempBlock(2);
+    int const isEqual   = tmp + 0;
+    int const isGreater = tmp + 1;
 
     std::ostringstream ops;
     ops    << bf_equal(lhs, rhs, isEqual)
            << bf_greater(lhs, rhs, isGreater)
-           << bf_or(isEqual, isGreater, result)
-           << bf_movePtr(result);
+           << bf_or(isEqual, isGreater, result);
 
     return ops.str();
 }
@@ -947,14 +957,13 @@ int Compiler::modDiv(AddressOrInstruction const &lhs, AddressOrInstruction const
 
 std::pair<int, int> Compiler::divModPair(AddressOrInstruction const &num, AddressOrInstruction const &denom)
 {
-    int const tmp = allocateTemp(4);
+    int const tmp = allocateTempBlock(6);
     int const tmp_loopflag  = tmp + 0;
     int const tmp_zeroflag  = tmp + 1;
     int const tmp_num       = tmp + 2;
     int const tmp_denom     = tmp + 3;
-    
-    int const result_div    = allocateTemp();
-    int const result_mod    = allocateTemp();
+    int const result_div    = tmp + 4;
+    int const result_mod    = tmp + 5;
     
     // Algorithm:
     // 1. Initialize result-cells to 0 and copy operands to temps

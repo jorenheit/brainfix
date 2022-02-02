@@ -64,6 +64,15 @@ int Memory::getTemp(std::string const &scope, int const sz)
     return start;
 }
 
+int Memory::getTempBlock(std::string const &scope, int const sz)
+{
+    int start = findFree(sz);
+    for (int i = 0; i != sz; ++i)
+        d_memory[start + i].assign("", scope, 1, CellSpec::TEMP);
+
+    return start;
+}
+
 int Memory::findLocal(std::string const &ident, std::string const &scope)
 {
     auto it = std::find_if(d_memory.begin(), d_memory.end(), [&](Cell const &cell)

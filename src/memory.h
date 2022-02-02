@@ -53,7 +53,6 @@ private:
         bool isStacked() const { return d_type == CellSpec::STACKED; }
         bool isTemp() const { return d_type == CellSpec::TEMP; }
         bool isReferenced() const { return d_type == CellSpec::REFERENCED; }
-        
     };
 
     std::vector<Memory::Cell> d_memory;
@@ -64,7 +63,8 @@ public:
     {}
 
     size_t size() const;
-    int getTemp(std::string const &scope, int sz = 1);
+    int getTemp(std::string const &scope, int const sz = 1);
+    int getTempBlock(std::string const &scope, int const sz);
     int allocateLocalSafe(std::string const &ident, std::string const &scope, int const sz = 1);
     int allocateGlobalSafe(std::string const &ident, int const sz = 1);
     int allocateLocalUnsafe(std::string const &ident, std::string const &scope, int const sz = 1);

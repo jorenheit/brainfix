@@ -62,7 +62,7 @@ private:
     // Memory management uitilities
     int  allocateOrGet(std::string const &ident, int const sz = 1);
     int  allocateTemp(int const sz = 1);
-    // Todo; allocateTempBlock
+    int  allocateTempBlock(int const sz);
     int  addressOf(std::string const &ident);
     void freeTemps();
     void freeLocals();
