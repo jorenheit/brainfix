@@ -169,7 +169,7 @@ function bar(&x)
 
 
 #### Passign array-elements by reference
-When an array-element is accessed through the index-operator, the result of this expression is actually a temporary copy of the actual element. This is because the position of the BF-pointer has to be known at all times, even when the index is a runtime variable (for example determined by user-input). Therefore, when passing an array-element by reference to a function, a reference to the temporary copy is passed rather than the actual element. This limitation is easily side-stepped by passing both the array and the index seperately:
+When an array-element is accessed through the index-operator (more on arrays in the dedicated section below), the result of this expression is actually a temporary copy of the actual element. This is because the position of the BF-pointer has to be known at all times, even when the index is a runtime variable (for example determined by user-input). Therefore, when passing an array-element by reference to a function, a reference to the temporary copy is passed rather than the actual element. This limitation is easily side-stepped by passing both the array and the index seperately:
 
 ```javascript
 function modify1(&x)
@@ -190,7 +190,7 @@ function main()
 }
 ```
 
-### Recursion
+#### Recursion
 Unfortunately, recursion is not allowed in BrainFix. Most compilers implement function calls as jumps. However, this is not possible in BF code because there is no JMP instruction that allows us to jump to arbitrary places in the code. It should be possible in principle, but would be very hard to implement (and would probably require a lot more memory to accomodate the algorithms that could make it happen). Therefore, the compiler will throw an error when recursion is detected.
 
 ### Operators
