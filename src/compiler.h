@@ -14,8 +14,8 @@ class Compiler
 {
     friend class Parser;
     
-    static constexpr size_t TAPE_SIZE_INITIAL = 1000;
-    static constexpr size_t MAX_ARRAY_SIZE    = 250;
+    static constexpr int TAPE_SIZE_INITIAL = 1000;
+    static constexpr int MAX_ARRAY_SIZE    = 250;
 
     Parser d_parser;
     size_t d_pointer{0};
@@ -59,8 +59,8 @@ private:
     static std::string cancelOppositeCommands(std::string const &bf);
     
     // Memory management uitilities
-    int  allocateOrGet(std::string const &ident, uint8_t const sz = 1);
-    int  allocateTemp(uint8_t const sz = 1);
+    int  allocateOrGet(std::string const &ident, int const sz = 1);
+    int  allocateTemp(int const sz = 1);
     int  addressOf(std::string const &ident);
     void freeTemps();
     void freeLocals();
@@ -117,12 +117,12 @@ private:
     int inlineBF(std::string const &str);
     int sizeOfOperator(std::string const &ident);
     int movePtr(std::string const &ident);
-    int variable(std::string const &ident, uint8_t const sz, bool const checkSize);
+    int variable(std::string const &ident, int const sz, bool const checkSize);
     int constVal(uint8_t const val);
     int statement(Instruction const &instr);
     int mergeInstructions(Instruction const &instr1, Instruction const &instr2);
-    int arrayFromSizeStaticValue(uint8_t const sz, uint8_t const val = 0);
-    int arrayFromSizeDynamicValue(uint8_t const sz, AddressOrInstruction const &val);
+    int arrayFromSizeStaticValue(int const sz, uint8_t const val = 0);
+    int arrayFromSizeDynamicValue(int const sz, AddressOrInstruction const &val);
     int arrayFromList(std::vector<Instruction> const &list);
     int arrayFromString(std::string const &str);
     int call(std::string const &functionName, std::vector<Instruction> const &args = {});   

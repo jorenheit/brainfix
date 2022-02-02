@@ -26,7 +26,7 @@ private:
     {
         std::string d_ident;
         std::string d_scope;
-        uint8_t d_sz;
+        int d_sz;
         CellSpec d_type;
         CellSpec d_restore;
         
@@ -38,13 +38,13 @@ private:
         
         void clear();
         void assign(std::string const &ident, std::string const &scope,
-                    uint8_t sz, CellSpec type);
+                    int const sz, CellSpec const type);
         void stack();
         void unstack();
             
         std::string const &ident() const { return d_ident; }
         std::string const &scope() const { return d_scope; }
-        uint8_t size() const { return d_sz; }
+        int size() const { return d_sz; }
         CellSpec type() const { return d_type; }
         
         bool isEmpty() const { return d_type == CellSpec::EMPTY; }
@@ -64,25 +64,25 @@ public:
     {}
 
     size_t size() const;
-    int getTemp(std::string const &scope, uint8_t sz = 1);
-    int allocateLocalSafe(std::string const &ident, std::string const &scope, uint8_t sz = 1);
-    int allocateGlobalSafe(std::string const &ident, uint8_t sz = 1);
-    int allocateLocalUnsafe(std::string const &ident, std::string const &scope, uint8_t sz = 1);
-    int allocateGlobalUnsafe(std::string const &ident, uint8_t sz = 1);
+    int getTemp(std::string const &scope, int sz = 1);
+    int allocateLocalSafe(std::string const &ident, std::string const &scope, int const sz = 1);
+    int allocateGlobalSafe(std::string const &ident, int const sz = 1);
+    int allocateLocalUnsafe(std::string const &ident, std::string const &scope, int const sz = 1);
+    int allocateGlobalUnsafe(std::string const &ident, int const sz = 1);
     int findLocal(std::string const &ident, std::string const &scope);
     int findGlobal(std::string const &ident);
-    uint8_t sizeOf(int addr) const;
-    void stack(int addr);
-    void unstack(int addr);
+    int sizeOf(int const addr) const;
+    void stack(int const addr);
+    void unstack(int const addr);
     void freeTemps(std::string const &scope);
     void freeLocals(std::string const &scope);
-    void markAsTemp(int addr);
-    void markAsGlobal(int addr);
-    void changeScope(int addr, std::string const &newScope);
-    std::string cellString(int addr) const;
+    void markAsTemp(int const addr);
+    void markAsGlobal(int const addr);
+    void changeScope(int const addr, std::string const &newScope);
+    std::string cellString(int const addr) const;
 
 private:    
-    int findFree(uint8_t sz = 1);
+    int findFree(int sz = 1);
 
     template <typename Predicate>
     void freeIf(Predicate &&pred);

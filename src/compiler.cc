@@ -57,7 +57,7 @@ bool Compiler::isCompileTimeConstant(std::string const &ident) const
     return d_constMap.find(ident) != d_constMap.end();
 }
 
-int Compiler::allocateOrGet(std::string const &ident, uint8_t const sz)
+int Compiler::allocateOrGet(std::string const &ident, int const sz)
 {
     std::string const scope = d_callStack.empty() ? "" : d_callStack.back();
     int addr = addressOf(ident);
@@ -71,7 +71,7 @@ int Compiler::addressOf(std::string const &ident)
     return (addr != -1) ? addr : d_memory.findGlobal(ident);
 }
 
-int Compiler::allocateTemp(uint8_t const sz)
+int Compiler::allocateTemp(int const sz)
 {
     return d_memory.getTemp(d_callStack.back(), sz);
 }
@@ -514,7 +514,7 @@ int Compiler::call(std::string const &functionName,
                 "Invalid argument argument to function \"", func.name(),
                 "\": the expression passed as argument ", idx, " returns void.");
         
-        uint8_t sz = d_memory.sizeOf(argAddr);
+        int sz = d_memory.sizeOf(argAddr);
         
         // Allocate local variable for the function of the correct size
         std::string const &p = params[idx];
@@ -549,7 +549,7 @@ int Compiler::call(std::string const &functionName,
     return ret;
 }
 
-int Compiler::variable(std::string const &ident, uint8_t const sz, bool const checkSize)
+int Compiler::variable(std::string const &ident, int const sz, bool const checkSize)
 {
     if (isCompileTimeConstant(ident))
         return constVal(compileTimeConstant(ident));
@@ -609,10 +609,10 @@ int Compiler::assignPlaceholder(std::string const &lhs, AddressOrInstruction con
 }
 
 
-int Compiler::arrayFromSizeStaticValue(uint8_t const sz, uint8_t const val)
+int Compiler::arrayFromSizeStaticValue(int const sz, uint8_t const val)
 {
     errorIf(sz > MAX_ARRAY_SIZE,
-            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
+            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
     
     int const start = allocateTemp(sz);
     for (int idx = 0; idx != sz; ++idx)
@@ -622,10 +622,10 @@ int Compiler::arrayFromSizeStaticValue(uint8_t const sz, uint8_t const val)
 }
 
 
-int Compiler::arrayFromSizeDynamicValue(uint8_t const sz, AddressOrInstruction const &val)
+int Compiler::arrayFromSizeDynamicValue(int const sz, AddressOrInstruction const &val)
 {
     errorIf(sz > MAX_ARRAY_SIZE,
-            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
+            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
 
     errorIf(d_memory.sizeOf(val) > 1,
             "Array fill-value must refer to a variable of size 1, but it is of size ",
@@ -636,7 +636,7 @@ int Compiler::arrayFromSizeDynamicValue(uint8_t const sz, AddressOrInstruction c
 
 int Compiler::arrayFromList(std::vector<Instruction> const &list)
 {
-    uint8_t const sz = list.size();
+    int const sz = list.size();
 
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
@@ -650,7 +650,7 @@ int Compiler::arrayFromList(std::vector<Instruction> const &list)
 
 int Compiler::arrayFromString(std::string const &str)
 {
-    uint8_t const sz = str.size();
+    int const sz = str.size();
 
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
@@ -677,7 +677,7 @@ int Compiler::fetchElement(std::string const &ident, AddressOrInstruction const 
     // 2. to store a temporary necessary for copying
 
     int const arr = addressOf(ident);
-    uint8_t const sz = d_memory.sizeOf(arr);
+    int const sz = d_memory.sizeOf(arr);
 
     int const bufSize = sz + 2;
     int const buf = allocateTemp(bufSize);
@@ -720,7 +720,7 @@ int Compiler::assignElement(std::string const &ident, AddressOrInstruction const
     static std::string const dynamicMoveLeft = "[[-<+>]<-]<";
                
     int const arr = addressOf(ident);
-    uint8_t const sz = d_memory.sizeOf(arr);
+    int const sz = d_memory.sizeOf(arr);
 
     int const bufSize = sz + 2;
     int const buf = allocateTemp(bufSize);

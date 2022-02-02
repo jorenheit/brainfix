@@ -2,8 +2,8 @@
 
 void Memory::Cell::assign(std::string const &ident,
                           std::string const &scope,
-                          uint8_t sz,
-                          CellSpec type)
+                          int const sz,
+                          CellSpec const type)
 {
     assert(type != CellSpec::EMPTY &&
            "Assignment of CellSpec::EMPTY not allowed: use clear()");
@@ -36,7 +36,7 @@ void Memory::Cell::clear()
     d_restore = CellSpec::INVALID;
 }
         
-int Memory::findFree(uint8_t sz)
+int Memory::findFree(int const sz)
 {
     for (size_t start = 0; start != d_memory.size() - sz; ++start)
     {
@@ -57,7 +57,7 @@ int Memory::findFree(uint8_t sz)
     return findFree(sz);
 }
 
-int Memory::getTemp(std::string const &scope, uint8_t sz)
+int Memory::getTemp(std::string const &scope, int const sz)
 {
     int start = findFree(sz);
     d_memory[start].assign("", scope, sz, CellSpec::TEMP);
@@ -80,20 +80,20 @@ int Memory::findLocal(std::string const &ident, std::string const &scope)
     return -1;
 }
 
-int Memory::allocateLocalSafe(std::string const &ident, std::string const &scope, uint8_t sz)
+int Memory::allocateLocalSafe(std::string const &ident, std::string const &scope, int const sz)
 {
     assert(findLocal(scope, ident) == -1 && "Variable already allocated locally");
     return allocateLocalUnsafe(ident, scope, sz);
 }
 
-int Memory::allocateGlobalSafe(std::string const &ident, uint8_t sz)
+int Memory::allocateGlobalSafe(std::string const &ident, int const sz)
 {
     assert(findGlobal(ident) == -1 && "Variable already allocated globally");
     return allocateGlobalUnsafe(ident, sz);
 }
 
 
-int Memory::allocateLocalUnsafe(std::string const &ident, std::string const &scope, uint8_t sz)
+int Memory::allocateLocalUnsafe(std::string const &ident, std::string const &scope, int const sz)
 {
     int addr = findFree(sz);
     d_memory[addr].assign(ident, scope, sz, CellSpec::LOCAL);
@@ -103,7 +103,7 @@ int Memory::allocateLocalUnsafe(std::string const &ident, std::string const &sco
     return addr;
 }
 
-int Memory::allocateGlobalUnsafe(std::string const &ident, uint8_t sz)
+int Memory::allocateGlobalUnsafe(std::string const &ident, int const sz)
 {
     int addr = findFree(sz);
     d_memory[addr].assign(ident, "", 1, CellSpec::GLOBAL);
@@ -128,7 +128,7 @@ int Memory::findGlobal(std::string const &ident)
 }
 
 
-void Memory::stack(int addr)
+void Memory::stack(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     assert((d_memory[addr].isLocal() || d_memory[addr].isTemp()) &&
@@ -137,7 +137,7 @@ void Memory::stack(int addr)
     d_memory[addr].stack();
 }
 
-void Memory::unstack(int addr)
+void Memory::unstack(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     assert(d_memory[addr].isStacked() && "Only local variables can be protected.");
@@ -145,7 +145,7 @@ void Memory::unstack(int addr)
     d_memory[addr].unstack();
 }
 
-std::string Memory::cellString(int addr) const
+std::string Memory::cellString(int const addr) const
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
 
@@ -191,7 +191,7 @@ void Memory::freeLocals(std::string const &scope)
            });
 }
 
-uint8_t Memory::sizeOf(int addr) const
+int Memory::sizeOf(int const addr) const
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     Cell const &cell = d_memory[addr];
@@ -200,7 +200,7 @@ uint8_t Memory::sizeOf(int addr) const
     return d_memory[addr].size();
 }
 
-void Memory::markAsTemp(int addr)
+void Memory::markAsTemp(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     Cell &cell = d_memory[addr];
@@ -208,14 +208,14 @@ void Memory::markAsTemp(int addr)
 }
 
 
-void Memory::markAsGlobal(int addr)
+void Memory::markAsGlobal(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     Cell &cell = d_memory[addr];
     cell.assign(cell.ident(),"", cell.size(), CellSpec::GLOBAL);
 }
 
-void Memory::changeScope(int addr, std::string const &newScope)
+void Memory::changeScope(int const addr, std::string const &newScope)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     Cell &cell = d_memory[addr];
