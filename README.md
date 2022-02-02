@@ -130,15 +130,15 @@ function z = bar(x, y)
 }
 ```
 
-#### Value Semantics
-Arguments can only be passed by value, meaning that every argument is copied into the local scope of the function. Modifications to the arguments will therefore have no effect on the corresponding variables in the calling scope.
+#### Value and Reference Semantics
+By default, all arguments are passed by value to a function: every argument is copied into the local scope of the function. Modifications to the arguments will therefore have no effect on the corresponding variables in the calling scope.
 
 ```javascript
 function foo()
 {
     x = 2;
     bar(x);
-	
+
     // x == 2, still
 }
 
@@ -148,37 +148,36 @@ function bar(x)
 }
 ```
 
-### Procedures
-In addition to function, BrainFix supports procedures. The syntax of defining a procedure is similar to that of a function, instead using the `procedure` keyword. There are two main semantic differences between functions and procedures:
-1. Procedures never return a value.
-2. All arguments passed to a procedure are passed by reference.
-
-A procedure can be viewed as a set of statements that are injected in the call-site. For example:
+However, BrainFix supports reference semantics as well! Parameters prefixed by `&` (like in C++) are passed by reference to the function. This will prevent the copy from taking place and will therefore be faster than passing it by value. However, it also introduces the possibility of subtle bugs, which is why it's not the default mode of operation.
 
 ```javascript
-procedure triple(x)
+
+function foo()
 {
-    x *= 3;
+    x = 2;
+    bar(x);
+
+    // x == 3 now
 }
 
-function main()
-{
-    x = 14;
-    triple(x);
-    printd(x): // prints 42 
-}
-```
-
-#### Passign array-elements to procedures
-When an array-element is accessed through the index-operator, the result of this expression is actually a temporary copy of the actual element. This is because the position of the BF-pointer has to be known at all times, even when the index is a runtime variable (for example determined by user-input). Therefore, when passing an array-element to a procedure, the temporary copy is modified instead of the actual element. This limitation is easily side-stepped by passing both the array and the index seperately:
-
-```javascript
-procedure modify1(x)
+function bar(&x)
 {
     ++x;
 }
 
-procedure modify2(arr, i)
+```
+
+
+#### Passign array-elements by reference
+When an array-element is accessed through the index-operator, the result of this expression is actually a temporary copy of the actual element. This is because the position of the BF-pointer has to be known at all times, even when the index is a runtime variable (for example determined by user-input). Therefore, when passing an array-element by reference to a function, a reference to the temporary copy is passed rather than the actual element. This limitation is easily side-stepped by passing both the array and the index seperately:
+
+```javascript
+function modify1(&x)
+{
+    ++x;
+}
+
+function modify2(&arr, i)
 {
     ++arr[i];
 }
@@ -192,7 +191,7 @@ function main()
 ```
 
 ### Recursion
-Unfortunately, recursion (in both functions and procedures) is not allowed in BrainFix. Most compilers implement function calls as jumps. However, this is not possible in BF code because there is no JMP instruction that allows us to jump to arbitrary places in the code. It should be possible in principle, but would be very hard to implement (and would probably require a lot more memory to accomodate the algorithms that could make it happen). Therefore, the compiler will throw an error when recursion is detected.
+Unfortunately, recursion is not allowed in BrainFix. Most compilers implement function calls as jumps. However, this is not possible in BF code because there is no JMP instruction that allows us to jump to arbitrary places in the code. It should be possible in principle, but would be very hard to implement (and would probably require a lot more memory to accomodate the algorithms that could make it happen). Therefore, the compiler will throw an error when recursion is detected.
 
 ### Operators
 The following operators are supported by BrainFix:
