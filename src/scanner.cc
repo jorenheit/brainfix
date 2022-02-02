@@ -6,6 +6,7 @@ std::string Scanner::escape(char c)
     {
     case 'n': return std::string(1, '\n');
     case 't': return std::string(1, '\t');
+    case '0': return std::string(1, '\0');
     default: return std::string(1, c);
     }
 }
