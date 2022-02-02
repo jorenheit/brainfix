@@ -4,24 +4,25 @@
 
    OUTPUT
 
-   printc(x)    - Print byte as ASCII character
-   printd(x)    - Print byte as decimal
-   prints(str)  - Print string (stop at NULL or end of the string)
-   println(str) - Same as prints() but with appended newline
-   print_vec(v) - Print formatted vector, including newline: (v1, v2, v3, ..., vn)
-   endl()       - Print a newline (same as printc('\n'))
+   printc(x)        - Print byte as ASCII character
+   printd(x)        - Print byte as decimal
+   prints(str)      - Print string (stop at NULL or end of the string)
+   println(str)     - Same as prints() but with appended newline
+   print_vec(v)     - Print formatted vector, including newline: (v1, v2, v3, ..., vn)
+   endl()           - Print a newline (same as printc('\n'))
    
    INPUT
 
-   scanc()      - Read a single byte from stdin
-   scand()      - Read at most 3 bytes from stdin and convert to decimal
-   scans(buf)   - Read string from stdin. sizeof(buf) determines maximum number of bytes read
+   scanc()          - Read a single byte from stdin
+   scand()          - Read at most 3 bytes from stdin and convert to decimal
+   scans(buf)       - Read string from stdin. sizeof(buf) determines maximum number of bytes read
    
    CONVERSIONS
 
-   to_int(str)  - Converts string to int
-   to_string(x) - Converts int to string
-
+   to_int(str)      - Converts string to int
+   to_string(x)     - Converts int to string
+   to_binary_str(x) - Converts number to binary representation (as string)
+   to_hex_str(x)    - Converts number to hexadecimal representation (as string)
 */
 
 function printc(&c)
@@ -149,4 +150,26 @@ function result = to_int(&str)
             result += (x - '0') * powers[j++];
     }
     
+}
+
+function str = to_binary_str(x)
+{
+    []powers = #(128, 64, 32, 16, 8, 4, 2, 1);
+    []str = "00000000";
+    for (i = 0; i < sizeof(powers); ++i)
+    {
+        p = powers[i];
+        if (x >= p)
+        {
+            str[i] = '1';
+            x -= p;
+        }
+    }
+}
+
+function str = to_hex_str(x)
+{
+    lowNibble = (x /=% 16);
+    []c = "0123456789abcdef";
+    []str = #('0', 'x', c[x], c[lowNibble]);
 }

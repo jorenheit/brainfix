@@ -623,6 +623,8 @@ int Compiler::constVal(uint8_t const num)
 
 int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void expression in assignment.");
+    
     int const leftSize = d_memory.sizeOf(lhs);
     int const rightSize = d_memory.sizeOf(rhs);
 
@@ -828,18 +830,24 @@ int Compiler::applyBinaryFunctionToElement(std::string const &arrayIdent,
 
 int Compiler::preIncrement(AddressOrInstruction const &target)
 {
+    errorIf(target < 0, "Cannot increment void-expression.");
+
     d_codeBuffer << bf_incr(target);
     return target;
 }
 
 int Compiler::preDecrement(AddressOrInstruction const &target)
 {
+    errorIf(target < 0, "Cannot decrement void-expression.");
+    
     d_codeBuffer << bf_decr(target);
     return target;
 }
 
 int Compiler::postIncrement(AddressOrInstruction const &target)
 {
+    errorIf(target < 0, "Cannot increment void-expression.");
+    
     int const tmp = allocateTemp();
     d_codeBuffer << bf_assign(tmp, target)
                  << bf_incr(target);
@@ -849,6 +857,8 @@ int Compiler::postIncrement(AddressOrInstruction const &target)
 
 int Compiler::postDecrement(AddressOrInstruction const &target)
 {
+    errorIf(target < 0, "Cannot decrement void-expression.");
+
     int const tmp = allocateTemp();
     d_codeBuffer << bf_assign(tmp, target)
                  << bf_decr(target);
