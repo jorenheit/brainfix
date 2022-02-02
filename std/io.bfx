@@ -24,32 +24,32 @@
 
 */
 
-function printc(c)
+procedure printc(c)
 {
     __movePtr(c);
     __bf(".");
 }
 
-function printd(x)
+procedure printd(x)
 {
     prints(to_string(x));
 }
 
-function prints(x)
+procedure prints(str)
 {
     i = 0;
-    while (i < sizeof(x) && x[i] != 0)
-        printc(x[i++]);
+    while (i < sizeof(str) && str[i] != 0)
+        printc(str[i++]);
 }
 
 
-function println(x)
+procedure println(x)
 {
     prints(x);
     printc('\n');
 }
 
-function print_vec(v)
+procedure print_vec(v)
 {
     sz = sizeof(v);
     printc('(');
@@ -79,7 +79,7 @@ function c = scanc()
 function result = scand()
 {
     [3]input = 0;
-    input = scans(input);
+    scans(input);
 
     []powers = #(1, 10, 100);
     result = 0;
@@ -92,7 +92,7 @@ function result = scand()
     }
 }
 
-function buf = scans(buf)
+procedure scans(buf)
 {
     i = 0;
     done = 0;

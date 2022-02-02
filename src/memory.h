@@ -79,7 +79,10 @@ public:
     void markAsTemp(int const addr);
     void markAsGlobal(int const addr);
     void changeScope(int const addr, std::string const &newScope);
+    void changeIdent(int const addr, std::string const &newIdent);
+    std::string identifier(int const addr) const;
     std::string cellString(int const addr) const;
+    bool isTemp(int const addr) const;
 
 private:    
     int findFree(int sz = 1);

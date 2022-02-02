@@ -29,7 +29,19 @@ void Compiler::addFunction(BFXFunction const &bfxFunc)
     auto result = d_functionMap.insert({bfxFunc.name(), bfxFunc});
     errorIf(!result.second,
             "Redefinition of function ", bfxFunc.name(), " is not allowed.");
+    errorIf(d_procedureMap.find(bfxFunc.name()) != d_procedureMap.end(),
+            "Function-name matched previously defined procedure-name.");
 }
+
+void Compiler::addProcedure(BFXFunction const &bfxFunc)
+{
+    auto result = d_procedureMap.insert({bfxFunc.name(), bfxFunc});
+    errorIf(!result.second,
+            "Redefinition of procedure ", bfxFunc.name(), " is not allowed.");
+    errorIf(d_functionMap.find(bfxFunc.name()) != d_functionMap.end(),
+            "Procedure-name matched previously defined function-name.");
+}
+
 
 void Compiler::addGlobals(std::vector<Instruction> const &variables)
 {
@@ -492,14 +504,23 @@ int Compiler::statement(Instruction const &instr)
     return -1;
 }
 
-int Compiler::call(std::string const &functionName,
-                   std::vector<Instruction> const &args)
+int Compiler::call(std::string const &name,
+                           std::vector<Instruction> const &args)
 {
-    errorIf(d_functionMap.find(functionName) == d_functionMap.end(),
-            "Call to unknown function \"", functionName, "\"");
-    errorIf(std::find(d_callStack.begin(), d_callStack.end(), functionName) != d_callStack.end(),
-            "Function \"", functionName, "\" is called recursively. Recursion is not allowed."); 
+    bool const isFunction = d_functionMap.find(name) != d_functionMap.end();
+    bool const isProcedure = d_procedureMap.find(name) != d_procedureMap.end();
+    
+    errorIf(!isFunction && !isProcedure,
+            "Call to unknown function or procedure \"", name, "\"");
+    errorIf(std::find(d_callStack.begin(), d_callStack.end(), name) != d_callStack.end(),
+            "Function or procedure \"", name, "\" is called recursively. Recursion is not allowed.");
 
+    return isFunction ? callFunction(name, args) : callProcedure(name, args);
+}
+
+int Compiler::callFunction(std::string const &functionName,
+                           std::vector<Instruction> const &args)
+{
     BFXFunction &func = d_functionMap.at(functionName);
     auto const &params = func.params();
     errorIf(params.size() != args.size(),
@@ -509,12 +530,12 @@ int Compiler::call(std::string const &functionName,
     for (size_t idx = 0; idx != args.size(); ++idx)
     {
         // Evaluate argument that's passed in and get its size
-        int argAddr = args[idx]();
+        int const argAddr = args[idx]();
         errorIf(argAddr < 0,
                 "Invalid argument argument to function \"", func.name(),
                 "\": the expression passed as argument ", idx, " returns void.");
         
-        int sz = d_memory.sizeOf(argAddr);
+        int const sz = d_memory.sizeOf(argAddr);
         
         // Allocate local variable for the function of the correct size
         std::string const &p = params[idx];
@@ -547,6 +568,49 @@ int Compiler::call(std::string const &functionName,
     // Clean up and return
     d_memory.freeLocals(func.name());
     return ret;
+}
+
+int Compiler::callProcedure(std::string const &procName,
+                            std::vector<Instruction> const &args)
+{
+    BFXFunction &proc = d_procedureMap.at(procName);
+    auto const &params = proc.params();
+    errorIf(params.size() != args.size(),
+            "Calling procedure \"", proc.name(), "\" with invalid number of arguments. "
+            "Expected ", params.size(), ", got ", args.size(), ".");
+
+    
+    std::vector<std::pair<int, std::string>> arguments;
+    for (size_t idx = 0; idx != args.size(); ++idx)
+    {
+        // Evaluate argument that's passed in and get its size
+        int const argAddr = args[idx]();
+        errorIf(argAddr < 0,
+                "Invalid argument argument to procedure \"", proc.name(),
+                "\": the expression passed as argument ", idx, " returns void.");
+
+        // Change scope of the argument to that of the procedure
+        arguments.push_back({argAddr, d_memory.identifier(argAddr)});
+        d_memory.changeScope(argAddr, proc.name());
+        d_memory.changeIdent(argAddr, params[idx]);
+        pushStack(argAddr);
+    }
+
+    // Execute procedure
+    d_callStack.push_back(proc.name());
+    proc.body()();
+    d_callStack.pop_back();
+
+    // Pull arguments back into calling scope under their original identifiers
+    for (auto const &pr: arguments)
+    {
+        d_memory.changeScope(pr.first, d_callStack.back());
+        d_memory.changeIdent(pr.first, pr.second);
+        popStack();
+    }
+
+    d_memory.freeLocals(proc.name());
+    return -1;
 }
 
 int Compiler::variable(std::string const &ident, int const sz, bool const checkSize)
@@ -809,12 +873,16 @@ int Compiler::postDecrement(AddressOrInstruction const &target)
 
 int Compiler::addTo(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
+
     d_codeBuffer << bf_addTo(lhs, rhs);
     return lhs;
 }
 
 int Compiler::add(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
+    
     int const ret = allocateTemp();
     d_codeBuffer << bf_assign(ret, lhs)
                  << bf_addTo(ret, rhs);
@@ -823,12 +891,16 @@ int Compiler::add(AddressOrInstruction const &lhs, AddressOrInstruction const &r
 
 int Compiler::subtractFrom(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
+    
     d_codeBuffer << bf_subtractFrom(lhs, rhs);
     return lhs;
 }
 
 int Compiler::subtract(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
+
     int const ret = allocateTemp();
     d_codeBuffer << bf_assign(ret, lhs)
                  << bf_subtractFrom(ret, rhs);
@@ -837,12 +909,16 @@ int Compiler::subtract(AddressOrInstruction const &lhs, AddressOrInstruction con
 
 int Compiler::multiplyBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
+    
     d_codeBuffer << bf_multiplyBy(lhs, rhs);
     return lhs;
 }
 
 int Compiler::multiply(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
+
     int const ret = allocateTemp();
     d_codeBuffer << bf_multiply(lhs, rhs, ret);
     return ret;
@@ -850,26 +926,36 @@ int Compiler::multiply(AddressOrInstruction const &lhs, AddressOrInstruction con
 
 int Compiler::divideBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
+    
     return assign(lhs, divide(lhs, rhs));
 }
 
 int Compiler::divide(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
+    
     return divModPair(lhs, rhs).first;
 }
 
 int Compiler::moduloBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in modulo-operation.");
+    
     return assign(lhs, modulo(lhs, rhs));
 }
 
 int Compiler::modulo(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in modulo-operation.");
+    
     return divModPair(lhs, rhs).second;
 }
 
 int Compiler::divMod(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in divmod-operation.");
+    
     auto const pr = divModPair(lhs, rhs);
     assign(lhs, pr.first);
     return pr.second;
@@ -877,6 +963,8 @@ int Compiler::divMod(AddressOrInstruction const &lhs, AddressOrInstruction const
 
 int Compiler::modDiv(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in moddiv-operation.");
+    
     auto const pr = divModPair(lhs, rhs);
     assign(lhs, pr.second);
     return pr.first;
@@ -953,6 +1041,8 @@ std::pair<int, int> Compiler::divModPair(AddressOrInstruction const &num, Addres
 
 int Compiler::equal(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    
     int const result = allocateTemp();
     d_codeBuffer << bf_equal(lhs, rhs, result);
     return result;
@@ -960,6 +1050,8 @@ int Compiler::equal(AddressOrInstruction const &lhs, AddressOrInstruction const 
 
 int Compiler::notEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    
     int const result = allocateTemp();
     d_codeBuffer << bf_notEqual(lhs, rhs, result);
     return result;
@@ -967,6 +1059,8 @@ int Compiler::notEqual(AddressOrInstruction const &lhs, AddressOrInstruction con
 
 int Compiler::less(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    
     int const result = allocateTemp();
     d_codeBuffer << bf_less(lhs, rhs, result);
     return result;
@@ -974,6 +1068,8 @@ int Compiler::less(AddressOrInstruction const &lhs, AddressOrInstruction const &
 
 int Compiler::greater(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    
     int const result = allocateTemp();
     d_codeBuffer << bf_greater(lhs, rhs, result);
     return result;
@@ -981,6 +1077,8 @@ int Compiler::greater(AddressOrInstruction const &lhs, AddressOrInstruction cons
 
 int Compiler::lessOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    
     int const result = allocateTemp();
     d_codeBuffer << bf_lessOrEqual(lhs, rhs, result);
     return result;
@@ -988,6 +1086,8 @@ int Compiler::lessOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction 
 
 int Compiler::greaterOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    
     int const result = allocateTemp();
     d_codeBuffer << bf_greaterOrEqual(lhs, rhs, result);
     return result;
@@ -995,6 +1095,8 @@ int Compiler::greaterOrEqual(AddressOrInstruction const &lhs, AddressOrInstructi
 
 int Compiler::logicalNot(AddressOrInstruction const &arg)
 {
+    errorIf(arg < 0, "Use of void-expression in not-operation.");
+    
     int const result = allocateTemp();
     d_codeBuffer << bf_not(arg, result);
 
@@ -1003,6 +1105,8 @@ int Compiler::logicalNot(AddressOrInstruction const &arg)
 
 int Compiler::logicalAnd(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in and-operation.");
+    
     int const result = allocateTemp();
     d_codeBuffer << bf_and(lhs, rhs, result);
     return result;
@@ -1010,6 +1114,8 @@ int Compiler::logicalAnd(AddressOrInstruction const &lhs, AddressOrInstruction c
 
 int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in or-operation.");
+
     int const result = allocateTemp();
     d_codeBuffer << bf_or(lhs, rhs, result);
     return result;
@@ -1017,8 +1123,11 @@ int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction co
 
 int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody)
 {
+    int const conditionAddr = condition();
+    errorIf(conditionAddr < 0, "Use of void-expression in if-condition.");
+
     int const ifFlag = allocateTemp();
-    assign(ifFlag, condition());
+    assign(ifFlag, conditionAddr);
     int const elseFlag = logicalNot(ifFlag);
 
     pushStack(ifFlag);
@@ -1059,8 +1168,10 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
     pushStack(flag);
     
     init();
+    int const conditionAddr = condition();
+    errorIf(conditionAddr < 0, "Use of void-expression in for-condition.");
     
-    d_codeBuffer << bf_assign(flag, condition())
+    d_codeBuffer << bf_assign(flag, conditionAddr)
                  << "[";
 
     body();
@@ -1076,9 +1187,11 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 int Compiler::whileStatement(Instruction const &condition, Instruction const &body)
 {
     int const flag = allocateTemp();
-
+    int const conditionAddr = condition();
+    errorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
+    
     pushStack(flag);
-    d_codeBuffer << bf_assign(flag, condition())
+    d_codeBuffer << bf_assign(flag, conditionAddr)
                  << "[";
     body();
 

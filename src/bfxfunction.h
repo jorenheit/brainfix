@@ -8,6 +8,30 @@
 #include <cassert>
 
 using Instruction = std::function<int()>;
+/*
+class Instruction
+{
+    std::function<int()> d_func;
+    mutable bool d_void{false};
+
+public:
+    Instruction() = default;
+    
+    Instruction(std::function<int()> const &f):
+        d_func(f)
+    {}
+
+    int operator()() 
+    {
+        return d_func();
+    }
+
+    int operator()() const
+    {
+        return d_func();
+    }
+};
+*/
 
 class BFXFunction
 {

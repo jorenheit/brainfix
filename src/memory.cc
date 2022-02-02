@@ -5,9 +5,6 @@ void Memory::Cell::assign(std::string const &ident,
                           int const sz,
                           CellSpec const type)
 {
-    assert(type != CellSpec::EMPTY &&
-           "Assignment of CellSpec::EMPTY not allowed: use clear()");
-            
     d_ident = ident;
     d_scope = scope;
     d_sz = sz;
@@ -131,8 +128,8 @@ int Memory::findGlobal(std::string const &ident)
 void Memory::stack(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    assert((d_memory[addr].isLocal() || d_memory[addr].isTemp()) &&
-           "Only local variables can be stacked.");
+    // assert((d_memory[addr].isLocal() || d_memory[addr].isTemp()) &&
+    //        "Only local variables can be stacked.");
 
     d_memory[addr].stack();
 }
@@ -140,7 +137,7 @@ void Memory::stack(int const addr)
 void Memory::unstack(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    assert(d_memory[addr].isStacked() && "Only local variables can be protected.");
+    assert(d_memory[addr].isStacked() && "Only stacked variables can be unstacked.");
 
     d_memory[addr].unstack();
 }
@@ -221,3 +218,23 @@ void Memory::changeScope(int const addr, std::string const &newScope)
     Cell &cell = d_memory[addr];
     cell.assign(cell.ident(), newScope, cell.size(), cell.type());
 }
+
+void Memory::changeIdent(int const addr, std::string const &newIdent)
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    Cell &cell = d_memory[addr];
+    cell.assign(newIdent, cell.scope(), cell.size(), cell.type());
+}
+
+std::string Memory::identifier(int const addr) const
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    return d_memory[addr].ident();
+}
+
+bool Memory::isTemp(int const addr) const
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    return d_memory[addr].isTemp();
+}
+
