@@ -121,7 +121,7 @@ function foo()
     let x = 31;
     let y = 38;
 
-    nice = bar(x, y); // works, even if bar is defined below
+    let nice = bar(x, y); // works, even if bar is defined below
 }
 
 function z = bar(x, y)
@@ -194,7 +194,7 @@ function main()
 Unfortunately, recursion is not allowed in BrainFix. Most compilers implement function calls as jumps. However, this is not possible in BF code because there is no JMP instruction that allows us to jump to arbitrary places in the code. It should be possible in principle, but would be very hard to implement (and would probably require a lot more memory to accomodate the algorithms that could make it happen). Therefore, the compiler will throw an error when recursion is detected.
 
 ### Variable Declarations
-New variables are declared using the `let` keyword and can from that point on only be accessed in the same scope; this includes the scope of `if`, `for` and `while` statements. At the declaration, the size of the variable can be specified using square brackets. Variables without a size specifier are allocated as having size 1. It's also possible to let the compiler deduce the size of the variable by adding empty brackets to the declaration. In this case, the variable must be initialized in the same statement in order for the compiler to know its size. After the declaration, only same-sized variables can be assigned to eachother, in which case the elements of the right-hand-side will be copied into the corresponding left-hand-side elements.
+New variables are declared using the `let` keyword and can from that point on only be accessed in the same scope; this includes the scope of `if`, `for` and `while` statements. At the declaration, the size of the variable can be specified using square brackets. Variables without a size specifier are allocated as having size 1. It's also possible to let the compiler deduce the size of the variable by adding empty brackets to the declaration. In this case, the variable must be initialized in the same statement in order for the compiler to know its size. After the declaration, only same-sized variables can be assigned to eachother, in which case the elements of the right-hand-side will be copied into the corresponding left-hand-side elements. There is one exception to this rule: an single value (size 1) can be assigned to an array as a means to initialize or refill the entire array with this value;
 
 ```javascript
 function main()
@@ -206,10 +206,11 @@ function main()
 
     let [y] array2;       // ERROR: size of the array must be a compiletime constant
     let [10] str2 = str;  // ERROR: size mismatch in assignment
+    let [10] str3 = '0';  // OK: str3 is now a string of ten '0'-characters 
 }
 ```
 
-In the example above, we see how a string is used to initialize an array-variable. Other ways to initialize arrays all involve th `#` symbol to indicate an array-literal. In each of these cases, the size-specification can be empty, as the compiler is able to figure out the resulting size from its initializer.
+In the example above, we see how a string is used to initialize an array-variable. Other ways to initialize arrays all involve the `#` symbol to indicate an array-literal. In each of these cases, the size-specification can be empty, as the compiler is able to figure out the resulting size from its initializer.
 
 ```javascript
 function main()
@@ -254,6 +255,7 @@ function looper(arr)
     for (let i = 0; i != sizeof(arr); ++i)
         printd(arr[i]);
 }
+```
 
 #### Constants
 BrainFix provides a simple way to define constants in your program, using the `const` keyword. `const` declarations can only appear at global scope. Throughout the program, occurrences of the variable are replaced at compiletime by the literal value they've been assigned. This means that `const` variables can be used as array-sizes (which is their most common usecase):
