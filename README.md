@@ -1,6 +1,6 @@
 # Brainfix v2.0
 This is a reboot of a little project I did as a student. BrainFix is a compiler that takes a C-style
-language (with elements taken from other languages or custom designed to match its needs) and compiles this
+language (although the syntax slowly evolved to something very close to Javascript for some reason) and compiles this
 into [BrainF*ck](https://esolangs.org/wiki/Brainfuck), an esoteric programming language consisting of only 8 operations.
 
 ## Bisonc++ and Flexc++
@@ -118,15 +118,15 @@ It does not matter where a function is defined with respect to the call:
 ```javascript
 function foo()
 {
-    x = 31;
-    y = 38;
+    let x = 31;
+    let y = 38;
 
     nice = bar(x, y); // works, even if bar is defined below
 }
 
 function z = bar(x, y)
 {
-    z = x + y; // return variable is instantiated here
+    let z = x + y; // return variable is instantiated here
 }
 ```
 
@@ -136,7 +136,7 @@ By default, all arguments are passed by value to a function: every argument is c
 ```javascript
 function foo()
 {
-    x = 2;
+    let x = 2;
     bar(x);
 
     // x == 2, still
@@ -154,7 +154,7 @@ However, BrainFix supports reference semantics as well! Parameters prefixed by `
 
 function foo()
 {
-    x = 2;
+    let x = 2;
     bar(x);
 
     // x == 3 now
@@ -184,7 +184,7 @@ function modify2(&arr, i)
 
 function main()
 {
-    []str = "Hello";
+    let [] str = "Hello";
     modify1(str[2]);   // str is still "Hello"
     modify2(str, 2);   // str is now "Hemlo"
 }
@@ -192,6 +192,83 @@ function main()
 
 #### Recursion
 Unfortunately, recursion is not allowed in BrainFix. Most compilers implement function calls as jumps. However, this is not possible in BF code because there is no JMP instruction that allows us to jump to arbitrary places in the code. It should be possible in principle, but would be very hard to implement (and would probably require a lot more memory to accomodate the algorithms that could make it happen). Therefore, the compiler will throw an error when recursion is detected.
+
+### Variable Declarations
+New variables are declared using the `let` keyword and can from that point on only be accessed in the same scope; this includes the scope of `if`, `for` and `while` statements. At the declaration, the size of the variable can be specified using square brackets. Variables without a size specifier are allocated as having size 1. It's also possible to let the compiler deduce the size of the variable by adding empty brackets to the declaration. In this case, the variable must be initialized in the same statement in order for the compiler to know its size. After the declaration, only same-sized variables can be assigned to eachother, in which case the elements of the right-hand-side will be copied into the corresponding left-hand-side elements.
+
+```javascript
+function main()
+{
+    let x;                // size 1, not initialized
+    let y = 2;            // size 1, initialized to 2
+    let [10] array1;      // array of size 10, not initialized
+    let [] str = "Hello"; // the size of str is deduced as 5 and initialized to "Hello"
+
+    let [y] array2;       // ERROR: size of the array must be a compiletime constant
+    let [10] str2 = str;  // ERROR: size mismatch in assignment
+}
+```
+
+In the example above, we see how a string is used to initialize an array-variable. Other ways to initialize arrays all involve th `#` symbol to indicate an array-literal. In each of these cases, the size-specification can be empty, as the compiler is able to figure out the resulting size from its initializer.
+
+```javascript
+function main()
+{
+    let v1 = 1;
+    let v2 = 2;
+    let zVal = 42;
+
+    let []x = #(v1, v2, 3, 4, 5); // initializer-list
+    let []y = #[5];               // 5 elements, all initialized to 0
+    let []z = #[5, zVal];         // 5 elements, all initialized to 42
+
+    let [zVal] arr;               // ERROR: size-specifier is runtime variable
+}
+```
+
+Size specifications must be known at compiletime; see the section on the `const` keyword below on how to define named compile-time constants.
+
+#### Indexing
+Once an variable is declared (as an array), it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator. BrainFix does not do any bounds-checking, so be careful to make sure that the indices are within the bounds of the array. Anything may happen when going out of bounds...
+
+```javascript
+function main()
+{
+    let [] arr = #(42, 69, 123);
+
+    ++arr[0];     // 42  -> 43
+    --arr[1];     // 69  -> 68
+    arr[2] = 0;   // 123 -> 0
+
+    arr[5] = 'x'; // WHOOPS! index out of bounds. Modifying other memory
+}
+
+```
+
+#### `sizeof()`
+The `sizeof()` operator (it's not really a function, as it's a compiler intrinsic and not defined in terms of the BrainFix language itself) returns the size of a variable and can be used, for example, to loop over an array (more on control-flow in the relevant sections below). 
+
+```javascript
+function looper(arr)
+{
+    for (let i = 0; i != sizeof(arr); ++i)
+        printd(arr[i]);
+}
+
+#### Constants
+BrainFix provides a simple way to define constants in your program, using the `const` keyword. `const` declarations can only appear at global scope. Throughout the program, occurrences of the variable are replaced at compiletime by the literal value they've been assigned. This means that `const` variables can be used as array-sizes (which is their most common usecase):
+
+```javascript
+const SIZE = 10;
+
+function main()
+{
+    let [] arr1 = #[SIZE, 42]; 
+    let [] arr2 = #[SIZE, 69];
+
+    arr1 = arr2; // guaranteed to work, sizes will always match
+}
+```
 
 ### Operators
 The following operators are supported by BrainFix:
@@ -228,10 +305,10 @@ Most of these operators are commonplace and use well known notation. The excepti
 ```javascript
 function divModExample()
 {
-    x = 42;
-    y = 5;
+    let x = 42;
+    let y = 5;
 
-    z = (x /=% y);
+    let z = (x /=% y);
 
     // x -> x / y (8) and
     // z -> x % y (2)
@@ -239,116 +316,13 @@ function divModExample()
 
 function modDivExample()
 {
-    x = 42;
-    y = 5;
+    let x = 42;
+    let y = 5;
 
-    z = (x %=/ y);
+    let z = (x %=/ y);
 	
     // x -> x % y (2) and
     // z -> x / y (8)
-}
-```
-
-### Arrays and Strings
-#### Creating Arrays
-BrainFix supports arrays of up to 250 elements. This upper limit exists due to the fact that the maximum value of an index is 255 (0xff), the fact that some algorithms need some additional cells to work and 250 is a nice and easy to remember number. For the compiler, there's no real difference between regular variables and arrays; variables are simply arrays of size 1. To declare and initialize an array in the BrainFix language, one can use a number of different constructs:
-
-```javascript
-// Anonymous array from initializer list
-#(1, 2, 3, 4, 5);
-
-// Anonymous array from a given size, zero initialized
-#[5]
-
-// Anonymous array from a given size, value initialized
-#[5, value]
-
-// Declare x as an array of 5 elements, do not initialize
-[5]x;
-
-// Declare x as an array of 5 elements, then initialize all elements to 1
-[5]x = 1;
-
-// Use a placeholder for the size
-[]x = #(1, 2, 3, 4, 5, 6, 7);
-[]x = #[10, 42];
-
-// Initialize with a string
-[]str = "Hello World\n";
-
-```
-
-Once an array has a definite size, only arrays of the same size or variables of size 1 can be assigned to it. When assigning a different array of the same size, all elements are copied. When assigning a single element, this value is copied into every element of the array.
-
-```javascript
-function main()
-{
-    [5]x = 1;     // all 1's
-    x = 4;        // x now contains five 4's
-
-    x = "Hello";         // fine
-    x = "Hello World";   // ERROR: different sizes
-}
-```
-
-Especially when storing a string in some variable, it is recommended to use the placeholder notation and let the compiler figure out the size of the string. Keep in mind that once the string has been stored, you can only store same-sized strings into the same variable.
-
-```javascript
-function main()
-{
-    [12]str1 = "Hello World\n";     // Inconvenient
-    []str2   = "Hello World\n";     // Easy
-}
-```
-The size of an array has to be known at compiletime and may not be given by a runtime variable, not even if the value of this variable is strictly known at compiletime (BrainFix does not do any compiletime processing).
-
-#### Indexing
-Once an array is created, it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator:
-
-```javascript
-function main()
-{
-    []arr = #(42, 69, 123);
-
-    ++arr[0];    // 42  -> 43
-    --arr[1];    // 69  -> 68
-    arr[2] = 0;  // 123 -> 0
-}
-
-```
-
-#### `sizeof()`
-The `sizeof()` operator (not really a function, as it's a compiler intrinsic and not defined in the BrainFix language itself) returns the size of a variable and can be used, for example, to loop over an array. 
-
-```javascript
-function looper(arr)
-{
-    for (i = 0; i != sizeof(arr); ++i)
-        printd(arr[i]);
-}
-
-function main()
-{
-    []x1 = #(1, 2, 3);
-    []x2 = #(4, 5, 6, 7, 8);
-
-    looper(x1);
-    looper(x2); // different sized arrays can be passed to the same function
-}
-```
-
-### Constants
-BrainFix provides a simple way to define constants in your program, using the `const` keyword. `const` declarations can only appear at global scope. Throughout the program, occurrences of the variable are replaced at compiletime by the literal value they've been assigned. This means that `const` variables can be used as array-sizes (which is their most common usecase):
-
-```javascript
-const SIZE = 10;
-
-function main()
-{
-    []arr1 = #[SIZE, 42]; 
-    []arr2 = #[SIZE, 69];
-
-    arr1 = arr2; // guaranteed to work, sizes will always match
 }
 ```
 
@@ -360,10 +334,10 @@ include "std/io.bfx"
 
 function main()
 {
-    n = 10;
+    let n = 10;
 	
     // Print 'xoxoxoxoxo' using a for-loop
-    for (i = 0; i < 10; ++i)
+    for (let i = 0; i < 10; ++i)
     {
         if (i % 2 == 0)
             printc('x');  // defined in the std/io library
@@ -387,7 +361,7 @@ BrainF*ck does not contain an opcode that let's us jump to arbitrary places in t
 The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one. Currently, circular inclusions are not detected, and will simply crash the compiler.
 
 ### Standard Library
-The standard library provides some useful functions in two categories: IO and mathematics. Below is a list of provided functions that you can use to make your programs interactive and mathematical.
+The standard library provides some useful functions in two categories: IO and mathematics. Below is a list of provided functions that you can use to make your programs interactive and mathematical. Also, in the "bool.bfx" headerfile, the constants `true` and `false` are defined to `1` and `0` respectively.
 
 #### IO
 All functions below are defined in `std/io.bfx`:
@@ -414,6 +388,7 @@ All functions below are defined in `std/math.bfx`:
 |     function     | description  |
 | ---------------- | ------------ |
 |   `pow(x,y)`	   | Calculate x raised to the power y |
+|   `square(x)`    | Calculate the square of x |
 |   `sqrt(x)`	   | Calculate the square root of x, rounded down |
 |   `factorial(n)` | Calculate n! (overflows for n > 5) |
 |   `min(x,y)`     | Returns the minimum of x and y |
