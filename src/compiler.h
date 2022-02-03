@@ -49,7 +49,7 @@ public:
 
 private:
     void addFunction(BFXFunction const &bfxFunc);
-    void addGlobals(std::vector<Instruction> const &vars);
+    void addGlobals(std::vector<std::pair<std::string, int>> const &declarations);
     void addConstant(std::string const &ident, uint8_t const num);
 
     uint8_t compileTimeConstant(std::string const &ident) const;
@@ -57,10 +57,9 @@ private:
 
     static bool validateInlineBF(std::string const &ident);
     static std::string cancelOppositeCommands(std::string const &bf);
-
     
     // Memory management uitilities
-    int  allocateOrGet(std::string const &ident, int const sz = 1);
+    int  allocate(std::string const &ident, int const sz = 1);
     int  allocateTemp(int const sz = 1);
     int  allocateTempBlock(int const sz);
     int  addressOf(std::string const &ident);
@@ -119,7 +118,6 @@ private:
     int inlineBF(std::string const &str);
     int sizeOfOperator(std::string const &ident);
     int movePtr(std::string const &ident);
-    int variable(std::string const &ident, int const sz, bool const checkSize);
     int constVal(uint8_t const val);
     int statement(Instruction const &instr);
     int mergeInstructions(Instruction const &instr1, Instruction const &instr2);
@@ -128,8 +126,10 @@ private:
     int arrayFromList(std::vector<Instruction> const &list);
     int arrayFromString(std::string const &str);
     int call(std::string const &functionName, std::vector<Instruction> const &args = {});
+    int declareVariable(std::string const &ident, int const sz);
+    int initializeExpression(std::string const &ident, int const sz, Instruction const &rhs);
     int assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
-    int assignPlaceholder(std::string const &lhs, AddressOrInstruction const &rhs);
+    int fetch(std::string const &ident);
     int assignElement(std::string const &ident, AddressOrInstruction const &index, AddressOrInstruction const &rhs);
     int fetchElement(std::string const &ident, AddressOrInstruction const &index);
     int preIncrement(AddressOrInstruction const &addr);

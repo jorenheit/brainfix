@@ -31,18 +31,12 @@ function printc(&c)
     __bf(".");
 }
 
-function printd(&x)
-{
-    prints(to_string(x));
-}
-
 function prints(&str)
 {
-    i = 0;
+    let i = 0;
     while (i < sizeof(str) && str[i] != 0)
         printc(str[i++]);
 }
-
 
 function println(&x)
 {
@@ -50,11 +44,38 @@ function println(&x)
     printc('\n');
 }
 
+function printd(&x)
+{
+    prints(to_string(x));
+}
+
+function str = to_string(x)
+{
+    let hundreds = (x %=/ 100);
+    let tens = (x %=/ 10);
+    let ones = x;
+    
+    let idx = 0;
+    let [3]str = 0;
+    
+    if (hundreds != 0)
+    {
+        str[idx++] = hundreds + '0';
+        str[idx++] = tens + '0';
+    }
+    else if (tens != 0)
+    {
+        str[idx++] = tens + '0';
+    }
+
+    str[idx] = ones + '0';
+}
+
 function print_vec(&v)
 {
-    sz = sizeof(v);
+    let sz = sizeof(v);
     printc('(');
-    for (i = 0; i != sz; ++i)
+    for (let i = 0; i != sz; ++i)
     {
         printd(v[i]);
         if (i != sz - 1)
@@ -73,21 +94,23 @@ function c = scanc()
     /* The argument to __movePtr() is not evaluated,
     so the return value has to be instantiated explicitly. */
 
-    c; __movePtr(c);
+    let c;
+    __movePtr(c);
     __bf(",");
 }
 
 function result = scand()
 {
-    [3]input = 0;
+    let [3] input = 0;
     scans(input);
 
-    []powers = #(1, 10, 100);
-    result = 0;
-    j = 0;
-    for (i = 0; i != 3; ++i)
+    let [3] powers = #(1, 10, 100);
+    let result = 0;
+    let j = 0;
+    
+    for (let i = 0; i != 3; ++i)
     {
-        x = input[2 - i];
+        let x = input[2 - i];
         if (x != 0)
             result += (x - '0') * powers[j++];
     }
@@ -95,11 +118,11 @@ function result = scand()
 
 function scans(&buf)
 {
-    i = 0;
-    done = 0;
+    let i = 0;
+    let done = 0;
     while (i < sizeof(buf) && !done)
     {
-        c = scanc();
+        let c = scanc();
         if (c != '\n')
         {
             buf[i] = c;
@@ -113,52 +136,30 @@ function scans(&buf)
     }
 }
 
-function str = to_string(x)
-{
-    hundreds = (x %=/ 100);
-    tens = (x %=/ 10);
-    ones = x;
-
-    idx = 0;
-    [3]str = 0;
-    
-    if (hundreds != 0)
-    {
-        str[idx++] = hundreds + '0';
-        str[idx++] = tens + '0';
-    }
-    else if (tens != 0)
-    {
-        str[idx++] = tens + '0';
-    }
-
-    str[idx] = ones + '0';
-}
-
 function result = to_int(&str)
 {
-    nDigits = sizeof(str);
-    if (nDigits > 3) nDigits = 3;
+    let nDigits = sizeof(str);
+    if (nDigits > 3)
+        nDigits = 3;
 
-    []powers = #(1, 10, 100);
-    result = 0;
-    j = 0;
-    for (i = 0; i != nDigits; ++i)
+    let [3] powers = #(1, 10, 100);
+    let result = 0;
+    let j = 0;
+    for (let i = 0; i != nDigits; ++i)
     {
-        x = str[nDigits - 1 - i];
+        let x = str[nDigits - 1 - i];
         if (x != 0)
             result += (x - '0') * powers[j++];
     }
     
 }
-
 function str = to_binary_str(x)
 {
-    []powers = #(128, 64, 32, 16, 8, 4, 2, 1);
-    []str = "00000000";
-    for (i = 0; i < sizeof(powers); ++i)
+    let [] powers = #(128, 64, 32, 16, 8, 4, 2, 1);
+    let [] str = "00000000";
+    for (let i = 0; i < sizeof(powers); ++i)
     {
-        p = powers[i];
+        let p = powers[i];
         if (x >= p)
         {
             str[i] = '1';
@@ -167,9 +168,10 @@ function str = to_binary_str(x)
     }
 }
 
+
 function str = to_hex_str(x)
 {
-    lowNibble = (x /=% 16);
-    []c = "0123456789abcdef";
-    []str = #('0', 'x', c[x], c[lowNibble]);
+    let lowNibble = (x /=% 16);
+    let [] c      = "0123456789abcdef";
+    let [] str    = #('0', 'x', c[x], c[lowNibble]);
 }

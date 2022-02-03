@@ -65,10 +65,8 @@ public:
     size_t size() const;
     int getTemp(std::string const &scope, int const sz = 1);
     int getTempBlock(std::string const &scope, int const sz);
-    int allocateLocalSafe(std::string const &ident, std::string const &scope, int const sz = 1);
-    int allocateGlobalSafe(std::string const &ident, int const sz = 1);
-    int allocateLocalUnsafe(std::string const &ident, std::string const &scope, int const sz = 1);
-    int allocateGlobalUnsafe(std::string const &ident, int const sz = 1);
+    int allocateLocal(std::string const &ident, std::string const &scope, int const sz = 1);
+    int allocateGlobal(std::string const &ident, int const sz = 1);
     int findLocal(std::string const &ident, std::string const &scope);
     int findGlobal(std::string const &ident);
     int sizeOf(int const addr) const;
@@ -77,7 +75,6 @@ public:
     void freeTemps(std::string const &scope);
     void freeLocals(std::string const &scope);
     void markAsTemp(int const addr);
-    void markAsGlobal(int const addr);
     void changeScope(int const addr, std::string const &newScope);
     void changeIdent(int const addr, std::string const &newIdent);
     std::string identifier(int const addr) const;

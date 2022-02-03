@@ -73,6 +73,32 @@ int Memory::getTempBlock(std::string const &scope, int const sz)
     return start;
 }
 
+int Memory::allocateLocal(std::string const &ident, std::string const &scope, int const sz)
+{
+    if (findLocal(scope, ident) != -1)
+        return  -1;
+    
+    int addr = findFree(sz);
+    d_memory[addr].assign(ident, scope, sz, CellSpec::LOCAL);
+    for (int i = 1; i != sz; ++i)
+        d_memory[addr + i].assign("", "", 0, CellSpec::REFERENCED);
+
+    return addr;
+}
+
+int Memory::allocateGlobal(std::string const &ident, int const sz)
+{
+    if (findGlobal(ident) != -1)
+        return  -1;
+    
+    int addr = findFree(sz);
+    d_memory[addr].assign(ident, "", sz, CellSpec::GLOBAL);
+    for (int i = 1; i != sz; ++i)
+        d_memory[addr + i].assign("", "", 0, CellSpec::REFERENCED);
+    
+    return addr;
+}
+
 int Memory::findLocal(std::string const &ident, std::string const &scope)
 {
     auto it = std::find_if(d_memory.begin(), d_memory.end(), [&](Cell const &cell)
@@ -85,40 +111,6 @@ int Memory::findLocal(std::string const &ident, std::string const &scope)
 
     return -1;
 }
-
-int Memory::allocateLocalSafe(std::string const &ident, std::string const &scope, int const sz)
-{
-    assert(findLocal(scope, ident) == -1 && "Variable already allocated locally");
-    return allocateLocalUnsafe(ident, scope, sz);
-}
-
-int Memory::allocateGlobalSafe(std::string const &ident, int const sz)
-{
-    assert(findGlobal(ident) == -1 && "Variable already allocated globally");
-    return allocateGlobalUnsafe(ident, sz);
-}
-
-
-int Memory::allocateLocalUnsafe(std::string const &ident, std::string const &scope, int const sz)
-{
-    int addr = findFree(sz);
-    d_memory[addr].assign(ident, scope, sz, CellSpec::LOCAL);
-    for (int i = 1; i != sz; ++i)
-        d_memory[addr + i].assign("", "", 0, CellSpec::REFERENCED);
-
-    return addr;
-}
-
-int Memory::allocateGlobalUnsafe(std::string const &ident, int const sz)
-{
-    int addr = findFree(sz);
-    d_memory[addr].assign(ident, "", 1, CellSpec::GLOBAL);
-    for (int i = 1; i != sz; ++i)
-        d_memory[addr + i].assign("", "", 0, CellSpec::REFERENCED);
-    
-    return addr;
-}
-
 
 int Memory::findGlobal(std::string const &ident)
 {
@@ -213,13 +205,6 @@ void Memory::markAsTemp(int const addr)
     cell.assign("", cell.scope(), cell.size(), CellSpec::TEMP);
 }
 
-
-void Memory::markAsGlobal(int const addr)
-{
-    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    Cell &cell = d_memory[addr];
-    cell.assign(cell.ident(),"", cell.size(), CellSpec::GLOBAL);
-}
 
 void Memory::changeScope(int const addr, std::string const &newScope)
 {

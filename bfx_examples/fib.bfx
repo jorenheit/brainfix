@@ -3,21 +3,21 @@ include "std/io.bfx"
 function main()
 {
     prints("f[0] = ");
-    a = scand();
+    let a = scand();
 
     prints("f[1] = ");
-    b = scand();
+    let b = scand();
 
     prints("Up to n = ");
-    n = scand();
+    let n = scand();
 
     prints("0: "); printd(a); endl();
-    for (i = 0; i != n - 1; ++i)
+    for (let i = 0; i != n - 1; ++i)
     {
         printd(i + 1); prints(": ");
         printd(b); endl();
         
-        tmp = b; 
+        let tmp = b; 
         b += a;
         a = tmp;
     }

@@ -28,13 +28,18 @@ void Compiler::addFunction(BFXFunction const &bfxFunc)
 {
     auto result = d_functionMap.insert({bfxFunc.name(), bfxFunc});
     errorIf(!result.second,
-            "Redefinition of function ", bfxFunc.name(), " is not allowed.");
+            "Redefinition of function \"", bfxFunc.name(), "\" is not allowed.");
 }
 
-void Compiler::addGlobals(std::vector<Instruction> const &variables)
+void Compiler::addGlobals(std::vector<std::pair<std::string, int>> const &declarations)
 {
-    for (auto const &var: variables)
-        d_memory.markAsGlobal(var());
+    for (auto const &var: declarations)
+    {
+        std::string const &ident = var.first;
+        int const sz = var.second;
+        errorIf(sz < 0, "Global declaration of \"", ident, "\" has invalid size specification.");
+        d_memory.allocateGlobal(ident, sz);
+    }
 }
 
 void Compiler::addConstant(std::string const &ident, uint8_t const num)
@@ -57,11 +62,14 @@ bool Compiler::isCompileTimeConstant(std::string const &ident) const
     return d_constMap.find(ident) != d_constMap.end();
 }
 
-int Compiler::allocateOrGet(std::string const &ident, int const sz)
+int Compiler::allocate(std::string const &ident, int const sz)
 {
-    std::string const scope = d_callStack.empty() ? "" : d_callStack.back();
-    int addr = addressOf(ident);
-    return (addr != -1) ? addr : d_memory.allocateLocalUnsafe(ident, scope, sz);
+    int const addr = d_callStack.empty() ?
+        d_memory.allocateGlobal(ident, sz) :
+        d_memory.allocateLocal(ident, d_callStack.back(), sz);
+
+    errorIf(addr < 0, "Failed to allocate ", ident, ": variable previously declared.");
+    return addr;
 }
 
 int Compiler::addressOf(std::string const &ident)
@@ -535,7 +543,11 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
             // Allocate local variable for the function of the correct size
             // and copy argument to this location
             int const sz = d_memory.sizeOf(argAddr);
-            int paramAddr = d_memory.allocateLocalSafe(paramIdent, func.name(), sz);
+            int paramAddr = d_memory.allocateLocal(paramIdent, func.name(), sz);
+            errorIf(paramAddr < 0,
+                    "Could not allocate parameter", paramIdent, ". ",
+                    "Possibly due to duplicate parameter-names.");
+            
             assign(paramAddr, argAddr);
         }
         else // Reference
@@ -598,28 +610,32 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     return ret;
 }
 
-int Compiler::variable(std::string const &ident, int const sz, bool const checkSize)
-{
-    if (isCompileTimeConstant(ident))
-        return constVal(compileTimeConstant(ident));
-
-    errorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
-    errorIf(sz > MAX_ARRAY_SIZE,
-            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
-    
-    int const arr = allocateOrGet(ident, sz);
-    errorIf(checkSize && d_memory.sizeOf(arr) != sz,
-            "Variable \"", ident, "\" was previously declared with a different size.");
-
-    return arr;
-}
-
 int Compiler::constVal(uint8_t const num)
 {
     int const tmp = allocateTemp();
     d_codeBuffer << bf_setToValue(tmp, num);
     return tmp;
 }
+
+int Compiler::declareVariable(std::string const &ident, int const sz)
+{
+    errorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
+    errorIf(sz < 0,
+            "Size must be specified in declaration without initialization of variable ", ident);
+    errorIf(sz > MAX_ARRAY_SIZE,
+            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
+
+    return allocate(ident, sz);
+}
+
+int Compiler::initializeExpression(std::string const &ident, int const sz, Instruction const &rhs)
+{
+    int rhsAddr = rhs();
+    int const rhsSize = d_memory.sizeOf(rhsAddr);
+    return assign(allocate(ident, (sz == -1) ? rhsSize : sz),
+                  rhsAddr);
+}
+
 
 int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
@@ -648,17 +664,12 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
     return lhs;
 }
 
-int Compiler::assignPlaceholder(std::string const &lhs, AddressOrInstruction const &rhs)
+int Compiler::fetch(std::string const &ident)
 {
-    errorIf(addressOf(lhs) != -1,
-            "Placeholder size brackets can not be attached to previously declared variable \"",
-            lhs, "\".");
-    
-    int const sz = d_memory.sizeOf(rhs);
-    int const lhsAddr = allocateOrGet(lhs, sz);
-    return assign(lhsAddr, rhs);
+    int const addr = addressOf(ident);
+    errorIf(addr < 0, "Use of unknown variable ", ident, ".");
+    return addr;
 }
-
 
 int Compiler::arrayFromSizeStaticValue(int const sz, uint8_t const val)
 {

@@ -16,6 +16,7 @@ blanks [[:blank:]\n]
 
 "include"                   return ParserBase::INCLUDE;
 "function"                  return ParserBase::FUNCTION;
+"let"                       return ParserBase::LET;
 "global"                    return ParserBase::GLOBAL;
 "const"                     return ParserBase::CONST;
 "for"                       return ParserBase::FOR;

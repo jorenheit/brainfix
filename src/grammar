@@ -7,10 +7,12 @@
 
 %polymorphic    INT8:                   uint8_t;
                 CHAR:                   char;
+                STRING:                 std::string;
+                ARRAY_ELEMENT:          std::pair<std::string, Instruction>;
                 INSTRUCTION:            Instruction;
                 INSTRUCTION_LIST:       std::vector<Instruction>;
-                ELEMENT:                std::pair<std::string, Instruction>;
-                STRING:                 std::string;
+                DECLARATION:            std::pair<std::string, int>;
+                DECLARATION_LIST:       std::vector<std::pair<std::string, int>>;
                 PARAMETER:              BFXFunction::Parameter;
                 PARAMETER_LIST:         std::vector<BFXFunction::Parameter>;
                 BFX_FUNCTION:           BFXFunction;
@@ -18,7 +20,7 @@
 %expect 0
 
 // Keywords
-%token FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST
+%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST
 
 %nonassoc then
 %nonassoc ELSE
@@ -41,7 +43,10 @@
 %type <INSTRUCTION>         if_statement
 %type <INSTRUCTION>         for_statement
 %type <INSTRUCTION>         variable
-%type <STRING>              placeholder_variable
+%type <DECLARATION>         variable_declaration
+%type <DECLARATION>         variable_specification
+%type <DECLARATION_LIST>    variable_specification_list
+%type <ARRAY_ELEMENT>       array_element
 %type <INSTRUCTION>         constant_literal
 %type <INSTRUCTION>         string_literal
 %type <INSTRUCTION>         anonymous_array
@@ -50,11 +55,9 @@
 %type <INSTRUCTION>         code_body
 %type <INSTRUCTION_LIST>    expression_list
 %type <INSTRUCTION_LIST>    optional_expression_list
-%type <INSTRUCTION_LIST>    variable_list
 %type <PARAMETER>           parameter
 %type <PARAMETER_LIST>      parameter_list
 %type <PARAMETER_LIST>      optional_parameter_list
-%type <ELEMENT>             array_element
 %type <BFX_FUNCTION>        function_header
 
 
@@ -163,7 +166,7 @@ optional_parameter_list:
 ;
 
 global_variable_list:
-    GLOBAL variable_list ';'
+    GLOBAL variable_specification_list ';'
     {
         d_comp.addGlobals($2);
     }
@@ -208,7 +211,20 @@ statement:
 ;
 
 expression:
+    variable_declaration
+    {
+        $$ = d_comp.instruction<&Compiler::declareVariable>(($1).first, ($1).second);
+    }
+|    
     variable
+|
+    array_element
+    {
+        $$ = d_comp.instruction<&Compiler::fetchElement>(
+           ($1).first,
+           ($1).second
+        );
+    }
 |
     constant_literal
 |
@@ -223,17 +239,13 @@ expression:
         $$ = d_comp.instruction<&Compiler::sizeOfOperator>($3);
     }
 |
-    array_element
+    variable_declaration '=' expression
     {
-        $$ = d_comp.instruction<&Compiler::fetchElement>(
-           ($1).first,
-           ($1).second
-        );
-    }
-|
-    placeholder_variable '=' expression
-    {
-        $$ = d_comp.instruction<&Compiler::assignPlaceholder>($1, $3);
+        $$ = d_comp.instruction<&Compiler::initializeExpression>(
+                ($1).first,
+                ($1).second,
+                $3
+             );
     }
 |
     variable '=' expression
@@ -513,41 +525,54 @@ while_statement:
     }
 ;
 
-variable:
+variable_declaration:
+    LET variable_specification
+    {
+        $$ = $2;
+    }
+;
+
+variable_specification:
     IDENT
     {
-        $$ = d_comp.instruction<&Compiler::variable>($1, 1, false);
+        $$ = std::pair<std::string, int>($1, 1);
+    }
+|
+    '[' ']' IDENT
+    {
+        $$ = std::pair<std::string, int>($3, -1);
     }
 |
     '[' NUM ']' IDENT
     {
-        $$ = d_comp.instruction<&Compiler::variable>($4, $2, true);
+        $$ = std::pair<std::string, int>($4, $2);
     }
 |
     '[' IDENT ']' IDENT
     {
-        $$ = d_comp.instruction<&Compiler::variable>($4, d_comp.compileTimeConstant($2), true);
+        $$ = std::pair<std::string, int>($4, d_comp.compileTimeConstant($2));
     }
-;
+;    
 
-placeholder_variable:
-    '[' ']' IDENT
-    {
-        $$ = $3;
-    }
-;
 
-variable_list:
-    variable
+variable_specification_list:
+    variable_specification
     {   
-        $$ = std::vector<Instruction>();
+        $$ = std::vector<std::pair<std::string, int>>();
         ($$).push_back($1);
     }
 |
-    variable_list ',' variable
+    variable_specification_list ',' variable_specification
     {
         ($1).push_back($3);
         $$ = $1;
+    }
+;
+
+variable:
+    IDENT
+    {
+        $$ = d_comp.instruction<&Compiler::fetch>($1);
     }
 ;
 
