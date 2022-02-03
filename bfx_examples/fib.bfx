@@ -22,7 +22,7 @@ function main()
         a = tmp;
     }
 
-    printd(i + 1); prints(": ");
+    printd(n); prints(": ");
     printd(b); endl();
 }
 

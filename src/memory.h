@@ -78,6 +78,7 @@ public:
     void changeScope(int const addr, std::string const &newScope);
     void changeIdent(int const addr, std::string const &newIdent);
     std::string identifier(int const addr) const;
+    std::string scope(int const addr) const;
     std::string cellString(int const addr) const;
     bool isTemp(int const addr) const;
 

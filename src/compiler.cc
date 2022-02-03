@@ -1,5 +1,68 @@
 #include "compiler.ih"
 
+bool Compiler::ScopeStack::empty() const
+{
+    return d_stack.empty();
+}
+
+std::string Compiler::ScopeStack::currentFunction() const
+{
+    return empty() ? "" : d_stack.back().first;
+}
+
+std::string Compiler::ScopeStack::currentScopeString() const
+{
+    std::string result = currentFunction();
+    if (d_stack.size() == 0)
+        return result;
+    
+    for (int scopeId: d_stack.back().second)
+        result += std::string("::") + std::to_string(scopeId);
+
+    return result;
+}
+
+bool Compiler::ScopeStack::containsFunction(std::string const &name) const
+{
+    auto const it = std::find_if(d_stack.begin(), d_stack.end(),
+                                 [&](std::pair<std::string, StackType<int>> const &item) 
+                                 {   
+                                     return item.first == name;
+                                 });
+
+    return it != d_stack.end();
+}
+
+void Compiler::ScopeStack::pushFunctionScope(std::string const &name)
+{
+    d_stack.push_back(std::pair<std::string, StackType<int>>(name, StackType<int>{}));
+}
+
+std::string Compiler::ScopeStack::popFunctionScope()
+{
+    std::string top = currentScopeString();
+    d_stack.pop_back();
+    return top;
+}
+
+void Compiler::ScopeStack::pushSubScope()
+{
+    static int counter = 0;
+    
+    auto &subScopeStack = d_stack.back().second;
+    subScopeStack.push_back(++counter);
+}
+
+std::string Compiler::ScopeStack::popSubScope()
+{
+    auto &subScopeStack = d_stack.back().second;
+    std::string top = currentScopeString();
+    subScopeStack.pop_back();
+    return top;
+}
+
+
+
 int Compiler::compile()
 {
     d_stage = Stage::PARSING;
@@ -64,29 +127,28 @@ bool Compiler::isCompileTimeConstant(std::string const &ident) const
 
 int Compiler::allocate(std::string const &ident, int const sz)
 {
-    int const addr = d_callStack.empty() ?
+    int const addr = d_scopeStack.empty() ?
         d_memory.allocateGlobal(ident, sz) :
-        d_memory.allocateLocal(ident, d_callStack.back(), sz);
-
+        d_memory.allocateLocal(ident, d_scopeStack.currentScopeString(), sz);
+    
     errorIf(addr < 0, "Failed to allocate ", ident, ": variable previously declared.");
     return addr;
 }
 
 int Compiler::addressOf(std::string const &ident)
 {
-    std::string const scope = d_callStack.empty() ? "" : d_callStack.back();
-    int addr = d_memory.findLocal(ident, scope);
+    int const addr = d_memory.findLocal(ident, d_scopeStack.currentScopeString());
     return (addr != -1) ? addr : d_memory.findGlobal(ident);
 }
 
 int Compiler::allocateTemp(int const sz)
 {
-    return d_memory.getTemp(d_callStack.back(), sz);
+    return d_memory.getTemp(d_scopeStack.currentFunction(), sz);
 }
 
 int Compiler::allocateTempBlock(int const sz)
 {
-    return d_memory.getTempBlock(d_callStack.back(), sz);
+    return d_memory.getTempBlock(d_scopeStack.currentFunction(), sz);
 }
 
 void Compiler::pushStack(int const addr)
@@ -101,16 +163,6 @@ int Compiler::popStack()
     d_memory.unstack(addr);
     d_stack.pop();
     return addr;
-}
-
-void Compiler::freeTemps()
-{
-    d_memory.freeTemps(d_callStack.back());
-}
-
-void Compiler::freeLocals()
-{
-    d_memory.freeLocals(d_callStack.back());
 }
 
 std::string Compiler::bf_setToValue(int const addr, int const val)
@@ -486,7 +538,7 @@ bool Compiler::validateInlineBF(std::string const &code)
 int Compiler::sizeOfOperator(std::string const &ident)
 {
     int const addr = addressOf(ident);
-    errorIf(addr < 0, "Unknown identifier \"", ident ,"\" passed to sizeof().");
+    errorIf(addr < 0, "Variable \"", ident ,"\" not defined in this scope.");
 
     int const tmp = allocateTemp();
     int const sz = d_memory.sizeOf(addr);
@@ -497,7 +549,7 @@ int Compiler::sizeOfOperator(std::string const &ident)
 int Compiler::movePtr(std::string const &ident)
 {
     int const addr = addressOf(ident);
-    errorIf(addr < 0 &&    "Unknown identifier \"", ident, "\" passed to movePtr().");
+    errorIf(addr < 0, "Variable \"", ident ,"\" not defined in this scope.");
 
     d_codeBuffer << bf_movePtr(addr);
     return -1;
@@ -506,7 +558,7 @@ int Compiler::movePtr(std::string const &ident)
 int Compiler::statement(Instruction const &instr)
 {
     instr();
-    freeTemps();
+    d_memory.freeTemps(d_scopeStack.currentFunction());
     return -1;
 }
 
@@ -515,9 +567,9 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     // Check if the function exists
     bool const isFunction = d_functionMap.find(name) != d_functionMap.end();
     errorIf(!isFunction,"Call to unknown function \"", name, "\"");
-    errorIf(std::find(d_callStack.begin(), d_callStack.end(), name) != d_callStack.end(),
+    errorIf(d_scopeStack.containsFunction(name),
             "Function \"", name, "\" is called recursively. Recursion is not allowed.");
-
+    
     // Get the list of parameters
     BFXFunction &func = d_functionMap.at(name);
     auto const &params = func.params();
@@ -525,7 +577,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
             "Calling function \"", func.name(), "\" with invalid number of arguments. "
             "Expected ", params.size(), ", got ", args.size(), ".");
 
-    std::vector<std::pair<int, std::string>> references;
+    std::vector<std::tuple<int, std::string, std::string>> references;
     for (size_t idx = 0; idx != args.size(); ++idx)
     {
         // Evaluate argument that's passed in and get its size
@@ -552,8 +604,13 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         }
         else // Reference
         {
-            // Change scope of the argument to that of the procedure
-            references.push_back({argAddr, d_memory.identifier(argAddr)});
+            // Change scope of the argument to that of the function
+            references.push_back({
+                                  argAddr,
+                                  d_memory.identifier(argAddr),
+                                  d_memory.scope(argAddr)
+                });
+            
             d_memory.changeScope(argAddr, func.name());
             d_memory.changeIdent(argAddr, paramIdent);
             pushStack(argAddr);
@@ -561,9 +618,10 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     }
     
     // Execute body of the function
-    d_callStack.push_back(func.name());
+    d_scopeStack.pushFunctionScope(func.name());
     func.body()();
-    d_callStack.pop_back();
+    d_scopeStack.popFunctionScope();
+    
 
     // Move return variable to local scope before cleaning up (if non-void)
     int ret = -1;
@@ -574,12 +632,12 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         ret = d_memory.findLocal(retVar, func.name());
         errorIf(ret == -1,
                 "Returnvalue \"", retVar, "\" of function \"", func.name(),
-                "\" seems not to have been declared in the function-body.");
+                "\" seems not to have been declared in the main scope of the function-body.");
 
         // Check if the return variable was passed into the function as a reference
         bool returnVariableIsReferenceParameter = false;
-        for (auto const &pr: references)
-            if (pr.first == ret)
+        for (auto const &tup: references)
+            if (std::get<0>(tup) == ret)
                 returnVariableIsReferenceParameter = true;
 
         if (returnVariableIsReferenceParameter)
@@ -591,17 +649,21 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         }
         else
         {
-            // Pull the variable into local scope as a temp
-            d_memory.changeScope(ret, d_callStack.back());
+            // Pull the variable into local (sub)scope as a temp
+            d_memory.changeScope(ret, d_scopeStack.currentScopeString());
             d_memory.markAsTemp(ret);
         }
     }
 
-    // Pull referenced arguments back into calling scope
-    for (auto const &pr: references)
+    // Pull referenced arguments back into original scope
+    for (auto const &tup: references)
     {
-        d_memory.changeScope(pr.first, d_callStack.back());
-        d_memory.changeIdent(pr.first, pr.second);
+        int const argAddr = std::get<0>(tup);
+        std::string const &originalName = std::get<1>(tup);
+        std::string const &originalScope = std::get<2>(tup);
+        
+        d_memory.changeIdent(argAddr, originalName);
+        d_memory.changeScope(argAddr, originalScope);
         popStack();
     }
     
@@ -666,8 +728,11 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
 
 int Compiler::fetch(std::string const &ident)
 {
+    if (isCompileTimeConstant(ident))
+        return constVal(compileTimeConstant(ident));
+    
     int const addr = addressOf(ident);
-    errorIf(addr < 0, "Use of unknown variable ", ident, ".");
+    errorIf(addr < 0, "Variable \"", ident, "\" undefined in this scope.");
     return addr;
 }
 
@@ -1141,14 +1206,24 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     d_codeBuffer << bf_movePtr(ifFlag)
                  << "[";
 
-    ifBody();
+    {
+        d_scopeStack.pushSubScope();
+        ifBody();
+        std::string outOfScope = d_scopeStack.popSubScope();
+        d_memory.freeLocals(outOfScope);
+    }
     
     d_codeBuffer << bf_setToValue(ifFlag, 0)
                  << "]"
                  <<  bf_movePtr(elseFlag)
                  << "[";
 
-    elseBody();
+    {
+        d_scopeStack.pushSubScope();
+        elseBody();
+        std::string outOfScope = d_scopeStack.popSubScope();
+        d_memory.freeLocals(outOfScope);
+    }
     
     d_codeBuffer << bf_setToValue(elseFlag, 0)
                  << "]";
@@ -1171,7 +1246,8 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 {
     int const flag = allocateTemp();
     pushStack(flag);
-    
+    d_scopeStack.pushSubScope();
+
     init();
     int const conditionAddr = condition();
     errorIf(conditionAddr < 0, "Use of void-expression in for-condition.");
@@ -1184,8 +1260,10 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
     d_codeBuffer << bf_assign(flag, condition())
                  << "]";
 
+    std::string outOfScope = d_scopeStack.popSubScope();
     popStack();
     
+    d_memory.freeLocals(outOfScope);
     return -1;
 }
 
@@ -1194,8 +1272,10 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     int const flag = allocateTemp();
     int const conditionAddr = condition();
     errorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
-    
+
+    d_scopeStack.pushSubScope();
     pushStack(flag);
+
     d_codeBuffer << bf_assign(flag, conditionAddr)
                  << "[";
     body();
@@ -1203,7 +1283,10 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     d_codeBuffer << bf_assign(flag, condition())
                  << "]";
 
+    std::string outOfScope = d_scopeStack.popSubScope();
     popStack();
+
+    d_memory.freeLocals(outOfScope);
     return -1;
 }
 

@@ -101,11 +101,14 @@ int Memory::allocateGlobal(std::string const &ident, int const sz)
 
 int Memory::findLocal(std::string const &ident, std::string const &scope)
 {
-    auto it = std::find_if(d_memory.begin(), d_memory.end(), [&](Cell const &cell)
-                                                             {
-                                                                 return (cell.scope() == scope) &&
-                                                                     (cell.ident() == ident);
-                                                             });
+    auto it = std::find_if(d_memory.begin(), d_memory.end(),
+                           [&](Cell const &cell)
+                           {
+                               return scope.find(cell.scope()) == 0 && cell.ident() == ident;
+                               // return (cell.scope() == scope) &&
+                               //     (cell.ident() == ident);
+                           });
+    
     if (it != d_memory.end())
         return it - d_memory.begin();
 
@@ -114,11 +117,13 @@ int Memory::findLocal(std::string const &ident, std::string const &scope)
 
 int Memory::findGlobal(std::string const &ident)
 {
-    auto it = std::find_if(d_memory.begin(), d_memory.end(), [&](Cell const &cell)
-                                                             {
-                                                                 return cell.type() == CellSpec::GLOBAL &&
-                                                                     cell.ident() == ident;
-                                                             });
+    auto it = std::find_if(d_memory.begin(), d_memory.end(),
+                           [&](Cell const &cell)
+                           {
+                               return cell.type() == CellSpec::GLOBAL &&
+                                   cell.ident() == ident;
+                           });
+    
     if (it != d_memory.end())
         return it - d_memory.begin();
 
@@ -224,6 +229,12 @@ std::string Memory::identifier(int const addr) const
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     return d_memory[addr].ident();
+}
+
+std::string Memory::scope(int const addr) const
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    return d_memory[addr].scope();
 }
 
 bool Memory::isTemp(int const addr) const

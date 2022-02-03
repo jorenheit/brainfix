@@ -23,7 +23,7 @@ global tape_pointer, stack_pointer;
 
 function main()
 {
-    programSize = load();
+    let programSize = load();
     run(programSize);
 }
 
@@ -35,11 +35,11 @@ function init()
 
 function count = load()
 {
-    count = 0;
-    running = true;
+    let count = 0;
+    let running = true;
     while (running && count < MAX_SIZE)
     {
-        c = scanc();
+        let c = scanc();
         if (c == '\n')
             running = false;
         else
@@ -49,10 +49,10 @@ function count = load()
 
 function run(programSize)
 {
-    i = 0;
+    let i = 0;
     while (i < programSize)
     {
-        op = bf_code[i];
+        let op = bf_code[i];
         if (op == '>')
         {
             ++tape_pointer;
@@ -98,10 +98,10 @@ function run(programSize)
         
 function skipToClosing(&idx)
 {
-    count = 1;
+    let count = 1;
     while (count > 0)
     {
-        op = bf_code[++idx];
+        let op = bf_code[++idx];
         if (op == '[')
             ++count;
         else if (op == ']')

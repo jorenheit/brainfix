@@ -23,10 +23,31 @@ class Compiler
 
     std::map<std::string, BFXFunction>  d_functionMap;
     std::map<std::string, uint8_t>      d_constMap;
-    std::deque<std::string>             d_callStack;
     std::ostringstream                  d_codeBuffer;
     std::stack<int>                     d_stack;
 
+
+    class ScopeStack
+    {
+        template <typename T>
+        using StackType = std::deque<T>;
+
+        StackType<std::pair<std::string, StackType<int>>> d_stack;
+        
+    public:
+        bool empty() const;
+        std::string currentFunction() const;
+        std::string currentScopeString() const;
+        bool containsFunction(std::string const &name) const;
+        void pushFunctionScope(std::string const &name);
+        void pushSubScope();
+        std::string popFunctionScope();
+        std::string popSubScope();
+    };
+
+    ScopeStack d_scopeStack;
+
+    
     enum class Stage
         {
          PARSING,
@@ -37,6 +58,7 @@ class Compiler
     Stage       d_stage;
     std::string d_instructionFilename;
     int         d_instructionLineNr;
+
     
 public:
     Compiler(std::string const &file):
@@ -63,8 +85,6 @@ private:
     int  allocateTemp(int const sz = 1);
     int  allocateTempBlock(int const sz);
     int  addressOf(std::string const &ident);
-    void freeTemps();
-    void freeLocals();
     void pushStack(int const addr);
     int  popStack();
 
