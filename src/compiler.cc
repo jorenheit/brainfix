@@ -804,8 +804,9 @@ int Compiler::fetchElement(std::string const &ident, AddressOrInstruction const 
     // 2. to store a temporary necessary for copying
 
     int const arr = addressOf(ident);
-    int const sz = d_memory.sizeOf(arr);
+    errorIf(arr < 0, "Variable \"", ident, "\" undefined in this scope.");
 
+    int const sz = d_memory.sizeOf(arr);
     int const bufSize = sz + 2;
     int const buf = allocateTemp(bufSize);
     int const ret = allocateTemp();
@@ -847,6 +848,8 @@ int Compiler::assignElement(std::string const &ident, AddressOrInstruction const
     static std::string const dynamicMoveLeft = "[[-<+>]<-]<";
                
     int const arr = addressOf(ident);
+    errorIf(arr < 0, "Variable \"", ident, "\" undefined in this scope.");
+    
     int const sz = d_memory.sizeOf(arr);
 
     int const bufSize = sz + 2;

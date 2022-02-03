@@ -3,6 +3,8 @@
   Can only handle BF code under 250 characters long and a tape 
   of at most 250 cells. This is very very slow, but it works.
 
+  Note: the interpreter expects a newline as the final character.
+
   Demo: Hello World (BF sample from wikipedia)
 
   $ bfx bfint.bfx interpreter.bf                      # compile this bfx file to bfint.bf
@@ -36,15 +38,9 @@ function init()
 function count = load()
 {
     let count = 0;
-    let running = true;
-    while (running && count < MAX_SIZE)
-    {
-        let c = scanc();
-        if (c == '\n')
-            running = false;
-        else
-            bf_code[count++] = c;
-    }
+    let c;
+    while ((c = scanc()) != '\n' && count < MAX_SIZE)
+        bf_code[count++] = c;
 }
 
 function run(programSize)
@@ -66,7 +62,7 @@ function run(programSize)
             if (bf_tape[tape_pointer])
                 jmp_stack[stack_pointer++] = i;
             else
-                skipToClosing(i);
+                skipToClosingBracket(i);
         }
         else if (op == ']')
         {
@@ -96,7 +92,7 @@ function run(programSize)
     }
 }
         
-function skipToClosing(&idx)
+function skipToClosingBracket(&idx)
 {
     let count = 1;
     while (count > 0)
