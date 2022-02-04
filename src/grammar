@@ -186,6 +186,11 @@ code_body:
 statement:
     error ';' // continue parsing at the next statement
 |
+    ';'
+    {
+        $$ = d_comp.instruction<&Compiler::statement>([](){ return -1; });
+    }
+|
     expression ';'
     {
         $$ = d_comp.instruction<&Compiler::statement>($1);
