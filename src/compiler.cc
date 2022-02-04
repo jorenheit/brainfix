@@ -113,7 +113,7 @@ void Compiler::addConstant(std::string const &ident, int const num)
             "Redefinition of constant ", ident, " is not allowed.");
 }
 
-uint8_t Compiler::compileTimeConstant(std::string const &ident) const
+int Compiler::compileTimeConstant(std::string const &ident) const
 {
     errorIf(!isCompileTimeConstant(ident),
             ident, " is being used as a const but was not defined as such.");

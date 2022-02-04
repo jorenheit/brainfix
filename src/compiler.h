@@ -23,6 +23,7 @@ class Compiler
     Memory d_memory;
 
     std::map<std::string, BFXFunction>  d_functionMap;
+
     std::map<std::string, uint8_t>      d_constMap;
     std::ostringstream                  d_codeBuffer;
     std::stack<int>                     d_stack;
@@ -73,8 +74,8 @@ private:
     void addGlobals(std::vector<std::pair<std::string, int>> const &declarations);
     void addConstant(std::string const &ident, int const num);
 
-    uint8_t compileTimeConstant(std::string const &ident) const;
-    bool    isCompileTimeConstant(std::string const &ident) const;
+    int  compileTimeConstant(std::string const &ident) const;
+    bool isCompileTimeConstant(std::string const &ident) const;
 
     static bool validateInlineBF(std::string const &ident);
     static std::string cancelOppositeCommands(std::string const &bf);
