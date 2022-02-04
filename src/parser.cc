@@ -19,7 +19,7 @@ int Parser::lex()
         }
     case NUM:
         {
-            d_val_.assign<Tag_::INT8>(static_cast<uint8_t>(std::stoi(d_scanner.matched())));
+            d_val_.assign<Tag_::INT>(std::stoi(d_scanner.matched()));
             break;
         }
     case CHR:

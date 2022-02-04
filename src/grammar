@@ -5,7 +5,7 @@
 %baseclass-preinclude "bfxfunction.h"
 %tag-mismatches on
 
-%polymorphic    INT8:                   uint8_t;
+%polymorphic    INT:                    int;
                 CHAR:                   char;
                 STRING:                 std::string;
                 ARRAY_ELEMENT:          std::pair<std::string, Instruction>;
@@ -31,11 +31,11 @@
 %nonassoc '<' '>' LE GE EQ NE
 %left '+' '-'
 %left '*' '/' '%'
-%right INC DEC '!'
+%right INC DEC '!' unaryMinus
 
 %token <STRING> IDENT
 %token <STRING> STR
-%token <INT8>   NUM
+%token <INT>    NUM
 %token <CHAR>   CHR
 
 %type <INSTRUCTION>         expression
@@ -222,6 +222,12 @@ expression:
     }
 |    
     variable
+|
+    '-' expression %prec unaryMinus
+    {
+        d_comp.compilerError("Negative numbers are not supported.");
+        $$ = []() { return -1; };
+    }
 |
     array_element
     {

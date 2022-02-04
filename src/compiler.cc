@@ -105,8 +105,9 @@ void Compiler::addGlobals(std::vector<std::pair<std::string, int>> const &declar
     }
 }
 
-void Compiler::addConstant(std::string const &ident, uint8_t const num)
+void Compiler::addConstant(std::string const &ident, int const num)
 {
+    warningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
     auto result = d_constMap.insert({ident, num});
     errorIf(!result.second,
             "Redefinition of constant ", ident, " is not allowed.");
@@ -672,8 +673,10 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     return ret;
 }
 
-int Compiler::constVal(uint8_t const num)
+int Compiler::constVal(int const num)
 {
+    warningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
+    
     int const tmp = allocateTemp();
     d_codeBuffer << bf_setToValue(tmp, num);
     return tmp;
@@ -692,6 +695,9 @@ int Compiler::declareVariable(std::string const &ident, int const sz)
 
 int Compiler::initializeExpression(std::string const &ident, int const sz, Instruction const &rhs)
 {
+    errorIf(sz > MAX_ARRAY_SIZE,
+            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
+
     int rhsAddr = rhs();
     int const rhsSize = d_memory.sizeOf(rhsAddr);
     int const lhsSize = (sz == -1) ? rhsSize : sz;
@@ -744,8 +750,10 @@ int Compiler::fetch(std::string const &ident)
     return addr;
 }
 
-int Compiler::arrayFromSizeStaticValue(int const sz, uint8_t const val)
+int Compiler::arrayFromSizeStaticValue(int const sz, int const val)
 {
+    warningIf(val > MAX_INT, "use of value ", val, " exceeds limit of ", MAX_INT, ".");
+    
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
     

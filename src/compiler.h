@@ -15,7 +15,8 @@ class Compiler
     friend class Parser;
     
     static constexpr int TAPE_SIZE_INITIAL = 1000;
-    static constexpr int MAX_ARRAY_SIZE    = 250;
+    static constexpr int MAX_INT           = std::numeric_limits<uint8_t>::max();
+    static constexpr int MAX_ARRAY_SIZE    = MAX_INT - 5;
 
     Parser d_parser;
     size_t d_pointer{0};
@@ -70,7 +71,7 @@ public:
 private:
     void addFunction(BFXFunction const &bfxFunc);
     void addGlobals(std::vector<std::pair<std::string, int>> const &declarations);
-    void addConstant(std::string const &ident, uint8_t const num);
+    void addConstant(std::string const &ident, int const num);
 
     uint8_t compileTimeConstant(std::string const &ident) const;
     bool    isCompileTimeConstant(std::string const &ident) const;
@@ -136,10 +137,10 @@ private:
     int inlineBF(std::string const &str);
     int sizeOfOperator(std::string const &ident);
     int movePtr(std::string const &ident);
-    int constVal(uint8_t const val);
+    int constVal(int const val);
     int statement(Instruction const &instr);
     int mergeInstructions(Instruction const &instr1, Instruction const &instr2);
-    int arrayFromSizeStaticValue(int const sz, uint8_t const val = 0);
+    int arrayFromSizeStaticValue(int const sz, int const val = 0);
     int arrayFromSizeDynamicValue(int const sz, AddressOrInstruction const &val);
     int arrayFromList(std::vector<Instruction> const &list);
     int arrayFromString(std::string const &str);
@@ -184,7 +185,16 @@ private:
 
     // Error handling (implementations below)
     template <typename First, typename ... Rest>
+    void compilerError(First const &first, Rest&& ... rest) const;
+
+    template <typename First, typename ... Rest>
+    void compilerWarning(First const &first, Rest&& ... rest) const;
+
+    template <typename First, typename ... Rest>
     void errorIf(bool const condition, First const &first, Rest&& ... rest) const;
+
+    template <typename First, typename ... Rest>
+    void warningIf(bool const condition, First const &first, Rest&& ... rest) const;
 
     template <typename ... Rest>
     void validateAddr__(std::string const &function, int first, Rest&& ... rest) const;
@@ -197,12 +207,16 @@ private:
 
 
 // Implementation of the errorIf<> and validateAddr__<> function templates
+template <typename First, typename ... Rest>
+void Compiler::compilerWarning(First const &first, Rest&& ... rest) const
+{
+    std::cerr << "Warning: in " << filename() << " on line " << lineNr() << ": " << first;
+    (std::cerr << ... << rest) << '\n';
+}
 
 template <typename First, typename ... Rest>
-void Compiler::errorIf(bool const condition, First const &first, Rest&& ... rest) const
+void Compiler::compilerError(First const &first, Rest&& ... rest) const
 {
-    if (!condition) return;
-
     std::cerr << "Error in " << filename() << " on line " << lineNr() << ": " << first;
     (std::cerr << ... << rest) << '\n';
 
@@ -214,6 +228,20 @@ void Compiler::errorIf(bool const condition, First const &first, Rest&& ... rest
         std::cerr << "Unable to recover: compilation terminated.\n";
         std::exit(1);
     }
+}
+
+template <typename First, typename ... Rest>
+void Compiler::errorIf(bool const condition, First const &first, Rest&& ... rest) const
+{
+    if (condition)
+        compilerError(first, std::forward<Rest>(rest)...);
+}
+
+template <typename First, typename ... Rest>
+void Compiler::warningIf(bool const condition, First const &first, Rest&& ... rest) const
+{
+    if (condition)
+        compilerWarning(first, std::forward<Rest>(rest)...);
 }
 
 template <typename ... Rest>

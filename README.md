@@ -229,6 +229,9 @@ function main()
 
 Size specifications must be known at compiletime; see the section on the `const` keyword below on how to define named compile-time constants.
 
+#### Numbers
+All numbers are treated as unsigned 8-bit integers. The compiler will throw an error on the use of the unary minus sign. A warning is issued when the program contains numbers that exceed the range of a single byte (255).
+
 #### Indexing
 Once an variable is declared (as an array), it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator. BrainFix does not do any bounds-checking, so be careful to make sure that the indices are within the bounds of the array. Anything may happen when going out of bounds...
 
