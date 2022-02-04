@@ -210,6 +210,13 @@ void Memory::markAsTemp(int const addr)
     cell.assign("", cell.scope(), cell.size(), CellSpec::TEMP);
 }
 
+void Memory::markAsLocal(int const addr, std::string const &ident, std::string const &scope)
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    Cell &cell = d_memory[addr];
+    cell.assign(ident, scope, cell.size(), CellSpec::LOCAL);
+}
+
 
 void Memory::changeScope(int const addr, std::string const &newScope)
 {

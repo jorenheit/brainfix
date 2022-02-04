@@ -26,7 +26,6 @@ class Compiler
     std::ostringstream                  d_codeBuffer;
     std::stack<int>                     d_stack;
 
-
     class ScopeStack
     {
         template <typename T>
@@ -47,18 +46,17 @@ class Compiler
 
     ScopeStack d_scopeStack;
 
-    
     enum class Stage
         {
+         IDLE,
          PARSING,
          CODEGEN,
          FINISHED
         };
 
-    Stage       d_stage;
+    Stage       d_stage{Stage::IDLE};
     std::string d_instructionFilename;
     int         d_instructionLineNr;
-
     
 public:
     Compiler(std::string const &file):

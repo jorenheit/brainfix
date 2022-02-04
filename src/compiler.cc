@@ -61,10 +61,10 @@ std::string Compiler::ScopeStack::popSubScope()
     return top;
 }
 
-
-
 int Compiler::compile()
 {
+    assert(d_stage == Stage::IDLE && "Calling Compiler::compile() multiple times");
+    
     d_stage = Stage::PARSING;
     int err = d_parser.parse();
     if (err)
@@ -100,7 +100,7 @@ void Compiler::addGlobals(std::vector<std::pair<std::string, int>> const &declar
     {
         std::string const &ident = var.first;
         int const sz = var.second;
-        errorIf(sz < 0, "Global declaration of \"", ident, "\" has invalid size specification.");
+        errorIf(sz <= 0, "Global declaration of \"", ident, "\" has invalid size specification.");
         d_memory.allocateGlobal(ident, sz);
     }
 }
@@ -694,8 +694,16 @@ int Compiler::initializeExpression(std::string const &ident, int const sz, Instr
 {
     int rhsAddr = rhs();
     int const rhsSize = d_memory.sizeOf(rhsAddr);
-    return assign(allocate(ident, (sz == -1) ? rhsSize : sz),
-                  rhsAddr);
+    int const lhsSize = (sz == -1) ? rhsSize : sz;
+    if (d_memory.isTemp(rhsAddr) && rhsSize == lhsSize)
+    {
+        d_memory.markAsLocal(rhsAddr, ident, d_scopeStack.currentScopeString());
+        return rhsAddr;
+    }
+    else
+    {
+        return assign(allocate(ident, lhsSize), rhsAddr);
+    }
 }
 
 

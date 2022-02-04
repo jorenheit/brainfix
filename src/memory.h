@@ -75,6 +75,7 @@ public:
     void freeTemps(std::string const &scope);
     void freeLocals(std::string const &scope);
     void markAsTemp(int const addr);
+    void markAsLocal(int const addr, std::string const &ident, std::string const &scope);
     void changeScope(int const addr, std::string const &newScope);
     void changeIdent(int const addr, std::string const &newIdent);
     std::string identifier(int const addr) const;
