@@ -62,9 +62,6 @@ public:
 
     void minus()
     {
-        // if (d_array[d_arrayPointer] == 0)
-        //  std::cerr << "Warning: about to decrement a 0\n";
-        
         --d_array[d_arrayPointer];
     }
 
