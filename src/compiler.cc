@@ -1,5 +1,24 @@
 #include "compiler.ih"
 
+Compiler::Compiler(std::string const &file, int const bytesPerCell):
+    MAX_INT((static_cast<uint64_t>(1) << (8 * bytesPerCell)) - 1),
+    MAX_ARRAY_SIZE(MAX_INT - 5),
+    d_parser(file, *this),
+    d_memory(TAPE_SIZE_INITIAL)
+{
+    d_bfGen.setTempRequestFn([this](){
+                                 return allocateTemp();
+                             });
+    
+    d_bfGen.setTempBlockRequestFn([this](int const sz){
+                                      return allocateTempBlock(sz);
+                                  });
+    
+    d_bfGen.setMemSizeRequestFn([this](){
+                                    return d_memory.size();
+                                });
+}
+
 bool Compiler::ScopeStack::empty() const
 {
     return d_stack.empty();
@@ -166,424 +185,6 @@ int Compiler::popStack()
     return addr;
 }
 
-std::string Compiler::bf_setToValue(int const addr, int const val)
-{
-    validateAddr(addr, val);
-
-    std::ostringstream ops;
-    ops << bf_movePtr(addr)        // go to address
-        << "[-]"                   // reset cell to 0
-        << std::string(val, '+');  // increment to value
-
-    return ops.str();
-}
-
-std::string Compiler::bf_setToValuePlus(int const addr, int const val)
-{
-    validateAddr(addr, val);
-
-    std::ostringstream ops;
-    ops << bf_movePtr(addr)        // go to address
-        << "[+]"                   // reset cell to 0
-        << std::string(val, '+');  // increment to value
-
-    return ops.str();
-}
-
-std::string Compiler::bf_setToValue(int const start, int const val, size_t const n)
-{
-    validateAddr(start, val);
-    
-    std::ostringstream ops;
-    for (size_t i = 0; i != n; ++i)
-        ops << bf_setToValue(start + i, val);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_setToValuePlus(int const addr, int const val, size_t const n)
-{
-    validateAddr(start, val);
-    
-    std::ostringstream ops;
-    for (size_t i = 0; i != n; ++i)
-        ops << bf_setToValuePlus(start + i, val);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_assign(int const lhs, int const rhs)
-{
-    validateAddr(lhs, rhs);
-    
-    int const tmp = allocateTemp();
-
-    std::ostringstream ops;
-    ops    << bf_setToValue(lhs, 0)
-           << bf_setToValue(tmp, 0)
-
-        // Move contents of RHS to both LHS and TMP (backup)
-           << bf_movePtr(rhs)         
-           << "["
-           <<     bf_incr(lhs)
-           <<     bf_incr(tmp)
-           <<     bf_decr(rhs)
-           << "]"
-
-        // Restore RHS by moving TMP back into it
-           << bf_movePtr(tmp)
-           << "["
-           <<     bf_incr(rhs)
-           <<     bf_decr(tmp)
-           << "]"
-
-        // Leave pointer at lhs
-           << bf_movePtr(lhs);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_assign(int const dest, int const src, size_t const n)
-{
-    validateAddr(dest, src);
-    
-    std::ostringstream ops;
-    for (size_t idx = 0; idx != n; ++idx)
-        ops << bf_assign(dest + idx, src + idx);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_movePtr(int const addr)
-{
-    validateAddr(addr);
-    
-    int const diff = (int)addr - (int)d_pointer;
-    d_pointer = addr;
-    return (diff >= 0) ? std::string(diff, '>')    : std::string(-diff, '<');
-}
-
-std::string Compiler::bf_addTo(int const target, int const rhs)
-{
-    validateAddr(target, rhs);
-    
-    std::ostringstream ops;
-    int const tmp = allocateTemp();
-    ops    << bf_assign(tmp, rhs)
-           << "["
-           <<     bf_incr(target)
-           <<     bf_decr(tmp)
-           << "]"
-           << bf_movePtr(target);
-    
-    return ops.str();
-}
-
-std::string Compiler::bf_subtractFrom(int const target, int const rhs)
-{
-    validateAddr(target, rhs);
-    
-    int const tmp = allocateTemp();
-    std::ostringstream ops;
-    ops    << bf_assign(tmp, rhs)
-           << "["
-           <<     bf_decr(target)
-           <<     bf_decr(tmp)
-           << "]"
-           << bf_movePtr(target);
-    
-    return ops.str();
-}
-
-std::string Compiler::bf_incr(int const target)
-{
-    validateAddr(target);
-    return bf_movePtr(target) + "+";
-}
-
-std::string Compiler::bf_decr(int const target)
-{
-    validateAddr(target);
-    return bf_movePtr(target) + "-";
-}
-
-std::string Compiler::bf_safeDecr(int const target, int const underflowFlag)
-{
-    validateAddr(target, underflowFlag);
-
-    std::ostringstream ops;
-    ops << bf_not(target, underflowFlag)
-        << bf_movePtr(target)
-        << "-";
-
-    return ops.str();
-}
-
-std::string Compiler::bf_multiply(int const lhs, int const rhs, int const result)
-{
-    validateAddr(lhs, rhs, result);
-
-    std::ostringstream ops;
-    ops << bf_assign(result, lhs)
-        << bf_multiplyBy(result, rhs);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_multiplyBy(int const target, int const factor)
-{
-    validateAddr(target, factor);
-
-    int const tmp = allocateTempBlock(2);
-    int const targetCopy = tmp + 0;
-    int const count      = tmp + 1;
-
-    std::ostringstream ops;
-    ops << bf_assign(targetCopy, target)
-        << bf_setToValue(target, 0)
-        << bf_assign(count, factor)
-        << "["
-        <<     bf_addTo(target, targetCopy)
-        <<     bf_decr(count)
-        << "]"
-        << bf_movePtr(target);
-    
-    return ops.str();
-}
-
-std::string Compiler::bf_not(int const addr, int const result)
-{
-    validateAddr(addr, result);
-    
-    int const tmp = allocateTemp();
-    std::ostringstream ops;
-    
-    ops    << bf_setToValue(result, 1)
-           << bf_assign(tmp, addr)
-           << "["
-           <<     bf_setToValue(result, 0)
-           <<     bf_setToValue(tmp, 0)
-           << "]"
-           << bf_movePtr(result);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_not(int const addr)
-{
-    validateAddr(addr);
-    
-    int flag = allocateTemp();
-    
-    std::ostringstream ops;
-    ops    << bf_setToValue(flag, 1)
-           << bf_movePtr(addr)
-           << "["
-           <<     bf_setToValue(flag, 0)
-           <<     bf_setToValue(addr, 0)
-           << "]"
-           << bf_movePtr(flag)
-           << "["
-           <<     bf_setToValue(addr, 1)
-           <<     bf_setToValue(flag, 0)
-           << "]"
-           << bf_movePtr(addr);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_and(int const lhs, int const rhs, int const result)
-{
-    validateAddr(lhs, rhs, result);
-
-    int const tmp = allocateTempBlock(2);
-    int const x = tmp + 0;
-    int const y = tmp + 1;
-    
-    std::ostringstream ops;
-    ops    << bf_setToValue(result, 0)
-           << bf_assign(y, rhs)
-           << bf_assign(x, lhs)
-           << "["
-           <<     bf_movePtr(y)
-           <<     "["
-           <<         bf_setToValue(result, 1)
-           <<         bf_setToValue(y, 0)
-           <<     "]"
-           <<     bf_setToValue(x, 0)
-           << "]"
-           << bf_movePtr(result);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_and(int const lhs, int const rhs)
-{
-    validateAddr(lhs, rhs);
-
-    int const result = allocateTemp();
-    
-    std::ostringstream ops;
-    ops    << bf_and(lhs, rhs, result)
-           << bf_assign(lhs, result);
-    
-    return ops.str();
-}
-    
-
-std::string Compiler::bf_or(int const lhs, int const rhs, int const result)
-{
-    validateAddr(lhs, rhs, result);
-
-    int const tmp = allocateTempBlock(2);
-    int const x = tmp + 0;
-    int const y = tmp + 1;
-
-    std::ostringstream ops;
-    ops    << bf_setToValue(result, 0)
-           << bf_assign(x, lhs)
-           << "["
-           <<     bf_setToValue(result, 1)
-           <<     bf_setToValue(x, 0)
-           << "]"
-           << bf_assign(y, rhs)
-           << "["
-           <<     bf_setToValue(result, 1)
-           <<     bf_setToValue(y, 0)
-           << "]"
-           << bf_movePtr(result);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_or(int const lhs, int const rhs)
-{
-    validateAddr(lhs, rhs);
-
-    int const result = allocateTemp();
-    
-    std::ostringstream ops;
-    ops    << bf_or(lhs, rhs, result)
-           << bf_assign(lhs, result);
-    
-    return ops.str();
-}
-    
-std::string Compiler::bf_equal(int const lhs, int const rhs, int const result)
-{
-    validateAddr(lhs, rhs, result);
-
-    int const tmp = allocateTempBlock(6);
-    int const x = tmp + 0;
-    int const y = tmp + 1;
-    int const underflow1 = tmp + 2;
-    int const underflow2 = tmp + 3;
-    int const underflow3 = tmp + 4;
-    int const yBigger = tmp + 5;
-
-    std::ostringstream ops;
-    ops << bf_setToValue(result, 1)
-        << bf_setToValue(underflow1, 0)
-        << bf_assign(y, rhs)
-        << bf_assign(x, lhs)
-        << "["
-        <<     bf_safeDecr(y, underflow2)
-        <<     bf_or(underflow1, underflow2)
-        <<     bf_movePtr(underflow2)
-        <<     "["
-        <<         bf_setToValuePlus(y, 0)
-        <<         bf_setToValue(underflow2, 0)
-        <<     "]"
-        <<     bf_decr(x)
-        << "]"
-        << bf_assign(underflow3, underflow1)
-        << "["  // if underflow -> y was smaller than x so not equal
-        <<     bf_setToValue(result, 0)
-        <<     bf_setToValuePlus(y, 1)
-        <<     bf_setToValue(underflow3, 0)
-        << "]"
-        << bf_not(underflow1)
-        << bf_and(y, underflow1, yBigger)
-        << "["  // if y > 0 and did not underflow -> y was bigger than x so not equal
-        <<     bf_setToValue(result, 0) 
-        <<     bf_setToValue(yBigger, 0)
-        << "]"
-        << bf_movePtr(result);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_notEqual(int const lhs, int const rhs, int const result)
-{
-    validateAddr(lhs, rhs, result);
-    
-    int const isEqual = allocateTemp();
-    std::ostringstream ops;
-    ops << bf_equal(lhs, rhs, isEqual)
-        << bf_not(isEqual, result);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_greater(int const lhs, int const rhs, int const result)
-{
-    validateAddr(lhs, rhs, result);
-
-    int const tmp  = allocateTempBlock(3);
-    int const x    = tmp + 0;
-    int const y    = tmp + 1;
-    int const underflow = tmp + 2;
-
-    std::ostringstream ops;
-    ops << bf_setToValue(result, 0)
-        << bf_setToValue(underflow, 0)
-        << bf_assign(y, rhs)
-        << bf_assign(x, lhs)
-        << "["
-        <<     bf_safeDecr(y, underflow)
-        <<     bf_or(result, underflow)
-        <<     bf_movePtr(underflow)
-        <<     "["
-        <<         bf_setToValuePlus(y, 0)
-        <<         bf_setToValue(underflow, 0)
-        <<     "]"
-        <<     bf_decr(x)
-        << "]"
-        << bf_movePtr(result);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_less(int const lhs, int const rhs, int const result)
-{
-    validateAddr(lhs, rhs, result);
-    
-    return bf_greater(rhs, lhs, result); // reverse arguments
-}
-
-std::string Compiler::bf_greaterOrEqual(int const lhs, int const rhs, int const result)
-{
-    validateAddr(lhs, rhs, result);
-
-    int const tmp       = allocateTempBlock(2);
-    int const isEqual   = tmp + 0;
-    int const isGreater = tmp + 1;
-
-    std::ostringstream ops;
-    ops    << bf_equal(lhs, rhs, isEqual)
-           << bf_greater(lhs, rhs, isGreater)
-           << bf_or(isEqual, isGreater, result);
-
-    return ops.str();
-}
-
-std::string Compiler::bf_lessOrEqual(int const lhs, int const rhs, int const result)
-{
-    validateAddr(lhs, rhs, result);
-    
-    return bf_greaterOrEqual(rhs, lhs, result); // reverse arguments
-}
-
 
 int Compiler::inlineBF(std::string const &code)
 {
@@ -633,7 +234,7 @@ int Compiler::sizeOfOperator(std::string const &ident)
 
     int const tmp = allocateTemp();
     int const sz = d_memory.sizeOf(addr);
-    d_codeBuffer << bf_setToValue(tmp, sz);
+    d_codeBuffer << d_bfGen.setToValue(tmp, sz);
     return tmp;
 }
 
@@ -642,7 +243,7 @@ int Compiler::movePtr(std::string const &ident)
     int const addr = addressOf(ident);
     errorIf(addr < 0, "Variable \"", ident ,"\" not defined in this scope.");
 
-    d_codeBuffer << bf_movePtr(addr);
+    d_codeBuffer << d_bfGen.movePtr(addr);
     return -1;
 }
 
@@ -768,7 +369,7 @@ int Compiler::constVal(int const num)
     warningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
     
     int const tmp = allocateTemp();
-    d_codeBuffer << bf_setToValue(tmp, num);
+    d_codeBuffer << d_bfGen.setToValue(tmp, num);
     return tmp;
 }
 
@@ -817,12 +418,12 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
     {
         // Fill array with value
         for (int i = 0; i != leftSize; ++i)
-            d_codeBuffer << bf_assign(lhs + i, rhs);
+            d_codeBuffer << d_bfGen.assign(lhs + i, rhs);
     }
     else if (leftSize == rightSize)
     {
         // Same size -> copy
-        d_codeBuffer << bf_assign(lhs, rhs, leftSize);
+        d_codeBuffer << d_bfGen.assign(lhs, rhs, leftSize);
     }
     else
     {
@@ -852,7 +453,7 @@ int Compiler::arrayFromSizeStaticValue(int const sz, int const val)
     
     int const start = allocateTemp(sz);
     for (int idx = 0; idx != sz; ++idx)
-        d_codeBuffer << bf_setToValue(start + idx, val);
+        d_codeBuffer << d_bfGen.setToValue(start + idx, val);
 
     return start;
 }
@@ -879,7 +480,7 @@ int Compiler::arrayFromList(std::vector<Instruction> const &list)
     
     int start = allocateTemp(sz);
     for (int idx = 0; idx != sz; ++idx)
-        d_codeBuffer << bf_assign(start + idx, list[idx]());
+        d_codeBuffer << d_bfGen.assign(start + idx, list[idx]());
 
     return start;
 }
@@ -893,100 +494,30 @@ int Compiler::arrayFromString(std::string const &str)
 
     int const start = allocateTemp(sz);
     for (int idx = 0; idx != sz; ++idx)
-        d_codeBuffer << bf_setToValue(start + idx, str[idx]);
+        d_codeBuffer << d_bfGen.setToValue(start + idx, str[idx]);
 
     return start;
 }
 
 int Compiler::fetchElement(std::string const &ident, AddressOrInstruction const &index)
 {
-    // Algorithms to move an unknown amount to the left and right.
-    // Assumes the pointer points to a cell containing the amount
-    // it needs to be shifted and a copy of this amount adjacent to it.
-    // Also, neighboring cells must all be zeroed out.
-               
-    static std::string const dynamicMoveRight = "[>[->+<]<[->+<]>-]";
-    static std::string const dynamicMoveLeft  = "[<[-<+>]>[-<+>]<-]<";
-
-    // Allocate a bufferwith 2 additional cells:
-    // 1. to keep a copy of the index
-    // 2. to store a temporary necessary for copying
-
     int const arr = addressOf(ident);
     errorIf(arr < 0, "Variable \"", ident, "\" undefined in this scope.");
 
     int const sz = d_memory.sizeOf(arr);
-    int const bufSize = sz + 2;
-    int const buf = allocateTemp(bufSize);
     int const ret = allocateTemp();
-    int const dist = buf - arr;
 
-    std::string const arr2buf(std::abs(dist), (dist > 0 ? '>' : '<'));
-    std::string const buf2arr(std::abs(dist), (dist > 0 ? '<' : '>'));
-
-    d_codeBuffer << bf_assign(buf + 0, index)
-                 << bf_assign(buf + 1, buf)
-                 << bf_setToValue(buf + 2, 0, bufSize - 2)
-                 << bf_movePtr(buf)
-                 << dynamicMoveRight
-                 << buf2arr
-                 << "[-"
-                 <<     arr2buf
-                 <<     ">>+<<"
-                 <<     buf2arr
-                 << "]"
-                 << arr2buf
-                 << ">>"
-                 << "["
-                 <<     "-<<+"
-                 <<     buf2arr
-                 <<     "+"
-                 <<     arr2buf
-                 <<     ">>"
-                 << "]"
-                 << "<"
-                 << dynamicMoveLeft
-                 << bf_assign(ret, buf);
-
+    d_codeBuffer << d_bfGen.fetchElement(arr, sz, index, ret);
     return ret;
 }
 
 int Compiler::assignElement(std::string const &ident, AddressOrInstruction const &index, AddressOrInstruction const &rhs)
 {
-    static std::string const dynamicMoveRight = "[>>[->+<]<[->+<]<[->+<]>-]";
-    static std::string const dynamicMoveLeft = "[[-<+>]<-]<";
-               
     int const arr = addressOf(ident);
     errorIf(arr < 0, "Variable \"", ident, "\" undefined in this scope.");
     
     int const sz = d_memory.sizeOf(arr);
-
-    int const bufSize = sz + 2;
-    int const buf = allocateTemp(bufSize);
-    int const dist = buf - arr;
-
-    std::string const arr2buf(std::abs(dist), (dist > 0 ? '>' : '<'));
-    std::string const buf2arr(std::abs(dist), (dist > 0 ? '<' : '>'));
-
-    d_codeBuffer << bf_assign(buf, index)
-                 << bf_assign(buf + 1, buf)
-                 << bf_assign(buf + 2, rhs)
-                 << bf_setToValue(buf + 3, 0, bufSize - 3)
-                 << bf_movePtr(buf)
-                 << dynamicMoveRight
-                 << buf2arr
-                 << "[-]"
-                 << arr2buf
-                 << ">>"
-                 << "["
-                 <<     "-<<"
-                 <<     buf2arr
-                 <<     "+"
-                 <<     arr2buf
-                 <<     ">>"
-                 << "]"
-                 << "<"
-                 << dynamicMoveLeft;
+    d_codeBuffer << d_bfGen.assignElement(arr, sz, index, rhs);
     
     // Attention: can't return the address of the modified cell, so we return the
     // address of the known RHS-cell.
@@ -1020,7 +551,7 @@ int Compiler::preIncrement(AddressOrInstruction const &target)
 {
     errorIf(target < 0, "Cannot increment void-expression.");
 
-    d_codeBuffer << bf_incr(target);
+    d_codeBuffer << d_bfGen.incr(target);
     return target;
 }
 
@@ -1028,7 +559,7 @@ int Compiler::preDecrement(AddressOrInstruction const &target)
 {
     errorIf(target < 0, "Cannot decrement void-expression.");
     
-    d_codeBuffer << bf_decr(target);
+    d_codeBuffer << d_bfGen.decr(target);
     return target;
 }
 
@@ -1037,8 +568,8 @@ int Compiler::postIncrement(AddressOrInstruction const &target)
     errorIf(target < 0, "Cannot increment void-expression.");
     
     int const tmp = allocateTemp();
-    d_codeBuffer << bf_assign(tmp, target)
-                 << bf_incr(target);
+    d_codeBuffer << d_bfGen.assign(tmp, target)
+                 << d_bfGen.incr(target);
 
     return tmp;
 }
@@ -1048,8 +579,8 @@ int Compiler::postDecrement(AddressOrInstruction const &target)
     errorIf(target < 0, "Cannot decrement void-expression.");
 
     int const tmp = allocateTemp();
-    d_codeBuffer << bf_assign(tmp, target)
-                 << bf_decr(target);
+    d_codeBuffer << d_bfGen.assign(tmp, target)
+                 << d_bfGen.decr(target);
 
     return tmp;
 }
@@ -1058,7 +589,7 @@ int Compiler::addTo(AddressOrInstruction const &lhs, AddressOrInstruction const 
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
 
-    d_codeBuffer << bf_addTo(lhs, rhs);
+    d_codeBuffer << d_bfGen.addTo(lhs, rhs);
     return lhs;
 }
 
@@ -1067,8 +598,8 @@ int Compiler::add(AddressOrInstruction const &lhs, AddressOrInstruction const &r
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
     
     int const ret = allocateTemp();
-    d_codeBuffer << bf_assign(ret, lhs)
-                 << bf_addTo(ret, rhs);
+    d_codeBuffer << d_bfGen.assign(ret, lhs)
+                 << d_bfGen.addTo(ret, rhs);
     return ret;
 }
 
@@ -1076,7 +607,7 @@ int Compiler::subtractFrom(AddressOrInstruction const &lhs, AddressOrInstruction
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
     
-    d_codeBuffer << bf_subtractFrom(lhs, rhs);
+    d_codeBuffer << d_bfGen.subtractFrom(lhs, rhs);
     return lhs;
 }
 
@@ -1085,8 +616,8 @@ int Compiler::subtract(AddressOrInstruction const &lhs, AddressOrInstruction con
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
 
     int const ret = allocateTemp();
-    d_codeBuffer << bf_assign(ret, lhs)
-                 << bf_subtractFrom(ret, rhs);
+    d_codeBuffer << d_bfGen.assign(ret, lhs)
+                 << d_bfGen.subtractFrom(ret, rhs);
     return ret;
 }
 
@@ -1094,7 +625,7 @@ int Compiler::multiplyBy(AddressOrInstruction const &lhs, AddressOrInstruction c
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
     
-    d_codeBuffer << bf_multiplyBy(lhs, rhs);
+    d_codeBuffer << d_bfGen.multiplyBy(lhs, rhs);
     return lhs;
 }
 
@@ -1103,7 +634,7 @@ int Compiler::multiply(AddressOrInstruction const &lhs, AddressOrInstruction con
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
 
     int const ret = allocateTemp();
-    d_codeBuffer << bf_multiply(lhs, rhs, ret);
+    d_codeBuffer << d_bfGen.multiply(lhs, rhs, ret);
     return ret;
 }
 
@@ -1155,69 +686,12 @@ int Compiler::modDiv(AddressOrInstruction const &lhs, AddressOrInstruction const
 
 std::pair<int, int> Compiler::divModPair(AddressOrInstruction const &num, AddressOrInstruction const &denom)
 {
-    int const tmp = allocateTempBlock(6);
-    int const tmp_loopflag  = tmp + 0;
-    int const tmp_zeroflag  = tmp + 1;
-    int const tmp_num       = tmp + 2;
-    int const tmp_denom     = tmp + 3;
-    int const result_div    = tmp + 4;
-    int const result_mod    = tmp + 5;
-    
-    // Algorithm:
-    // 1. Initialize result-cells to 0 and copy operands to temps
-    // 2. In case the denominator is 0 (divide by zero), set the result to 255 (~inf)
-    //    Set the loopflag to 0 in order to skip the calculating loop.
-    // 3. In case the numerator is 0, the result of division is also zero. Set the remainder
-    //    to the same value as the denominator.
-    // 4. Enter the loop:
-    //      *  On each iteration, decrement both the denominator and enumerator,
-    //       until the denominator becomes 0.When this happens, increment result_div and
-    //       reset result_mod to 0. Also, reset the denominator to its original value.
-    //
-    //    *  The loop is broken when the enumerator has become zero.
-    //       By that time, we have counted how many times te denominator
-    //       fits inside the enumerator (result_div), and how many is left (result_mod).
+    int const tmp = allocateTempBlock(2);
+    int const divResult = tmp + 0;
+    int const modResult = tmp + 1;
 
-    d_codeBuffer << bf_setToValue(result_div, 0)             // 1
-                 << bf_setToValue(result_mod, 0)
-                 << bf_assign(tmp_num, num)
-                 << bf_assign(tmp_denom, denom)
-                 << bf_setToValue(tmp_loopflag, 1)
-                 << bf_not(denom, tmp_zeroflag)
-                 << "["                                      // 2
-                 <<     bf_setToValue(tmp_loopflag, 0)
-                 <<     bf_setToValue(result_div, 255)
-                 <<     bf_setToValue(result_mod, 255)
-                 <<     bf_setToValue(tmp_zeroflag, 0)
-                 << "]"
-                 << bf_not(num, tmp_zeroflag)
-                 << "["                                      // 3
-                 <<     bf_setToValue(tmp_loopflag, 0)
-                 <<     bf_setToValue(result_div, 0)
-                 <<     bf_setToValue(result_mod, 0)
-                 <<     bf_setToValue(tmp_zeroflag, 0)
-                 << "]"
-                 << bf_movePtr(tmp_loopflag)
-                 << "["                                      // 4
-                 <<     bf_decr(tmp_num)
-                 <<     bf_decr(tmp_denom)
-                 <<     bf_incr(result_mod)
-                 <<     bf_not(tmp_denom, tmp_zeroflag)
-                 <<     "["
-                 <<         bf_incr(result_div)
-                 <<         bf_assign(tmp_denom, denom)
-                 <<         bf_setToValue(result_mod, 0)
-                 <<         bf_setToValue(tmp_zeroflag, 0)
-                 <<     "]"
-                 <<     bf_not(tmp_num, tmp_zeroflag)
-                 <<     "["
-                 <<         bf_setToValue(tmp_loopflag, 0)
-                 <<         bf_setToValue(tmp_zeroflag, 0)
-                 <<     "]"
-                 <<     bf_movePtr(tmp_loopflag)
-                 << "]";
-
-    return {result_div, result_mod};
+    d_codeBuffer << d_bfGen.divmod(num, denom, divResult, modResult);
+    return {divResult, modResult};
 }
 
 
@@ -1226,7 +700,7 @@ int Compiler::equal(AddressOrInstruction const &lhs, AddressOrInstruction const 
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
     
     int const result = allocateTemp();
-    d_codeBuffer << bf_equal(lhs, rhs, result);
+    d_codeBuffer << d_bfGen.equal(lhs, rhs, result);
     return result;
 }
 
@@ -1235,7 +709,7 @@ int Compiler::notEqual(AddressOrInstruction const &lhs, AddressOrInstruction con
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
     
     int const result = allocateTemp();
-    d_codeBuffer << bf_notEqual(lhs, rhs, result);
+    d_codeBuffer << d_bfGen.notEqual(lhs, rhs, result);
     return result;
 }
 
@@ -1244,7 +718,7 @@ int Compiler::less(AddressOrInstruction const &lhs, AddressOrInstruction const &
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
     
     int const result = allocateTemp();
-    d_codeBuffer << bf_less(lhs, rhs, result);
+    d_codeBuffer << d_bfGen.less(lhs, rhs, result);
     return result;
 }
 
@@ -1253,7 +727,7 @@ int Compiler::greater(AddressOrInstruction const &lhs, AddressOrInstruction cons
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
     
     int const result = allocateTemp();
-    d_codeBuffer << bf_greater(lhs, rhs, result);
+    d_codeBuffer << d_bfGen.greater(lhs, rhs, result);
     return result;
 }
 
@@ -1262,7 +736,7 @@ int Compiler::lessOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction 
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
     
     int const result = allocateTemp();
-    d_codeBuffer << bf_lessOrEqual(lhs, rhs, result);
+    d_codeBuffer << d_bfGen.lessOrEqual(lhs, rhs, result);
     return result;
 }
 
@@ -1271,7 +745,7 @@ int Compiler::greaterOrEqual(AddressOrInstruction const &lhs, AddressOrInstructi
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
     
     int const result = allocateTemp();
-    d_codeBuffer << bf_greaterOrEqual(lhs, rhs, result);
+    d_codeBuffer << d_bfGen.greaterOrEqual(lhs, rhs, result);
     return result;
 }
 
@@ -1280,7 +754,7 @@ int Compiler::logicalNot(AddressOrInstruction const &arg)
     errorIf(arg < 0, "Use of void-expression in not-operation.");
     
     int const result = allocateTemp();
-    d_codeBuffer << bf_not(arg, result);
+    d_codeBuffer << d_bfGen.logicalNot(arg, result);
 
     return result;
 }
@@ -1290,7 +764,7 @@ int Compiler::logicalAnd(AddressOrInstruction const &lhs, AddressOrInstruction c
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in and-operation.");
     
     int const result = allocateTemp();
-    d_codeBuffer << bf_and(lhs, rhs, result);
+    d_codeBuffer << d_bfGen.logicalAnd(lhs, rhs, result);
     return result;
 }
 
@@ -1299,7 +773,7 @@ int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction co
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in or-operation.");
 
     int const result = allocateTemp();
-    d_codeBuffer << bf_or(lhs, rhs, result);
+    d_codeBuffer << d_bfGen.logicalOr(lhs, rhs, result);
     return result;
 }
 
@@ -1315,29 +789,29 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     pushStack(ifFlag);
     pushStack(elseFlag); 
 
-    d_codeBuffer << bf_movePtr(ifFlag)
+    d_codeBuffer << d_bfGen.movePtr(ifFlag)
                  << "[";
 
     {
         d_scopeStack.pushSubScope();
         ifBody();
-        std::string outOfScope = d_scopeStack.popSubScope();
+        std::string const outOfScope = d_scopeStack.popSubScope();
         d_memory.freeLocals(outOfScope);
     }
     
-    d_codeBuffer << bf_setToValue(ifFlag, 0)
+    d_codeBuffer << d_bfGen.setToValue(ifFlag, 0)
                  << "]"
-                 <<  bf_movePtr(elseFlag)
+                 << d_bfGen.movePtr(elseFlag)
                  << "[";
 
     {
         d_scopeStack.pushSubScope();
         elseBody();
-        std::string outOfScope = d_scopeStack.popSubScope();
+        std::string const outOfScope = d_scopeStack.popSubScope();
         d_memory.freeLocals(outOfScope);
     }
     
-    d_codeBuffer << bf_setToValue(elseFlag, 0)
+    d_codeBuffer << d_bfGen.setToValue(elseFlag, 0)
                  << "]";
 
     popStack();
@@ -1364,12 +838,12 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
     int const conditionAddr = condition();
     errorIf(conditionAddr < 0, "Use of void-expression in for-condition.");
     
-    d_codeBuffer << bf_assign(flag, conditionAddr)
+    d_codeBuffer << d_bfGen.assign(flag, conditionAddr)
                  << "[";
 
     body();
     increment();
-    d_codeBuffer << bf_assign(flag, condition())
+    d_codeBuffer << d_bfGen.assign(flag, condition())
                  << "]";
 
     std::string outOfScope = d_scopeStack.popSubScope();
@@ -1388,11 +862,11 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     d_scopeStack.pushSubScope();
     pushStack(flag);
 
-    d_codeBuffer << bf_assign(flag, conditionAddr)
+    d_codeBuffer << d_bfGen.assign(flag, conditionAddr)
                  << "[";
     body();
 
-    d_codeBuffer << bf_assign(flag, condition())
+    d_codeBuffer << d_bfGen.assign(flag, condition())
                  << "]";
 
     std::string outOfScope = d_scopeStack.popSubScope();

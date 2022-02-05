@@ -2,4 +2,3 @@
 #include <algorithm>
 #include <cassert>
 
-#define validateAddr(...) validateAddr__(__func__, __VA_ARGS__)
