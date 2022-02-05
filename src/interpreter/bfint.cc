@@ -152,7 +152,7 @@ try
     std::stringstream buffer;
     buffer << file.rdbuf();
 
-    BFInterpreter bf(len, buffer.str());
+    BFInterpreter<unsigned> bf(len, buffer.str());
     bf.run(std::cin, std::cout);
     //  bf.printState();
 }

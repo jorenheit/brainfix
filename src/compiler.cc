@@ -132,7 +132,7 @@ int Compiler::allocate(std::string const &ident, int const sz)
         d_memory.allocateGlobal(ident, sz) :
         d_memory.allocateLocal(ident, d_scopeStack.currentScopeString(), sz);
     
-    errorIf(addr < 0, "Failed to allocate ", ident, ": variable previously declared.");
+    errorIf(addr < 0, "Variable ", ident, ": variable previously declared.");
     return addr;
 }
 
@@ -178,6 +178,18 @@ std::string Compiler::bf_setToValue(int const addr, int const val)
     return ops.str();
 }
 
+std::string Compiler::bf_setToValuePlus(int const addr, int const val)
+{
+    validateAddr(addr, val);
+
+    std::ostringstream ops;
+    ops << bf_movePtr(addr)        // go to address
+        << "[+]"                   // reset cell to 0
+        << std::string(val, '+');  // increment to value
+
+    return ops.str();
+}
+
 std::string Compiler::bf_setToValue(int const start, int const val, size_t const n)
 {
     validateAddr(start, val);
@@ -185,6 +197,17 @@ std::string Compiler::bf_setToValue(int const start, int const val, size_t const
     std::ostringstream ops;
     for (size_t i = 0; i != n; ++i)
         ops << bf_setToValue(start + i, val);
+
+    return ops.str();
+}
+
+std::string Compiler::bf_setToValuePlus(int const addr, int const val, size_t const n)
+{
+    validateAddr(start, val);
+    
+    std::ostringstream ops;
+    for (size_t i = 0; i != n; ++i)
+        ops << bf_setToValuePlus(start + i, val);
 
     return ops.str();
 }
@@ -284,6 +307,18 @@ std::string Compiler::bf_decr(int const target)
     return bf_movePtr(target) + "-";
 }
 
+std::string Compiler::bf_safeDecr(int const target, int const underflowFlag)
+{
+    validateAddr(target, underflowFlag);
+
+    std::ostringstream ops;
+    ops << bf_not(target, underflowFlag)
+        << bf_movePtr(target)
+        << "-";
+
+    return ops.str();
+}
+
 std::string Compiler::bf_multiply(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
@@ -334,6 +369,29 @@ std::string Compiler::bf_not(int const addr, int const result)
     return ops.str();
 }
 
+std::string Compiler::bf_not(int const addr)
+{
+    validateAddr(addr);
+    
+    int flag = allocateTemp();
+    
+    std::ostringstream ops;
+    ops    << bf_setToValue(flag, 1)
+           << bf_movePtr(addr)
+           << "["
+           <<     bf_setToValue(flag, 0)
+           <<     bf_setToValue(addr, 0)
+           << "]"
+           << bf_movePtr(flag)
+           << "["
+           <<     bf_setToValue(addr, 1)
+           <<     bf_setToValue(flag, 0)
+           << "]"
+           << bf_movePtr(addr);
+
+    return ops.str();
+}
+
 std::string Compiler::bf_and(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
@@ -358,6 +416,20 @@ std::string Compiler::bf_and(int const lhs, int const rhs, int const result)
 
     return ops.str();
 }
+
+std::string Compiler::bf_and(int const lhs, int const rhs)
+{
+    validateAddr(lhs, rhs);
+
+    int const result = allocateTemp();
+    
+    std::ostringstream ops;
+    ops    << bf_and(lhs, rhs, result)
+           << bf_assign(lhs, result);
+    
+    return ops.str();
+}
+    
 
 std::string Compiler::bf_or(int const lhs, int const rhs, int const result)
 {
@@ -384,26 +456,57 @@ std::string Compiler::bf_or(int const lhs, int const rhs, int const result)
     return ops.str();
 }
 
+std::string Compiler::bf_or(int const lhs, int const rhs)
+{
+    validateAddr(lhs, rhs);
+
+    int const result = allocateTemp();
+    
+    std::ostringstream ops;
+    ops    << bf_or(lhs, rhs, result)
+           << bf_assign(lhs, result);
+    
+    return ops.str();
+}
+    
 std::string Compiler::bf_equal(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
 
-    int const tmp = allocateTempBlock(2);
+    int const tmp = allocateTempBlock(6);
     int const x = tmp + 0;
     int const y = tmp + 1;
+    int const underflow1 = tmp + 2;
+    int const underflow2 = tmp + 3;
+    int const underflow3 = tmp + 4;
+    int const yBigger = tmp + 5;
 
     std::ostringstream ops;
     ops << bf_setToValue(result, 1)
+        << bf_setToValue(underflow1, 0)
         << bf_assign(y, rhs)
         << bf_assign(x, lhs)
         << "["
-        <<     bf_decr(y)
+        <<     bf_safeDecr(y, underflow2)
+        <<     bf_or(underflow1, underflow2)
+        <<     bf_movePtr(underflow2)
+        <<     "["
+        <<         bf_setToValuePlus(y, 0)
+        <<         bf_setToValue(underflow2, 0)
+        <<     "]"
         <<     bf_decr(x)
         << "]"
-        << bf_movePtr(y)
-        << "["
+        << bf_assign(underflow3, underflow1)
+        << "["  // if underflow -> y was smaller than x so not equal
         <<     bf_setToValue(result, 0)
-        <<     bf_setToValue(y, 0)
+        <<     bf_setToValuePlus(y, 1)
+        <<     bf_setToValue(underflow3, 0)
+        << "]"
+        << bf_not(underflow1)
+        << bf_and(y, underflow1, yBigger)
+        << "["  // if y > 0 and did not underflow -> y was bigger than x so not equal
+        <<     bf_setToValue(result, 0) 
+        <<     bf_setToValue(yBigger, 0)
         << "]"
         << bf_movePtr(result);
 
@@ -426,41 +529,28 @@ std::string Compiler::bf_greater(int const lhs, int const rhs, int const result)
 {
     validateAddr(lhs, rhs, result);
 
-    int const tmp  = allocateTempBlock(4);
+    int const tmp  = allocateTempBlock(3);
     int const x    = tmp + 0;
     int const y    = tmp + 1;
-    int const tmp1 = tmp + 2;
-    int const tmp2 = tmp + 3;
-        
+    int const underflow = tmp + 2;
+
     std::ostringstream ops;
-    ops    << bf_setToValue(tmp1, 0)
-           << bf_setToValue(tmp2, 0)
-           << bf_setToValue(result, 0)
-           << bf_assign(y, rhs)
-           << bf_assign(x, lhs)
-           << "["
-           <<     bf_incr(tmp1)
-           <<     bf_movePtr(y)
-           <<     "["
-           <<         bf_setToValue(tmp1, 0)
-           <<         bf_incr(tmp2)
-           <<         bf_decr(y)
-           <<     "]"
-           <<     bf_movePtr(tmp1)
-           <<     "["
-           <<         bf_incr(result)
-           <<         bf_decr(tmp1)
-           <<     "]"
-           <<     bf_movePtr(tmp2)
-           <<     "["
-           <<         bf_incr(y)
-           <<         bf_decr(tmp2)
-           <<     "]"
-           <<     bf_decr(y)
-           <<     bf_decr(x)
-           << "]"
-           << bf_movePtr(result);
-    
+    ops << bf_setToValue(result, 0)
+        << bf_setToValue(underflow, 0)
+        << bf_assign(y, rhs)
+        << bf_assign(x, lhs)
+        << "["
+        <<     bf_safeDecr(y, underflow)
+        <<     bf_or(result, underflow)
+        <<     bf_movePtr(underflow)
+        <<     "["
+        <<         bf_setToValuePlus(y, 0)
+        <<         bf_setToValue(underflow, 0)
+        <<     "]"
+        <<     bf_decr(x)
+        << "]"
+        << bf_movePtr(result);
+
     return ops.str();
 }
 
@@ -698,6 +788,9 @@ int Compiler::initializeExpression(std::string const &ident, int const sz, Instr
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
 
+    errorIf(d_memory.findLocal(ident, d_scopeStack.currentScopeString()) != -1,
+            "Variable ", ident, " previously declared.");
+    
     int rhsAddr = rhs();
     int const rhsSize = d_memory.sizeOf(rhsAddr);
     int const lhsSize = (sz == -1) ? rhsSize : sz;

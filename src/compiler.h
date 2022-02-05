@@ -14,7 +14,7 @@ class Compiler
 {
     friend class Parser;
     
-    static constexpr int TAPE_SIZE_INITIAL = 1000;
+    static constexpr int TAPE_SIZE_INITIAL = 30000;
     static constexpr int MAX_INT           = std::numeric_limits<uint8_t>::max();
     static constexpr int MAX_ARRAY_SIZE    = MAX_INT - 5;
 
@@ -92,11 +92,14 @@ private:
     std::string bf_movePtr(int const addr);
     std::string bf_setToValue(int const addr, int const val);
     std::string bf_setToValue(int const start, int const val, size_t const n);
+    std::string bf_setToValuePlus(int const addr, int const val);
+    std::string bf_setToValuePlus(int const addr, int const val, size_t const n);
     std::string bf_assign(int const lhs, int const rhs);
     std::string bf_assign(int const dest, int const src, size_t const n);
     std::string bf_addTo(int const target, int const rhs);
     std::string bf_incr(int const target);
     std::string bf_decr(int const target);
+    std::string bf_safeDecr(int const target, int const underflow);
     std::string bf_subtractFrom(int const target, int const rhs);
     std::string bf_multiply(int const lhs, int const rhs, int const result);
     std::string bf_multiplyBy(int const target, int const rhs);
@@ -106,9 +109,12 @@ private:
     std::string bf_less(int const lhs, int const rhs, int const result);
     std::string bf_greaterOrEqual(int const lhs, int const rhs, int const result);
     std::string bf_lessOrEqual(int const lhs, int const rhs, int const result);
+    std::string bf_not(int const operand);
     std::string bf_not(int const operand, int const result);
     std::string bf_and(int const lhs, int const rhs, int const result);
+    std::string bf_and(int const lhs, int const rhs);
     std::string bf_or(int const lhs, int const rhs, int const result);
+    std::string bf_or(int const lhs, int const rhs);
     
     // Instruction generator
     template <auto Member, typename ... Args>
