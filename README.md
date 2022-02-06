@@ -63,8 +63,8 @@ Options:
 
 Example: bfint -t int16 -o output.txt program.bf
 ```
-### The type of a BrainF*ck cell
-The type of the BrainF*ck cell that is assumed during compilation with `bfx` can be specified using the `-t` option and will specify the size of the integers on the BrainF*ck tape. By default, this is a single byte (8-bits). Other options are `int16` and `int32`. All generated BF-algorithms work with any of these architectures, so changing the type will not result in different BF-code. It will, however, allow the compiler to issue a warning if numbers are used throughout the program that exceed the maximum value of a cell. The same flag can be specified to `bfint`. This will change the size of the integers that the interpreter is operating on. For example, executing the `+` operation on a cell with value 255 will result in overflow (and wrap around to 0) when the interpreter is invoked with `-t int8` but not when it's invoked with `-t int16`. 
+### The type of a BrainF\*ck cell
+The type of the BF cell that is assumed during compilation with `bfx` can be specified using the `-t` option and will specify the size of the integers on the BF tape. By default, this is a single byte (8-bits). Other options are `int16` and `int32`. All generated BF-algorithms work with any of these architectures, so changing the type will not result in different BF-code. It will, however, allow the compiler to issue a warning if numbers are used throughout the program that exceed the maximum value of a cell. The same flag can be specified to `bfint`. This will change the size of the integers that the interpreter is operating on. For example, executing the `+` operation on a cell with value 255 will result in overflow (and wrap around to 0) when the interpreter is invoked with `-t int8` but not when it's invoked with `-t int16`. 
 
 ### Example: Hello World
 Every programming language tutorial starts with a "Hello, World!" program of some sort. This is no exception:
@@ -93,7 +93,6 @@ Let's try:
 $ bfx -o hello.bf hello.bfx
 $ bfint hello.bf
 $ Hello, World!
-$
 ```
 
 ## Target Architecture
@@ -351,7 +350,7 @@ function modDivExample()
 ```
 
 ### Flow
-There are 4 ways to control flow in a BrainFix-program: `if` (-`else`), `switch`, `for` and `while`. Each of these uses the same syntax as we're familiar with from other C-like programming languages:
+There are 4 ways to control flow in a BrainFix-program: `if` (-`else`), `switch`, `for` and `while`. Each of these uses similar syntax as to what we're familiar with from other C-like programming languages. Each of the flow-control mechanisms is illustrated in the example below:
 
 ```javascript
 include "../std/io.bfx"
