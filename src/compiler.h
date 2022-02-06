@@ -1,20 +1,25 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#include "compilerbase.h"
+#undef Compiler
+// CAVEAT: between the baseclass-include directive and the 
+// #undef directive in the previous line references to Compiler 
+// are read as CompilerBase.
+// If you need to include additional headers in this file 
+// you should do so after these comment-lines.
+
 #include <string>
 #include <map>
 #include <deque>
 #include <stack>
 #include <sstream>
-
+#include "scanner.h"
 #include "bfgenerator.h"
 #include "memory.h"
-#include "parser.h"
 
-class Compiler
+class Compiler: public CompilerBase
 {
-    friend class Parser;
-
     class ScopeStack
     {
         template <typename T>
@@ -37,7 +42,7 @@ class Compiler
     long const MAX_INT;
     long const MAX_ARRAY_SIZE;
 
-    Parser      d_parser;
+    Scanner     d_scanner;
     Memory      d_memory;
     BFGenerator d_bfGen;
 
@@ -58,7 +63,6 @@ class Compiler
     Stage       d_stage{Stage::IDLE};
     std::string d_instructionFilename;
     int         d_instructionLineNr;
-
     
 public:
     enum class CellType
@@ -73,6 +77,7 @@ public:
     void write(std::ostream &out);
 
 private:
+    int parse();
     void addFunction(BFXFunction const &bfxFunc);
     void addGlobals(std::vector<std::pair<std::string, int>> const &declarations);
     void addConstant(std::string const &ident, int const num);
@@ -94,8 +99,8 @@ private:
         // Instruction generator
     template <auto Member, typename ... Args>
     Instruction instruction(Args ... args){
-        std::string file = d_parser.filename();
-        int line = d_parser.lineNr();
+        std::string file = d_scanner.filename();
+        int line = d_scanner.lineNr();
         return Instruction([=, this](){
                                setFilename(file);
                                setLineNr(line);
@@ -185,6 +190,21 @@ private:
     void setLineNr(int const line);
     int lineNr() const;
     std::string filename() const;
+
+
+    // BisonC++ generated
+    void error();                   // called on (syntax) errors
+    int lex();
+    void print();
+
+    void exceptionHandler(std::exception const &exc);
+
+    // support functions for parse():
+    void executeAction_(int ruleNr);
+    void errorRecovery_();
+    void nextCycle_();
+    void nextToken_();
+    void print_();
 };
 
 
@@ -203,7 +223,7 @@ void Compiler::compilerError(First const &first, Rest&& ... rest) const
     (std::cerr << ... << rest) << '\n';
 
     try {
-        d_parser.ERROR();
+        CompilerBase::ERROR();
     }
     catch (...)
     {

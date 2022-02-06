@@ -5,7 +5,7 @@
 
 // $insert baseclass_h
 #include "scannerbase.h"
-#include "parserbase.h"
+#include "compilerbase.h"
 
 // $insert classHead
 class Scanner: public ScannerBase

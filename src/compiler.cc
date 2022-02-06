@@ -1,9 +1,9 @@
 #include "compiler.ih"
 
-namespace __MaxInt
+namespace _MaxInt
 {
     template <typename T>
-    constexpr size_t __getMax()
+    constexpr size_t _getMax()
     {
         return (static_cast<size_t>(1) << (8 * sizeof(T))) - 1;
     }
@@ -12,18 +12,18 @@ namespace __MaxInt
     {
         switch (c)
         {
-        case Compiler::CellType::INT8:  return __getMax<uint8_t>();
-        case Compiler::CellType::INT16: return __getMax<uint16_t>();
-        case Compiler::CellType::INT32: return __getMax<uint32_t>();;
+        case Compiler::CellType::INT8:  return _getMax<uint8_t>();
+        case Compiler::CellType::INT16: return _getMax<uint16_t>();
+        case Compiler::CellType::INT32: return _getMax<uint32_t>();;
         }
         throw -1;
     }
 }
 
 Compiler::Compiler(std::string const &file, CellType type):
-    MAX_INT(__MaxInt::get(type)),
+    MAX_INT(_MaxInt::get(type)),
     MAX_ARRAY_SIZE(MAX_INT - 5),
-    d_parser(file, *this),
+    d_scanner(file, "scannerlog.txt"),
     d_memory(TAPE_SIZE_INITIAL)
 {
     d_bfGen.setTempRequestFn([this](){
@@ -38,6 +38,44 @@ Compiler::Compiler(std::string const &file, CellType type):
                                     return d_memory.size();
                                 });
 }
+
+int Compiler::lex()
+{
+    int token = d_scanner.lex();
+
+    switch (token)
+    {
+    case IDENT:
+    case STR:
+        {
+            d_val_.assign<Tag_::STRING>(d_scanner.matched());
+            break;
+        }
+    case NUM:
+        {
+            d_val_.assign<Tag_::INT>(std::stoi(d_scanner.matched()));
+            break;
+        }
+    case CHR:
+        {
+            d_val_.assign<Tag_::CHAR>(d_scanner.matched()[0]);
+            break;
+        }
+    default:
+        break;
+    }
+
+    return token;
+}
+
+void Compiler::error()
+{
+    std::cerr << "ERROR: Syntax error on line "
+              << d_scanner.lineNr() << " of file "
+              << d_scanner.filename() << '\n';
+}
+
+
 
 bool Compiler::ScopeStack::empty() const
 {
@@ -105,7 +143,7 @@ int Compiler::compile()
     assert(d_stage == Stage::IDLE && "Calling Compiler::compile() multiple times");
     
     d_stage = Stage::PARSING;
-    int err = d_parser.parse();
+    int err = parse();
     if (err)
     {
         std::cerr << "Compilation terminated due to error(s)\n";
@@ -943,7 +981,7 @@ void Compiler::setLineNr(int const line)
 int Compiler::lineNr() const
 {
     if (d_stage == Stage::PARSING)
-        return d_parser.lineNr();
+        return d_scanner.lineNr();
     else if (d_stage == Stage::CODEGEN)
         return d_instructionLineNr;
 
@@ -954,7 +992,7 @@ int Compiler::lineNr() const
 std::string Compiler::filename() const
 {
     if (d_stage == Stage::PARSING)
-        return d_parser.filename();
+        return d_scanner.filename();
     else if (d_stage == Stage::CODEGEN)
         return d_instructionFilename;
 
