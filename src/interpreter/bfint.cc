@@ -41,12 +41,12 @@ void printHelp(std::string const &progName)
 {
     std::cout << "Usage: " << progName << " [options] [target(.bf)]\n"
               << "Options:\n"
-              << "-h                  display this text\n"
-              << "-t [Type]           specify the number of bytes per BF-cell, where [Type] is one of\n"
-                 "                    int8, int16 and int32 (int8 by default)\n"
-              << "-n [N]              specify the number of cells (30,000 by default)\n"
-              << "-o [file, stdout]   specify where the generate BF is output to (defaults to stdout)\n\n"
-              << "Example: " << progName << " -n 2 -o output.txt program.bf\n";
+              << "-h                  Display this text.\n"
+              << "-t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of\n"
+                 "                    int8, int16 and int32 (int8 by default).\n"
+              << "-n [N]              Specify the number of cells (30,000 by default).\n"
+              << "-o [file, stdout]   Specify where the generate BF is output to (defaults to stdout).\n\n"
+              << "Example: " << progName << " -t int16 -o output.txt program.bf\n";
 }
 
 Options parseCmdLine(std::vector<std::string> const &args)

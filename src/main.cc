@@ -16,10 +16,10 @@ void printHelp(std::string const &progName)
 {
     std::cout << "Usage: " << progName << " [options] [target(.bfx)]\n"
               << "Options:\n"
-              << "-h                  display this text\n"
-              << "-t [Type]           specify the number of bytes per BF-cell, where [Type] is one of\n"
-                 "                    int8, int16 and int32 (int8 by default)\n"
-              << "-o [file, stdout]   specify where the generate BF is output to\n\n"
+              << "-h                  Display this text.\n"
+              << "-t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of\n"
+                 "                    int8, int16 and int32 (int8 by default).\n"
+              << "-o [file, stdout]   Specify where the generate BF is output to.\n\n"
               << "Example: " << progName << " -n 2 -o program.bf program.bfx\n";
 }
 
