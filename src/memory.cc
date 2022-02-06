@@ -75,7 +75,7 @@ int Memory::getTempBlock(std::string const &scope, int const sz)
 
 int Memory::allocateLocal(std::string const &ident, std::string const &scope, int const sz)
 {
-    if (findLocal(scope, ident) != -1)
+    if (findLocal(ident, scope) != -1)
         return  -1;
     
     int addr = findFree(sz);

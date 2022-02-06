@@ -14,45 +14,45 @@ blanks [[:blank:]\n]
 
 {blanks}                    // ignore
 
-"include"                   return ParserBase::INCLUDE;
-"function"                  return ParserBase::FUNCTION;
-"let"                       return ParserBase::LET;
-"global"                    return ParserBase::GLOBAL;
-"const"                     return ParserBase::CONST;
-"for"                       return ParserBase::FOR;
-"if"                        return ParserBase::IF;
-"else"                      return ParserBase::ELSE;
-"while"                     return ParserBase::WHILE;
-"++"                        return ParserBase::INC;
-"--"                        return ParserBase::DEC;
-"+="                        return ParserBase::ADD;
-"-="                        return ParserBase::SUB;
-"*="                        return ParserBase::MUL;
-"/="                        return ParserBase::DIV;
-"%="                        return ParserBase::MOD;
-"/=%"                       return ParserBase::DIVMOD;
-"%=/"                       return ParserBase::MODDIV;
-"<="                        return ParserBase::LE;
-">="                        return ParserBase::GE;
-"=="                        return ParserBase::EQ;
-"!="                        return ParserBase::NE;
-"&&"                        return ParserBase::AND;
-"||"                        return ParserBase::OR;
-"__bf"                      return ParserBase::INLINE_BF;
-"__movePtr"                 return ParserBase::MOVE_PTR;
-"sizeof"                    return ParserBase::SIZEOF;
+"include"                   return CompilerBase::INCLUDE;
+"function"                  return CompilerBase::FUNCTION;
+"let"                       return CompilerBase::LET;
+"global"                    return CompilerBase::GLOBAL;
+"const"                     return CompilerBase::CONST;
+"for"                       return CompilerBase::FOR;
+"if"                        return CompilerBase::IF;
+"else"                      return CompilerBase::ELSE;
+"while"                     return CompilerBase::WHILE;
+"++"                        return CompilerBase::INC;
+"--"                        return CompilerBase::DEC;
+"+="                        return CompilerBase::ADD;
+"-="                        return CompilerBase::SUB;
+"*="                        return CompilerBase::MUL;
+"/="                        return CompilerBase::DIV;
+"%="                        return CompilerBase::MOD;
+"/=%"                       return CompilerBase::DIVMOD;
+"%=/"                       return CompilerBase::MODDIV;
+"<="                        return CompilerBase::LE;
+">="                        return CompilerBase::GE;
+"=="                        return CompilerBase::EQ;
+"!="                        return CompilerBase::NE;
+"&&"                        return CompilerBase::AND;
+"||"                        return CompilerBase::OR;
+"__bf"                      return CompilerBase::INLINE_BF;
+"__movePtr"                 return CompilerBase::MOVE_PTR;
+"sizeof"                    return CompilerBase::SIZEOF;
 
 
-[[:digit:]]+                return ParserBase::NUM;
-{ident}                     return ParserBase::IDENT;
+[[:digit:]]+                return CompilerBase::NUM;
+{ident}                     return CompilerBase::IDENT;
 
 "'"."'"                     {
                                 setMatched(matched().substr(1, 1));
-                                return ParserBase::CHR;
+                                return CompilerBase::CHR;
                             }
 "'\\"."'"                   {
                                 setMatched(escape(matched()[2]));
-                                return ParserBase::CHR;
+                                return CompilerBase::CHR;
                             }
 
 \"                          {
@@ -76,7 +76,7 @@ blanks [[:blank:]\n]
 \"                          {
                                 begin(StartCondition_::INITIAL);
                                 setMatched(matched().substr(1, matched().size() - 2));
-                                return ParserBase::STR;
+                                return CompilerBase::STR;
                             }
 
 "\\".                       {

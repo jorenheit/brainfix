@@ -1,157 +1,199 @@
 #include <iostream>
-#include <vector>
-#include <stack>
 #include <fstream>
 #include <sstream>
+#include <memory>
+#include <map>
+#include <algorithm>
+#include "bfint.h"
 
-template <typename CellType = uint8_t>
-class BFInterpreter
+enum class CellType
+    {
+     INT8,
+     INT16,
+     INT32
+    };
+
+std::unique_ptr<BFInterpreterBase> getInterpreter(CellType type, int tapeSize, std::string const &code)
 {
-    std::vector<CellType> d_array;
-    std::string d_code;
-
-    size_t d_arrayPointer{0};
-    size_t d_codePointer{0};
-    std::stack<int> d_loopStack;
-
-    enum Ops: char
-        {
-         PLUS  = '+',
-         MINUS = '-',
-         LEFT  = '<',
-         RIGHT = '>',
-         START_LOOP = '[',
-         END_LOOP = ']',
-         PRINT = '.',
-         READ = ',',
-        };
-  
-public:
-    BFInterpreter(size_t arraySize, std::string code):
-        d_array(arraySize),
-        d_code(code)
-    {}
-
-    void run(std::istream &in = std::cin, std::ostream &out = std::cout)
+    switch (type)
     {
-        while (true)
-        {
-            char token = d_code[d_codePointer];
-            switch (token)
-            {
-            case LEFT: pointerDec(); break;
-            case RIGHT: pointerInc(); break;
-            case PLUS: plus(); break;
-            case MINUS: minus(); break;
-            case PRINT: print(out); break;
-            case READ: read(in); break;
-            case START_LOOP: startLoop(); break;
-            case END_LOOP: endLoop(); break;
-            default: break;
-            }
+    case CellType::INT8:
+        return std::make_unique<BFInterpreter<uint8_t>>(tapeSize, code);
+    case CellType::INT16:
+        return std::make_unique<BFInterpreter<uint16_t>>(tapeSize, code);
+    case CellType::INT32:
+        return std::make_unique<BFInterpreter<uint32_t>>(tapeSize, code);
+    default:
+        return nullptr;
+    };
+}
 
-            if (++d_codePointer >= d_code.size())
-                break;
-        }
-    }
-  
-    void plus()
-    {
-        ++d_array[d_arrayPointer];
-    }
-
-    void minus()
-    {
-        --d_array[d_arrayPointer];
-    }
-
-    void pointerInc()
-    {
-        if (++d_arrayPointer >= d_array.size())
-        {
-            d_array.resize(2 * d_array.size());
-        }
-    }
-
-    void pointerDec()
-    {
-        if (d_arrayPointer == 0)
-            throw std::string("Error: trying to decrement pointer beyond beginning.");
-
-        --d_arrayPointer;
-    }
-
-    void startLoop()
-    {
-        if (d_array[d_arrayPointer] != 0)
-        {    
-            d_loopStack.push(d_codePointer);
-        }
-        else
-        {
-            int bracketCount = 1;
-            while (bracketCount != 0 && d_codePointer < d_code.size())
-            {
-                ++d_codePointer;
-                if (d_code[d_codePointer] == START_LOOP)
-                    ++bracketCount;
-                else if (d_code[d_codePointer] == END_LOOP)
-                    --bracketCount;
-            }
-        }
-    }
-
-    void endLoop()
-    {
-        if (d_array[d_arrayPointer] != 0)
-        {
-            d_codePointer = d_loopStack.top();
-        }
-        else
-        {
-            d_loopStack.pop();
-        }
-    }
-
-    void print(std::ostream &out)
-    {
-        out << (char)d_array[d_arrayPointer];
-    }
-
-    void read(std::istream &in)
-    {
-        char c;
-        in.get(c);
-        d_array[d_arrayPointer] = c;
-    }
-
-    void printState()
-    {
-        for (auto x: d_array)
-            std::cout << (int)x << ' ';
-        std::cout << '\n';
-    }
+struct Options
+{
+    int          err{0};
+    CellType     cellType{CellType::INT8};
+    int          tapeLength{30000};
+    std::string  bfFile;
+    std::ostream *outStream{nullptr};
 };
 
+void printHelp(std::string const &progName)
+{
+    std::cout << "Usage: " << progName << " [options] [target(.bf)]\n"
+              << "Options:\n"
+              << "-h                  display this text\n"
+              << "-t [Type]           specify the number of bytes per BF-cell, where [Type] is one of\n"
+                 "                    int8, int16 and int32 (int8 by default)\n"
+              << "-n [N]              specify the number of cells (30,000 by default)\n"
+              << "-o [file, stdout]   specify where the generate BF is output to (defaults to stdout)\n\n"
+              << "Example: " << progName << " -n 2 -o output.txt program.bf\n";
+}
+
+Options parseCmdLine(std::vector<std::string> const &args)
+{
+    Options opt;
+    
+    size_t idx = 1;
+    while (idx < args.size())
+    {
+        if (args[idx] == "-h")
+        {
+            opt.err = 1;
+            return opt;
+        }
+
+        else if (args[idx] == "-t")
+        {
+            if (idx == args.size() - 1)
+            {
+                std::cerr << "ERROR: No argument passed to option \'-t\'.\n";
+                opt.err = 1;
+                return opt;
+            }
+
+            static std::map<std::string, CellType> const getType{
+                {"int8", CellType::INT8},
+                {"int16", CellType::INT16},
+                {"int32", CellType::INT32}
+            };
+
+            auto tolower = [](std::string str)->std::string
+                           {
+                               std::transform(str.begin(), str.end(), str.begin(),
+                                              [](unsigned char c){ return std::tolower(c); });
+                               return str;
+                           };
+
+            std::string arg = tolower(args[idx + 1]);
+            try
+            {
+                opt.cellType = getType.at(arg);
+                idx += 2;
+            }
+            catch (std::out_of_range const&)
+            {
+                std::cerr << "ERROR: Invalid argument passed to option \'-t\'\n";
+                opt.err = 1;
+                return opt;
+            }
+        }
+        else if (args[idx] == "-n")
+        {
+            if (idx == args.size() - 1)
+            {
+                std::cerr << "ERROR: No argument passed to option \'-n\'.\n";
+                opt.err = 1;
+                return opt;
+            }
+            
+            try
+            {
+                opt.tapeLength = std::stoi(args[idx + 1]);
+                idx += 2;
+            }
+            catch (std::invalid_argument const&)
+            {
+                std::cerr << "ERROR: Invalid argument passed to option \'-n\'\n";
+                opt.err = 1;
+                return opt;
+            }
+        }
+        else if (args[idx] == "-o")
+        {
+            if (idx == args.size() - 1)
+            {
+                std::cerr << "ERROR: No argument passed to option \'-o\'.\n";
+                opt.err = 1;
+                return opt;
+            }
+
+            if (args[idx + 1] == "stdout")
+            {
+                opt.outStream = &std::cout;
+                idx += 2;
+            }
+            else
+            {
+                std::string const &fname = args[idx + 1];
+                static std::ofstream file;
+                file.open(fname);
+                if (!file.good())
+                {
+                    std::cerr << "ERROR: could not open output-file " << fname << ".\n";
+                    opt.err = 1;
+                    return opt;
+                }
+
+                opt.outStream = &file;
+                idx += 2;
+            }
+        }
+    
+        else if (idx == args.size() - 1)
+        {
+            opt.bfFile = args.back();
+            break;
+        }
+        else
+        {
+            std::cerr << "Unknown option " << args[idx] << ".\n";
+            opt.err = 1;
+            return opt;
+        }
+    }
+
+    if (!opt.outStream)
+    {
+        opt.outStream = &std::cout;
+    }
+
+    if (idx > (args.size() - 1))
+    {
+        std::cerr << "ERROR: No input (.bf) file specified.\n";
+        opt.err = 1;
+        return opt;
+    }
+    
+    return opt;
+}
 
 
 int main(int argc, char **argv)
 try
 {
-    if (argc != 3)
+    Options opt = parseCmdLine(std::vector<std::string>(argv, argv + argc));
+    if (opt.err == 1)
     {
-        std::cerr << "Syntax: " << argv[0] << " [tape-length] [filename]\n";
+        printHelp(argv[0]);
         return 1;
     }
 
-    size_t len = std::stoi(argv[1]);
-    std::ifstream file(argv[2]);
+    std::ifstream file(opt.bfFile);
     std::stringstream buffer;
     buffer << file.rdbuf();
 
-    BFInterpreter bf(len, buffer.str());
-    bf.run(std::cin, std::cout);
-    //  bf.printState();
+    auto ptr = getInterpreter(opt.cellType, opt.tapeLength, buffer.str());
+    ptr->run(std::cin, *opt.outStream);
 }
  catch (std::string const &msg)
 {

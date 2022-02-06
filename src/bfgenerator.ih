@@ -1,0 +1,4 @@
+#include "bfgenerator.h"
+#include <sstream>
+
+#define validateAddr(...) validateAddr__(__func__, __VA_ARGS__)

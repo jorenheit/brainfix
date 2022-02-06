@@ -1,33 +1,25 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#include "compilerbase.h"
+#undef Compiler
+// CAVEAT: between the baseclass-include directive and the 
+// #undef directive in the previous line references to Compiler 
+// are read as CompilerBase.
+// If you need to include additional headers in this file 
+// you should do so after these comment-lines.
+
 #include <string>
 #include <map>
 #include <deque>
 #include <stack>
 #include <sstream>
-
+#include "scanner.h"
+#include "bfgenerator.h"
 #include "memory.h"
-#include "parser.h"
 
-class Compiler
+class Compiler: public CompilerBase
 {
-    friend class Parser;
-    
-    static constexpr int TAPE_SIZE_INITIAL = 1000;
-    static constexpr int MAX_INT           = std::numeric_limits<uint8_t>::max();
-    static constexpr int MAX_ARRAY_SIZE    = MAX_INT - 5;
-
-    Parser d_parser;
-    size_t d_pointer{0};
-    Memory d_memory;
-
-    std::map<std::string, BFXFunction>  d_functionMap;
-
-    std::map<std::string, uint8_t>      d_constMap;
-    std::ostringstream                  d_codeBuffer;
-    std::stack<int>                     d_stack;
-
     class ScopeStack
     {
         template <typename T>
@@ -45,9 +37,21 @@ class Compiler
         std::string popFunctionScope();
         std::string popSubScope();
     };
+    
+    static constexpr int TAPE_SIZE_INITIAL = 30000;
+    long const MAX_INT;
+    long const MAX_ARRAY_SIZE;
 
-    ScopeStack d_scopeStack;
+    Scanner     d_scanner;
+    Memory      d_memory;
+    BFGenerator d_bfGen;
 
+    std::map<std::string, BFXFunction>  d_functionMap;
+    std::map<std::string, int>          d_constMap;
+    std::ostringstream                  d_codeBuffer;
+    std::stack<int>                     d_stack;
+    ScopeStack                          d_scopeStack;
+    
     enum class Stage
         {
          IDLE,
@@ -61,15 +65,19 @@ class Compiler
     int         d_instructionLineNr;
     
 public:
-    Compiler(std::string const &file):
-        d_parser(file, *this),
-        d_memory(TAPE_SIZE_INITIAL)
-    {}
+    enum class CellType
+        {
+         INT8,
+         INT16,
+         INT32
+        };
 
+    Compiler(std::string const &file, CellType type);
     int compile();
-    void write(std::ostream &out = std::cout);
+    void write(std::ostream &out);
 
 private:
+    int parse();
     void addFunction(BFXFunction const &bfxFunc);
     void addGlobals(std::vector<std::pair<std::string, int>> const &declarations);
     void addConstant(std::string const &ident, int const num);
@@ -88,33 +96,11 @@ private:
     void pushStack(int const addr);
     int  popStack();
 
-    // BF generators
-    std::string bf_movePtr(int const addr);
-    std::string bf_setToValue(int const addr, int const val);
-    std::string bf_setToValue(int const start, int const val, size_t const n);
-    std::string bf_assign(int const lhs, int const rhs);
-    std::string bf_assign(int const dest, int const src, size_t const n);
-    std::string bf_addTo(int const target, int const rhs);
-    std::string bf_incr(int const target);
-    std::string bf_decr(int const target);
-    std::string bf_subtractFrom(int const target, int const rhs);
-    std::string bf_multiply(int const lhs, int const rhs, int const result);
-    std::string bf_multiplyBy(int const target, int const rhs);
-    std::string bf_equal(int const lhs, int const rhs, int const result);
-    std::string bf_notEqual(int const lhs, int const rhs, int const result);
-    std::string bf_greater(int const lhs, int const rhs, int const result);
-    std::string bf_less(int const lhs, int const rhs, int const result);
-    std::string bf_greaterOrEqual(int const lhs, int const rhs, int const result);
-    std::string bf_lessOrEqual(int const lhs, int const rhs, int const result);
-    std::string bf_not(int const operand, int const result);
-    std::string bf_and(int const lhs, int const rhs, int const result);
-    std::string bf_or(int const lhs, int const rhs, int const result);
-    
-    // Instruction generator
+        // Instruction generator
     template <auto Member, typename ... Args>
     Instruction instruction(Args ... args){
-        std::string file = d_parser.filename();
-        int line = d_parser.lineNr();
+        std::string file = d_scanner.filename();
+        int line = d_scanner.lineNr();
         return Instruction([=, this](){
                                setFilename(file);
                                setLineNr(line);
@@ -204,6 +190,21 @@ private:
     void setLineNr(int const line);
     int lineNr() const;
     std::string filename() const;
+
+
+    // BisonC++ generated
+    void error();                   // called on (syntax) errors
+    int lex();
+    void print();
+
+    void exceptionHandler(std::exception const &exc);
+
+    // support functions for parse():
+    void executeAction_(int ruleNr);
+    void errorRecovery_();
+    void nextCycle_();
+    void nextToken_();
+    void print_();
 };
 
 
@@ -222,7 +223,7 @@ void Compiler::compilerError(First const &first, Rest&& ... rest) const
     (std::cerr << ... << rest) << '\n';
 
     try {
-        d_parser.ERROR();
+        CompilerBase::ERROR();
     }
     catch (...)
     {
@@ -244,31 +245,6 @@ void Compiler::warningIf(bool const condition, First const &first, Rest&& ... re
     if (condition)
         compilerWarning(first, std::forward<Rest>(rest)...);
 }
-
-template <typename ... Rest>
-void Compiler::validateAddr__(std::string const &function, int first, Rest&& ... rest) const
-{
-    if (first < 0 || ((rest < 0) || ...))
-    {
-        std::cerr << "Fatal internal error while compiling " << filename()
-                  << ", line " << lineNr()
-                  << ": negative address passed to " << function << "()\n\n"
-                  << "Compilation terminated\n";
-        std::exit(1);
-    }
-
-    int const sz = (int)d_memory.size();
-    if (first > sz || (((int)rest >= sz) || ...))
-    {
-        std::cerr << "Fatal internal error while compiling " << filename()
-                  << ", line " << lineNr()
-                  << ": address out of bounds passed to " << function << "()\n\n"
-                  << "Compilation terminated.\n";
-
-        std::exit(1);
-    }
-}
-
 
 
 #endif //COMPILER_H
