@@ -22,18 +22,21 @@
 %expect 0
 
 // Keywords
-%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT
+%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT INC DEC
 
 %nonassoc then
 %nonassoc ELSE
 
 // Operators
 %right '=' ADD SUB MUL MOD DIV DIVMOD MODDIV
-%right AND OR 
-%nonassoc '<' '>' LE GE EQ NE
+%left OR
+%left AND
+%left EQ NE
+%left '<' '>' LE GE
 %left '+' '-'
 %left '*' '/' '%'
-%right INC DEC '!' unaryMinus
+%right postInc postDec  '!' unaryMinus
+%left preInc preDec
 
 %token <STRING> IDENT
 %token <STRING> STR
@@ -286,27 +289,27 @@ expression:
         $$ = $2;
     }
 |
-    INC variable
+    INC variable %prec preInc
     {
         $$ = instruction<&Compiler::preIncrement>($2);
     }
 |
-    DEC variable
+    DEC variable %prec preDec
     {
         $$ = instruction<&Compiler::preDecrement>($2);
     }
 |
-    variable INC
+    variable INC %prec postInc
     {
         $$ = instruction<&Compiler::postIncrement>($1);
     }
 |
-    variable DEC
+    variable DEC %prec postDec
     {
         $$ = instruction<&Compiler::postDecrement>($1);
     }
 |
-    INC array_element
+    INC array_element %prec preInc
     {
         $$ = instruction<&Compiler::applyUnaryFunctionToElement>(
                 ($2).first,
@@ -315,7 +318,7 @@ expression:
             );
     }
 |
-    DEC array_element
+    DEC array_element %prec preDec
     {
         $$ = instruction<&Compiler::applyUnaryFunctionToElement>(
                 ($2).first,
@@ -324,7 +327,7 @@ expression:
             );
     }
 |
-    array_element INC
+    array_element INC %prec postInc
     {
         $$ = instruction<&Compiler::applyUnaryFunctionToElement>(
                 ($1).first,
@@ -333,7 +336,7 @@ expression:
             );
     }
 |
-    array_element DEC
+    array_element DEC %prec postDec
     {
         $$ = instruction<&Compiler::applyUnaryFunctionToElement>(
                 ($1).first,
