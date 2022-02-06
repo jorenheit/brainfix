@@ -1,0 +1,45 @@
+include "std/io.bfx"
+include "std/math.bfx"
+
+const ARRAY_SIZE = 1000;
+
+function main()
+{
+    println("Welcome to the BrainF*ck prime-sieve!");
+    prints("Enter n (0-1000): ");
+    let n = scand();
+
+    // Initialize array and calculate maximum sieve-value
+    let [ARRAY_SIZE] arr = 1;
+    let s = sqrt(n);
+    
+    // Sieve
+    let prime = 2;
+    while (prime <= s)
+    {
+        for (let i = square(prime); i < n; i += prime)
+            arr[i] = 0;
+
+        ++prime;
+        while (arr[prime] == 0)
+            ++prime;
+    }
+
+    // Print results
+    printPrimes(arr, n);
+}
+
+function printPrimes(&arr, n)
+{
+    let count = 0;
+    for (let i = 2; i < n; ++i)
+    {
+        if (arr[i])
+        {
+            printd(i); endl();
+            ++count;
+        }
+    }
+
+    prints("Found "); printd(count); println(" primes!");
+}

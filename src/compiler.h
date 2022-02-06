@@ -58,9 +58,17 @@ class Compiler
     Stage       d_stage{Stage::IDLE};
     std::string d_instructionFilename;
     int         d_instructionLineNr;
+
     
 public:
-    Compiler(std::string const &file, int const bytesPerCell = 1);
+    enum class CellType
+        {
+         INT8,
+         INT16,
+         INT32
+        };
+
+    Compiler(std::string const &file, CellType type);
     int compile();
     void write(std::ostream &out);
 

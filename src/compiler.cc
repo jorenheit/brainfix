@@ -1,7 +1,27 @@
 #include "compiler.ih"
 
-Compiler::Compiler(std::string const &file, int const bytesPerCell):
-    MAX_INT((static_cast<uint64_t>(1) << (8 * bytesPerCell)) - 1),
+namespace __MaxInt
+{
+    template <typename T>
+    constexpr size_t __getMax()
+    {
+        return (static_cast<size_t>(1) << (8 * sizeof(T))) - 1;
+    }
+    
+    static size_t get(Compiler::CellType c)
+    {
+        switch (c)
+        {
+        case Compiler::CellType::INT8:  return __getMax<uint8_t>();
+        case Compiler::CellType::INT16: return __getMax<uint16_t>();
+        case Compiler::CellType::INT32: return __getMax<uint32_t>();;
+        }
+        throw -1;
+    }
+}
+
+Compiler::Compiler(std::string const &file, CellType type):
+    MAX_INT(__MaxInt::get(type)),
     MAX_ARRAY_SIZE(MAX_INT - 5),
     d_parser(file, *this),
     d_memory(TAPE_SIZE_INITIAL)
