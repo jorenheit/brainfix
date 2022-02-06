@@ -68,14 +68,39 @@ int Compiler::lex()
     return token;
 }
 
+
+int Compiler::compile()
+{
+    assert(d_stage == Stage::IDLE && "Calling Compiler::compile() multiple times");
+    
+    d_stage = Stage::PARSING;
+    int err = parse();
+    if (err)
+    {
+        std::cerr << "Compilation terminated due to error(s)\n";
+        return err;
+    }
+    
+    errorIf(d_functionMap.find("main") == d_functionMap.end(),
+            "No entrypoint provided. The entrypoint should be main().");
+
+    d_stage = Stage::CODEGEN;
+    call("main");
+    d_stage = Stage::FINISHED;
+    return 0;
+}
+
+void Compiler::write(std::ostream &out)
+{
+    out << cancelOppositeCommands(d_codeBuffer.str()) << '\n';
+}
+
 void Compiler::error()
 {
     std::cerr << "ERROR: Syntax error on line "
               << d_scanner.lineNr() << " of file "
               << d_scanner.filename() << '\n';
 }
-
-
 
 bool Compiler::ScopeStack::empty() const
 {
@@ -136,32 +161,6 @@ std::string Compiler::ScopeStack::popSubScope()
     std::string top = currentScopeString();
     subScopeStack.pop_back();
     return top;
-}
-
-int Compiler::compile()
-{
-    assert(d_stage == Stage::IDLE && "Calling Compiler::compile() multiple times");
-    
-    d_stage = Stage::PARSING;
-    int err = parse();
-    if (err)
-    {
-        std::cerr << "Compilation terminated due to error(s)\n";
-        return err;
-    }
-    
-    errorIf(d_functionMap.find("main") == d_functionMap.end(),
-            "No entrypoint provided. The entrypoint should be main().");
-
-    d_stage = Stage::CODEGEN;
-    call("main");
-    d_stage = Stage::FINISHED;
-    return 0;
-}
-
-void Compiler::write(std::ostream &out)
-{
-    out << cancelOppositeCommands(d_codeBuffer.str()) << '\n';
 }
 
 void Compiler::addFunction(BFXFunction const &bfxFunc)
