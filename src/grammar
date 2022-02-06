@@ -15,12 +15,14 @@
                 DECLARATION_LIST:       std::vector<std::pair<std::string, int>>;
                 PARAMETER:              BFXFunction::Parameter;
                 PARAMETER_LIST:         std::vector<BFXFunction::Parameter>;
+                SWITCH_CASE:            std::pair<Instruction, Instruction>;
+                CASE_LIST:              std::vector<std::pair<Instruction, Instruction>>;
                 BFX_FUNCTION:           BFXFunction;
 
 %expect 0
 
 // Keywords
-%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST
+%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT
 
 %nonassoc then
 %nonassoc ELSE
@@ -42,6 +44,10 @@
 %type <INSTRUCTION>         statement
 %type <INSTRUCTION>         if_statement
 %type <INSTRUCTION>         for_statement
+%type <INSTRUCTION>         switch_statement
+%type <CASE_LIST>           case_list
+%type <SWITCH_CASE>         switch_case
+%type <INSTRUCTION>         default_case
 %type <INSTRUCTION>         variable
 %type <DECLARATION>         variable_declaration
 %type <DECLARATION>         variable_specification
@@ -213,6 +219,8 @@ statement:
     if_statement
 |
     while_statement
+|
+    switch_statement
 ;
 
 expression:
@@ -535,6 +543,47 @@ while_statement:
         $$ = instruction<&Compiler::whileStatement>($3, $5);
     }
 ;
+
+switch_statement:
+    SWITCH '(' expression ')' '{' case_list '}'
+    {
+        $$ = instruction<&Compiler::switchStatement>($3, $6, [](){ return -1; });
+    }
+|
+    SWITCH '(' expression ')' '{' case_list default_case '}'
+    {
+        $$ = instruction<&Compiler::switchStatement>($3, $6, $7);
+    } 
+
+;
+
+case_list:
+    switch_case
+    {
+        $$ = std::vector<std::pair<Instruction, Instruction>>();
+        ($$).push_back($1);
+    }
+|
+    case_list switch_case
+    {
+        ($1).push_back($2);
+        $$ = $1;
+    }
+;
+
+switch_case:
+    CASE expression ':' statement
+    {
+        $$ = std::make_pair($2, $4);
+    }
+;
+
+default_case:
+    DEFAULT ':' statement
+    {
+        $$ = $3;
+    }
+;    
 
 variable_declaration:
     LET variable_specification

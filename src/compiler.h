@@ -169,6 +169,9 @@ private:
     int forStatement(Instruction const &init, Instruction const &condition,
                      Instruction const &increment, Instruction const &body);    
     int whileStatement(Instruction const &condition, Instruction const &body);
+    int switchStatement(Instruction const &compareExpr,
+                        std::vector<std::pair<Instruction, Instruction>> const &cases,
+                        Instruction const &defaultCase);
 
     // Error handling (implementations below)
     template <typename First, typename ... Rest>

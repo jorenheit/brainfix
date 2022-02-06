@@ -1,0 +1,108 @@
+/*
+  Proof of concept: brainfuck interpreter written in brainfix.
+  Can only handle BF code under 250 characters long and a tape 
+  of at most 250 cells. This is very very slow, but it works.
+
+  Note: the interpreter expects a newline as the final character.
+
+  Demo: Hello World (BF sample from wikipedia)
+
+  $ bfx bfint.bfx interpreter.bf                      # compile this bfx file to bfint.bf
+  $ echo "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++." > hello.bf
+  $ cat hello.bf | ./bfint 1000 interpreter.bf        # Run
+    Hello World!
+*/
+
+include "std/io.bfx"
+include "std/bool.bfx"
+
+const MAX_SIZE = 250;
+
+global [MAX_SIZE] bf_tape;
+global [MAX_SIZE] bf_code;
+global [MAX_SIZE] jmp_stack;
+global tape_pointer, stack_pointer;
+
+function main()
+{
+    let programSize = load();
+    run(programSize);
+}
+
+function init()
+{
+    bf_tape = 0;
+    pointer = 0;
+}
+
+function count = load()
+{
+    let count = 0;
+    let c;
+    while ((c = scanc()) != '\n' && count < MAX_SIZE)
+        bf_code[count++] = c;
+}
+
+function run(programSize)
+{
+    let i = 0;
+    while (i < programSize)
+    {
+        switch(bf_code[i])
+        {
+            case '>':
+            {
+                ++tape_pointer;
+            }
+            case '<':
+            {
+                --tape_pointer;
+            }
+            case '[':
+            {
+                if (bf_tape[tape_pointer])
+                    jmp_stack[stack_pointer++] = i;
+                else
+                    skipToClosingBracket(i);
+            }
+            case ']':
+            {
+                if (bf_tape[tape_pointer])
+                    i = jmp_stack[stack_pointer - 1];
+                else
+                    jmp_stack[stack_pointer--];
+            }
+            case '+':
+            {
+                ++bf_tape[tape_pointer];
+            }
+            case '-':
+            {
+                --bf_tape[tape_pointer];
+            }
+            case '.':
+            {
+                printc(bf_tape[tape_pointer]);
+            }
+            case ',':
+            {
+                bf_tape[tape_pointer] = scanc(); 
+            }
+        }
+        
+        ++i;
+    }
+}
+        
+function skipToClosingBracket(&idx)
+{
+    let count = 1;
+    while (count > 0)
+    {
+        let op = bf_code[++idx];
+        if (op == '[')
+            ++count;
+        else if (op == ']')
+            --count;
+    }
+}

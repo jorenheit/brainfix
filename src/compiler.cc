@@ -933,6 +933,54 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     return -1;
 }
 
+int Compiler::switchStatement(Instruction const &compareExpr,
+                              std::vector<std::pair<Instruction, Instruction>> const &cases,
+                              Instruction const &defaultCase)
+{
+    int const compareAddr = compareExpr();
+    int const goToDefault = allocateTemp();
+    pushStack(compareAddr);
+    pushStack(goToDefault);
+
+    d_codeBuffer << d_bfGen.setToValue(goToDefault, 1);
+    for (auto const &pr: cases)
+    {
+        int const caseAddr = pr.first();
+        int const flag = allocateTemp();
+        pushStack(flag);
+        
+        d_codeBuffer << d_bfGen.equal(compareAddr, caseAddr, flag)
+                     << "["
+                     <<     d_bfGen.setToValue(goToDefault, 0);
+
+        d_scopeStack.pushSubScope();
+        pr.second();
+        std::string const outOfScope = d_scopeStack.popSubScope();
+        d_memory.freeLocals(outOfScope);
+
+        d_codeBuffer << d_bfGen.setToValue(flag, 0)
+                     << "]";
+
+        popStack();
+    }
+
+    d_codeBuffer << d_bfGen.movePtr(goToDefault)
+                 << "[";
+
+    d_scopeStack.pushSubScope();
+    defaultCase();
+    std::string const outOfScope = d_scopeStack.popSubScope();
+    d_memory.freeLocals(outOfScope);
+
+    d_codeBuffer << d_bfGen.setToValue(goToDefault, 0)
+                 << "]";
+    
+    popStack(); // goToDefault
+    popStack(); // compareAddr
+    return -1;
+}
+
+
 std::string Compiler::cancelOppositeCommands(std::string const &bf)
 {
     auto cancel = [](std::string const &input, char up, char down) -> std::string

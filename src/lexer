@@ -23,6 +23,9 @@ blanks [[:blank:]\n]
 "if"                        return CompilerBase::IF;
 "else"                      return CompilerBase::ELSE;
 "while"                     return CompilerBase::WHILE;
+"switch"                    return CompilerBase::SWITCH;
+"case"                      return CompilerBase::CASE;
+"default"                   return CompilerBase::DEFAULT;
 "++"                        return CompilerBase::INC;
 "--"                        return CompilerBase::DEC;
 "+="                        return CompilerBase::ADD;
