@@ -58,15 +58,8 @@ expression:
     }
 ;
 
-array_subscript:
-    '[' expression ']' 
-    {
-        $$ = std::string("[") + $2 + "]";
-    }
-;
-
 array_element:
-    expression array_subscript
+    expression '[' expression ']' 
     {
         $$ = $1 + $2;
     }
