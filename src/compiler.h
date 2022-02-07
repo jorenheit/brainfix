@@ -110,12 +110,12 @@ private:
     
     // Wrappers for element-modifying instructions
     using UnaryFunction = int (Compiler::*)(AddressOrInstruction const &);
-    int applyUnaryFunctionToElement(std::string const &arrayIdent,
+    int applyUnaryFunctionToElement(AddressOrInstruction const &arr,
                                     AddressOrInstruction const &index,
                                     UnaryFunction func);
     
     using BinaryFunction = int (Compiler::*)(AddressOrInstruction const &, AddressOrInstruction const &);
-    int applyBinaryFunctionToElement(std::string const &arrayIdent,
+    int applyBinaryFunctionToElement(AddressOrInstruction const &arr,
                                      AddressOrInstruction const &index,
                                      AddressOrInstruction const &rhs,
                                      BinaryFunction func);
@@ -136,8 +136,8 @@ private:
     int initializeExpression(std::string const &ident, int const sz, Instruction const &rhs);
     int assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int fetch(std::string const &ident);
-    int assignElement(std::string const &ident, AddressOrInstruction const &index, AddressOrInstruction const &rhs);
-    int fetchElement(std::string const &ident, AddressOrInstruction const &index);
+    int fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index);
+    int assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs);
     int preIncrement(AddressOrInstruction const &addr);
     int preDecrement(AddressOrInstruction const &addr);
     int postIncrement(AddressOrInstruction const &addr);

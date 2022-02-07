@@ -99,7 +99,8 @@ function skipToClosingBracket(&idx)
     let count = 1;
     while (count > 0)
     {
-        let op = bf_code[++idx];
+        ++idx;
+        let op = bf_code[idx];
         if (op == '[')
             ++count;
         else if (op == ']')

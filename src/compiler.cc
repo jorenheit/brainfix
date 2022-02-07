@@ -556,11 +556,8 @@ int Compiler::arrayFromString(std::string const &str)
     return start;
 }
 
-int Compiler::fetchElement(std::string const &ident, AddressOrInstruction const &index)
+int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index)
 {
-    int const arr = addressOf(ident);
-    errorIf(arr < 0, "Variable \"", ident, "\" undefined in this scope.");
-
     int const sz = d_memory.sizeOf(arr);
     int const ret = allocateTemp();
 
@@ -568,11 +565,8 @@ int Compiler::fetchElement(std::string const &ident, AddressOrInstruction const 
     return ret;
 }
 
-int Compiler::assignElement(std::string const &ident, AddressOrInstruction const &index, AddressOrInstruction const &rhs)
+int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs)
 {
-    int const arr = addressOf(ident);
-    errorIf(arr < 0, "Variable \"", ident, "\" undefined in this scope.");
-    
     int const sz = d_memory.sizeOf(arr);
     d_codeBuffer << d_bfGen.assignElement(arr, sz, index, rhs);
     
@@ -582,24 +576,24 @@ int Compiler::assignElement(std::string const &ident, AddressOrInstruction const
 }
 
 
-int Compiler::applyUnaryFunctionToElement(std::string const &arrayIdent,
+int Compiler::applyUnaryFunctionToElement(AddressOrInstruction const &arr,
                                           AddressOrInstruction const &index,
                                           UnaryFunction func)
 {
-    int const fetchedAddr = fetchElement(arrayIdent, index);
-    int const returnAddr  = (this->*func)(fetchedAddr);
-    assignElement(arrayIdent, index, fetchedAddr);
-    return returnAddr;
+    int const copyOfElement = fetchElement(arr, index);
+    int const returnVal = (this->*func)(copyOfElement);
+    assignElement(arr, index, copyOfElement);
+    return returnVal;
 }
 
-int Compiler::applyBinaryFunctionToElement(std::string const &arrayIdent,
+int Compiler::applyBinaryFunctionToElement(AddressOrInstruction const &arr,
                                            AddressOrInstruction const &index,
                                            AddressOrInstruction const &rhs,
                                            BinaryFunction func)
 {
-    int const fetchedAddr = fetchElement(arrayIdent, index);
+    int const fetchedAddr = fetchElement(arr, index);
     int const returnAddr  = (this->*func)(fetchedAddr, rhs);
-    assignElement(arrayIdent, index, fetchedAddr);
+    assignElement(arr, index, fetchedAddr);
     return returnAddr;
 }
 

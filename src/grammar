@@ -8,21 +8,18 @@
 %polymorphic    INT:                    int;
                 CHAR:                   char;
                 STRING:                 std::string;
-                ARRAY_ELEMENT:          std::pair<std::string, Instruction>;
                 INSTRUCTION:            Instruction;
                 INSTRUCTION_LIST:       std::vector<Instruction>;
                 DECLARATION:            std::pair<std::string, int>;
                 DECLARATION_LIST:       std::vector<std::pair<std::string, int>>;
                 PARAMETER:              BFXFunction::Parameter;
                 PARAMETER_LIST:         std::vector<BFXFunction::Parameter>;
-                SWITCH_CASE:            std::pair<Instruction, Instruction>;
+                INSTRUCTION_PAIR:       std::pair<Instruction, Instruction>;
                 CASE_LIST:              std::vector<std::pair<Instruction, Instruction>>;
                 BFX_FUNCTION:           BFXFunction;
 
-%expect 0
-
 // Keywords
-%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT INC DEC
+%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT 
 
 %nonassoc then
 %nonassoc ELSE
@@ -35,8 +32,10 @@
 %left '<' '>' LE GE
 %left '+' '-'
 %left '*' '/' '%'
-%right postInc postDec  '!' unaryMinus
-%left preInc preDec
+%right INC DEC  '!' unaryMinus
+%left '['
+%nonassoc _var
+%nonassoc _arr
 
 %token <STRING> IDENT
 %token <STRING> STR
@@ -49,13 +48,13 @@
 %type <INSTRUCTION>         for_statement
 %type <INSTRUCTION>         switch_statement
 %type <CASE_LIST>           case_list
-%type <SWITCH_CASE>         switch_case
+%type <INSTRUCTION_PAIR>    switch_case
 %type <INSTRUCTION>         default_case
 %type <INSTRUCTION>         variable
 %type <DECLARATION>         variable_declaration
 %type <DECLARATION>         variable_specification
 %type <DECLARATION_LIST>    variable_specification_list
-%type <ARRAY_ELEMENT>       array_element
+%type <INSTRUCTION_PAIR>    array_element
 %type <INSTRUCTION>         constant_literal
 %type <INSTRUCTION>         string_literal
 %type <INSTRUCTION>         anonymous_array
@@ -68,7 +67,6 @@
 %type <PARAMETER_LIST>      parameter_list
 %type <PARAMETER_LIST>      optional_parameter_list
 %type <BFX_FUNCTION>        function_header
-
 
 %%
 
@@ -232,7 +230,7 @@ expression:
         $$ = instruction<&Compiler::declareVariable>(($1).first, ($1).second);
     }
 |    
-    variable
+    variable %prec _var
 |
     '-' expression %prec unaryMinus
     {
@@ -240,7 +238,7 @@ expression:
         $$ = []() { return -1; };
     }
 |
-    array_element
+    array_element %prec _arr
     {
         $$ = instruction<&Compiler::fetchElement>(
            ($1).first,
@@ -289,27 +287,27 @@ expression:
         $$ = $2;
     }
 |
-    INC variable %prec preInc
+    INC variable
     {
         $$ = instruction<&Compiler::preIncrement>($2);
     }
 |
-    DEC variable %prec preDec
+    DEC variable
     {
         $$ = instruction<&Compiler::preDecrement>($2);
     }
 |
-    variable INC %prec postInc
+    variable INC
     {
         $$ = instruction<&Compiler::postIncrement>($1);
     }
 |
-    variable DEC %prec postDec
+    variable DEC
     {
         $$ = instruction<&Compiler::postDecrement>($1);
     }
 |
-    INC array_element %prec preInc
+    INC array_element
     {
         $$ = instruction<&Compiler::applyUnaryFunctionToElement>(
                 ($2).first,
@@ -318,7 +316,7 @@ expression:
             );
     }
 |
-    DEC array_element %prec preDec
+    DEC array_element
     {
         $$ = instruction<&Compiler::applyUnaryFunctionToElement>(
                 ($2).first,
@@ -327,7 +325,7 @@ expression:
             );
     }
 |
-    array_element INC %prec postInc
+    array_element INC
     {
         $$ = instruction<&Compiler::applyUnaryFunctionToElement>(
                 ($1).first,
@@ -336,7 +334,7 @@ expression:
             );
     }
 |
-    array_element DEC %prec postDec
+    array_element DEC
     {
         $$ = instruction<&Compiler::applyUnaryFunctionToElement>(
                 ($1).first,
@@ -521,6 +519,61 @@ expression:
     }
 ;
 
+array_element:
+    expression '[' expression ']' 
+
+    {
+        $$ = std::pair<Instruction, Instruction>($1, $3);
+    }
+;
+
+string_literal:
+    STR
+    {
+        $$ = instruction<&Compiler::arrayFromString>($1);
+    }
+;
+
+anonymous_array:
+    '#' '(' expression_list ')'
+    {
+        $$ = instruction<&Compiler::arrayFromList>($3);
+    }
+|
+    '#' '[' NUM ']'
+    {
+        $$ = instruction<&Compiler::arrayFromSizeStaticValue>($3, 0);
+    }
+|
+    '#' '[' IDENT ']'
+    {
+        $$ = instruction<&Compiler::arrayFromSizeStaticValue>(
+                compileTimeConstant($3),
+                0
+           );
+    }
+|
+    '#' '[' NUM ',' expression ']'
+    {
+        $$ = instruction<&Compiler::arrayFromSizeDynamicValue>($3, $5);
+    }
+|
+    '#' '[' IDENT ',' expression ']'
+    {
+        $$ = instruction<&Compiler::arrayFromSizeDynamicValue>(
+                compileTimeConstant($3),
+                $5
+           );
+    }
+;
+
+function_call:
+    IDENT '(' optional_expression_list ')'
+    {
+       $$ = instruction<&Compiler::call>($1, $3);
+    }
+;
+
 for_statement:
     FOR '(' expression ';' expression ';' expression ')' statement
     {
@@ -633,7 +686,7 @@ variable_specification_list:
 ;
 
 variable:
-    IDENT
+    IDENT 
     {
         $$ = instruction<&Compiler::fetch>($1);
     }
@@ -675,56 +728,3 @@ optional_expression_list:
 ;
 
 
-array_element:
-    IDENT '[' expression ']'
-    {
-        $$ = std::pair<std::string, Instruction>($1, $3);
-    }
-;
-
-string_literal:
-    STR
-    {
-        $$ = instruction<&Compiler::arrayFromString>($1);
-    }
-;
-
-anonymous_array:
-    '#' '(' expression_list ')'
-    {
-        $$ = instruction<&Compiler::arrayFromList>($3);
-    }
-|
-    '#' '[' NUM ']'
-    {
-        $$ = instruction<&Compiler::arrayFromSizeStaticValue>($3, 0);
-    }
-|
-    '#' '[' IDENT ']'
-    {
-        $$ = instruction<&Compiler::arrayFromSizeStaticValue>(
-                compileTimeConstant($3),
-                0
-           );
-    }
-|
-    '#' '[' NUM ',' expression ']'
-    {
-        $$ = instruction<&Compiler::arrayFromSizeDynamicValue>($3, $5);
-    }
-|
-    '#' '[' IDENT ',' expression ']'
-    {
-        $$ = instruction<&Compiler::arrayFromSizeDynamicValue>(
-                compileTimeConstant($3),
-                $5
-           );
-    }
-;
-
-function_call:
-    IDENT '(' optional_expression_list ')'
-    {
-       $$ = instruction<&Compiler::call>($1, $3);
-    }
-;
