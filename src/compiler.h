@@ -136,6 +136,7 @@ private:
     int initializeExpression(std::string const &ident, int const sz, Instruction const &rhs);
     int assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int fetch(std::string const &ident);
+    int fetchField(std::string const &ident, std::string const &field);
     int fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index);
     int assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs);
     int preIncrement(AddressOrInstruction const &addr);

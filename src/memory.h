@@ -22,37 +22,35 @@ public:
         };
 
 private:
-    class Cell
+    struct Cell
     {
-        std::string d_ident;
-        std::string d_scope;
-        int d_sz;
-        CellSpec d_type;
-        CellSpec d_restore;
+        std::string identifier;
+        std::string scope;
+        std::string structType;
+        CellSpec    cellType;
+        int         size;
         
-    public:
         Cell():
-            d_type(CellSpec::EMPTY),
+            cellType(CellSpec::EMPTY),
             d_restore(CellSpec::INVALID)
         {}
         
         void clear();
-        void assign(std::string const &ident, std::string const &scope,
-                    int const sz, CellSpec const type);
         void stack();
         void unstack();
-            
-        std::string const &ident() const { return d_ident; }
-        std::string const &scope() const { return d_scope; }
-        int size() const { return d_sz; }
-        CellSpec type() const { return d_type; }
-        
-        bool isEmpty() const { return d_type == CellSpec::EMPTY; }
-        bool isLocal() const { return d_type == CellSpec::LOCAL; }
-        bool isGlobal() const { return d_type == CellSpec::GLOBAL; }
-        bool isStacked() const { return d_type == CellSpec::STACKED; }
-        bool isTemp() const { return d_type == CellSpec::TEMP; }
-        bool isReferenced() const { return d_type == CellSpec::REFERENCED; }
+        bool empty() const
+        {
+            return cellType == CellSpec::EMPTY;
+        }
+
+    private:
+        // using Members = std::tuple<std::string,
+        //                            std::string,
+        //                            std::string,
+        //                            CellSpec, int>;
+
+        // std::stack<Members> d_history;
+        CellSpec d_restore;
     };
 
     std::vector<Memory::Cell> d_memory;
@@ -78,10 +76,9 @@ public:
     void markAsLocal(int const addr, std::string const &ident, std::string const &scope);
     void changeScope(int const addr, std::string const &newScope);
     void changeIdent(int const addr, std::string const &newIdent);
+    bool isTemp(int const addr) const;
     std::string identifier(int const addr) const;
     std::string scope(int const addr) const;
-    std::string cellString(int const addr) const;
-    bool isTemp(int const addr) const;
 
 private:    
     int findFree(int sz = 1);
@@ -103,10 +100,10 @@ void Memory::freeIf(Predicate&& pred)
         Cell &cell = d_memory[idx];
         if (pred(cell))
         {
-            for (int offset = 1; offset < cell.size(); ++offset)
+            for (int offset = 1; offset < cell.size; ++offset)
             {
                 Cell &referenced = d_memory[idx + offset];
-                assert(referenced.isReferenced() &&
+                assert(referenced.cellType == CellSpec::REFERENCED &&
                        "Trying to free a referenced cell that is not marked as referenced");
                 
                 referenced.clear();
