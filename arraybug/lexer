@@ -1,0 +1,14 @@
+%class-name Scanner
+%filenames scanner
+%lex-source = "lex_flexcpp_generated.cc"
+
+ident [_a-zA-Z][_a-zA-Z0-9]*
+blanks [[:blank:]\n]
+
+%%
+
+{blanks}                    // ignore
+{ident}                     return CompilerBase::IDENT;
+[[:digit:]]+                return CompilerBase::NUM;
+.|\n|\r                     return matched()[0];
+
