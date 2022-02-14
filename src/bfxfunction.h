@@ -8,30 +8,6 @@
 #include <cassert>
 
 using Instruction = std::function<int()>;
-/*
-class Instruction
-{
-    std::function<int()> d_func;
-    mutable bool d_void{false};
-
-public:
-    Instruction() = default;
-    
-    Instruction(std::function<int()> const &f):
-        d_func(f)
-    {}
-
-    int operator()() 
-    {
-        return d_func();
-    }
-
-    int operator()() const
-    {
-        return d_func();
-    }
-};
-*/
 
 class BFXFunction
 {
@@ -46,18 +22,16 @@ public:
     
 private:
     
-    std::string d_name;
-    Instruction d_body;
+    std::string            d_name;
+    Instruction            d_body;
     std::vector<Parameter> d_params;
-    std::string d_returnVar;
-    static std::string const VOID;
+    std::string            d_returnVar;
 
 public:
     BFXFunction() = default;
     BFXFunction(std::string name, std::vector<Parameter> const &params):
         d_name(name),
-        d_params(params),
-        d_returnVar(VOID)
+        d_params(params)
     {}
 
     BFXFunction &setBody(Instruction const &body)
@@ -94,7 +68,7 @@ public:
 
     bool isVoid() const
     {
-        return d_returnVar == VOID;
+        return d_returnVar.empty();
     }
 };
     
