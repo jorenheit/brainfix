@@ -1,30 +1,38 @@
 #include "memory.h"
 
-
-// Idea: every cell has its own stack on which it remembers all data. unstack will restore all fields
-// to values pushed on top of the stack
-
-void Memory::Cell::stack()
+void Memory::Cell::backup()
 {
-    d_restore = cellType;
-    cellType = CellSpec::STACKED;
+    d_backupStack.push(Members{
+                               identifier,
+                               scope,
+                               cellType,
+                               size
+        });
+
+    cellType = CellSpec::RESERVED;
 }
 
-void Memory::Cell::unstack()
+void Memory::Cell::restore()
 {
-    cellType = d_restore;
-    d_restore = CellSpec::INVALID;
+    assert(d_backupStack.size() > 0 && "restore called on non-backupped cell");
+    
+    Members const &m = d_backupStack.top();
+    identifier = std::get<0>(m);
+    scope      = std::get<1>(m);
+    cellType   = std::get<2>(m);
+    size       = std::get<3>(m);
+
+    d_backupStack.pop();
 }
             
 void Memory::Cell::clear()
 {
+    assert(cellType != CellSpec::RESERVED && "Cannot clear a reserved cell");
+    
     identifier.clear();
     scope.clear();
-    structType.clear();
-    
     size = 0;
     cellType = CellSpec::EMPTY;
-    d_restore = CellSpec::INVALID;
 }
         
 int Memory::findFree(int const sz)
@@ -160,16 +168,16 @@ int Memory::findGlobal(std::string const &ident)
 }
 
 
-void Memory::stack(int const addr)
+void Memory::backup(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    d_memory[addr].stack();
+    d_memory[addr].backup();
 }
 
-void Memory::unstack(int const addr)
+void Memory::restore(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    d_memory[addr].unstack();
+    d_memory[addr].restore();
 }
 
 void Memory::freeTemps(std::string const &scope)

@@ -230,14 +230,14 @@ int Compiler::allocateTempBlock(int const sz)
 
 void Compiler::pushStack(int const addr)
 {
-    d_memory.stack(addr);
+    d_memory.backup(addr);
     d_stack.push(addr);
 }
 
 int Compiler::popStack()
 {
     int const addr = d_stack.top();
-    d_memory.unstack(addr);
+    d_memory.restore(addr);
     d_stack.pop();
     return addr;
 }
@@ -326,7 +326,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
             "Calling function \"", func.name(), "\" with invalid number of arguments. "
             "Expected ", params.size(), ", got ", args.size(), ".");
 
-    std::vector<std::tuple<int, std::string, std::string>> references;
+    std::vector<int> references;
     for (size_t idx = 0; idx != args.size(); ++idx)
     {
         // Evaluate argument that's passed in and get its size
@@ -353,15 +353,9 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         }
         else // Reference
         {
-            // Change scope of the argument to that of the function
-            references.push_back({
-                                  argAddr,
-                                  d_memory.identifier(argAddr),
-                                  d_memory.scope(argAddr)
-                });
-            
-            d_memory.rename(argAddr, paramIdent, func.name());
+            references.push_back(argAddr);
             pushStack(argAddr);
+            d_memory.rename(argAddr, paramIdent, func.name());
         }
     }
     
@@ -384,8 +378,8 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
 
         // Check if the return variable was passed into the function as a reference
         bool returnVariableIsReferenceParameter = false;
-        for (auto const &tup: references)
-            if (std::get<0>(tup) == ret)
+        for (int const addr: references)
+            if (addr == ret)
                 returnVariableIsReferenceParameter = true;
 
         if (returnVariableIsReferenceParameter)
@@ -404,15 +398,8 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     }
 
     // Pull referenced arguments back into original scope
-    for (auto const &tup: references)
-    {
-        int const argAddr = std::get<0>(tup);
-        std::string const &originalName = std::get<1>(tup);
-        std::string const &originalScope = std::get<2>(tup);
-        
-        d_memory.rename(argAddr, originalName, originalScope);
+    for (size_t i = 0; i != references.size(); ++i)
         popStack();
-    }
     
     // Clean up and return
     d_memory.freeLocals(func.name());

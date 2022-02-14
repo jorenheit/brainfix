@@ -5,6 +5,7 @@
 #include <iostream>
 #include <functional>
 #include <cassert>
+#include <stack>
 
 class Memory
 {
@@ -15,10 +16,8 @@ public:
          LOCAL,
          TEMP,
          REFERENCED,
-         STACKED,
+         RESERVED,
          GLOBAL,
-         VOID,
-         INVALID
         };
 
 private:
@@ -26,25 +25,28 @@ private:
     {
         std::string identifier;
         std::string scope;
-        std::string structType;
         CellSpec    cellType;
         int         size;
         
         Cell():
-            cellType(CellSpec::EMPTY),
-            d_restore(CellSpec::INVALID)
+            cellType(CellSpec::EMPTY)
         {}
         
         void clear();
-        void stack();
-        void unstack();
+        void backup();
+        void restore();
         bool empty() const
         {
             return cellType == CellSpec::EMPTY;
         }
 
     private:
-        CellSpec d_restore;
+        using Members = std::tuple<std::string,
+                                   std::string,
+                                   CellSpec,
+                                   int>;
+
+        std::stack<Members> d_backupStack;
     };
 
     std::vector<Memory::Cell> d_memory;
@@ -62,8 +64,8 @@ public:
     int findLocal(std::string const &ident, std::string const &scope);
     int findGlobal(std::string const &ident);
     int sizeOf(int const addr) const;
-    void stack(int const addr);
-    void unstack(int const addr);
+    void backup(int const addr);
+    void restore(int const addr);
     void freeTemps(std::string const &scope);
     void freeLocals(std::string const &scope);
     void markAsTemp(int const addr);
