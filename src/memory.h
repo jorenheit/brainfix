@@ -44,12 +44,6 @@ private:
         }
 
     private:
-        // using Members = std::tuple<std::string,
-        //                            std::string,
-        //                            std::string,
-        //                            CellSpec, int>;
-
-        // std::stack<Members> d_history;
         CellSpec d_restore;
     };
 
@@ -73,9 +67,7 @@ public:
     void freeTemps(std::string const &scope);
     void freeLocals(std::string const &scope);
     void markAsTemp(int const addr);
-    void markAsLocal(int const addr, std::string const &ident, std::string const &scope);
-    void changeScope(int const addr, std::string const &newScope);
-    void changeIdent(int const addr, std::string const &newIdent);
+    void rename(int const addr, std::string const &ident, std::string const &scope);
     bool isTemp(int const addr) const;
     std::string identifier(int const addr) const;
     std::string scope(int const addr) const;

@@ -163,17 +163,12 @@ int Memory::findGlobal(std::string const &ident)
 void Memory::stack(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    // assert((d_memory[addr].isLocal() || d_memory[addr].isTemp()) &&
-    //        "Only local variables can be stacked.");
-
     d_memory[addr].stack();
 }
 
 void Memory::unstack(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    assert(d_memory[addr].cellType == CellSpec::STACKED && "Only stacked variables can be unstacked.");
-
     d_memory[addr].unstack();
 }
 
@@ -209,27 +204,13 @@ void Memory::markAsTemp(int const addr)
     cell.cellType = CellSpec::TEMP;
 }
 
-void Memory::markAsLocal(int const addr, std::string const &ident, std::string const &scope)
+void Memory::rename(int const addr, std::string const &ident, std::string const &scope)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     Cell &cell = d_memory[addr];
     cell.identifier = ident;
     cell.scope = scope;
-    cell.cellType = CellSpec::LOCAL;
-}
-
-void Memory::changeScope(int const addr, std::string const &newScope)
-{
-    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    Cell &cell = d_memory[addr];
-    cell.scope = newScope;
-}
-
-void Memory::changeIdent(int const addr, std::string const &newIdent)
-{
-    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    Cell &cell = d_memory[addr];
-    cell.identifier = newIdent;
+    cell.cellType = scope.empty() ? CellSpec::GLOBAL : CellSpec::LOCAL;
 }
 
 std::string Memory::identifier(int const addr) const

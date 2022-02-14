@@ -360,8 +360,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
                                   d_memory.scope(argAddr)
                 });
             
-            d_memory.changeScope(argAddr, func.name());
-            d_memory.changeIdent(argAddr, paramIdent);
+            d_memory.rename(argAddr, paramIdent, func.name());
             pushStack(argAddr);
         }
     }
@@ -399,7 +398,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         else
         {
             // Pull the variable into local (sub)scope as a temp
-            d_memory.changeScope(ret, d_scopeStack.currentScopeString());
+            d_memory.rename(ret, "", d_scopeStack.currentScopeString());
             d_memory.markAsTemp(ret);
         }
     }
@@ -411,8 +410,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         std::string const &originalName = std::get<1>(tup);
         std::string const &originalScope = std::get<2>(tup);
         
-        d_memory.changeIdent(argAddr, originalName);
-        d_memory.changeScope(argAddr, originalScope);
+        d_memory.rename(argAddr, originalName, originalScope);
         popStack();
     }
     
@@ -454,7 +452,7 @@ int Compiler::initializeExpression(std::string const &ident, int const sz, Instr
     int const lhsSize = (sz == -1) ? rhsSize : sz;
     if (d_memory.isTemp(rhsAddr) && rhsSize == lhsSize)
     {
-        d_memory.markAsLocal(rhsAddr, ident, d_scopeStack.currentScopeString());
+        d_memory.rename(rhsAddr, ident, d_scopeStack.currentScopeString());
         return rhsAddr;
     }
     else
