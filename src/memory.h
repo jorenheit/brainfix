@@ -59,8 +59,9 @@ public:
     int getTemp(std::string const &scope, int const sz = 1);
     int getTempBlock(std::string const &scope, int const sz);
     int allocate(std::string const &ident, std::string const &scope, int const sz = 1);
-    int find(std::string const &ident, std::string const &scope);
+    int find(std::string const &ident, std::string const &scope) const;
     int sizeOf(int const addr) const;
+    int sizeOf(std::string const &ident, std::string const &scope) const;
     void backup(int const addr);
     void restore(int const addr);
     void freeTemps(std::string const &scope);

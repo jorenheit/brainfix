@@ -115,14 +115,14 @@ int Memory::allocate(std::string const &ident, std::string const &scope, int con
     return addr;
 }
 
-int Memory::find(std::string const &ident, std::string const &scope)
+int Memory::find(std::string const &ident, std::string const &scope) const
 {
-    auto it = std::find_if(d_memory.begin(), d_memory.end(),
-                           [&](Cell const &cell)
-                           {
-                               return scope.find(cell.scope) == 0 &&
-                                   cell.identifier == ident;
-                           });
+    auto const it = std::find_if(d_memory.begin(), d_memory.end(),
+                                 [&](Cell const &cell)
+                                 {
+                                     return scope.find(cell.scope) == 0 &&
+                                         cell.identifier == ident;
+                                 });
     
     if (it != d_memory.end())
         return it - d_memory.begin();
@@ -164,6 +164,12 @@ int Memory::sizeOf(int const addr) const
     assert(!cell.empty() && "Requested size of empty address");
     
     return d_memory[addr].size;
+}
+
+int Memory::sizeOf(std::string const &ident, std::string const &scope) const
+{
+    int const addr = find(ident, scope);
+    return (addr >= 0) ? d_memory[addr].size : 0;
 }
 
 void Memory::markAsTemp(int const addr)

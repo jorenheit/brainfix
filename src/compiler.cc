@@ -300,11 +300,10 @@ bool Compiler::validateInlineBF(std::string const &code)
 
 int Compiler::sizeOfOperator(std::string const &ident)
 {
-    int const addr = addressOf(ident);
-    errorIf(addr < 0, "Variable \"", ident ,"\" not defined in this scope.");
+    int const sz = d_memory.sizeOf(ident, d_scopeStack.currentScopeString());
+    errorIf(sz == 0, "Variable \"", ident ,"\" not defined in this scope.");
 
     int const tmp = allocateTemp();
-    int const sz = d_memory.sizeOf(addr);
     d_codeBuffer << d_bfGen.setToValue(tmp, sz);
     return tmp;
 }
