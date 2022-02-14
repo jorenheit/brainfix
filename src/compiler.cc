@@ -20,11 +20,12 @@ namespace _MaxInt
     }
 }
 
-Compiler::Compiler(std::string const &file, CellType type):
+Compiler::Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths):
     MAX_INT(_MaxInt::get(type)),
     MAX_ARRAY_SIZE(MAX_INT - 5),
-    d_scanner(file, "scannerlog.txt"),
-    d_memory(TAPE_SIZE_INITIAL)
+    d_scanner(file, ""),
+    d_memory(TAPE_SIZE_INITIAL),
+    d_includePaths(paths)
 {
     d_bfGen.setTempRequestFn([this](){
                                  return allocateTemp();
@@ -68,6 +69,22 @@ int Compiler::lex()
     return token;
 }
 
+
+void Compiler::pushStream(std::string const &file)
+{
+    for (std::string const &path: d_includePaths)
+    {
+        try
+        {
+            d_scanner.pushStream(path + file);
+            return;
+        }
+        catch(...)
+        {}
+    }
+
+    compilerError("Could not find included file \"", file, "\".");
+}
 
 int Compiler::compile()
 {

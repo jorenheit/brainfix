@@ -33,7 +33,7 @@
 %left '+' '-'
 %left '*' '/' '%'
 %right INC DEC  '!' unaryMinus
-%left '.' '['
+%left '['
 %nonassoc _var
 %nonassoc _arr
 
@@ -82,14 +82,12 @@ program:
     program include_directive
 |
     program const_definition
-|
-    program struct_definition
 ;
 
 include_directive:
     INCLUDE STR
     {
-        d_scanner.pushStream($2);
+        pushStream($2);
     }
 ;
 
@@ -124,15 +122,6 @@ const_definition:
         addConstant($2, $4);
     }
 ;
-
-// struct_definition:
-//     STRUCT IDENT '{' variable_specification_list '}'
-//     {
-//         addStruct($2, $4);
-//     }
-// |
-//     struct_definition ';' // optional closing semicolon
-// ;    
 
 scope_block:
     '{' code_body '}'
@@ -264,8 +253,6 @@ expression:
     anonymous_array
 |
     function_call
-|
-    structure_field
 |
     SIZEOF '(' IDENT ')'
     {

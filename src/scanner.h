@@ -11,9 +11,6 @@
 class Scanner: public ScannerBase
 {
 public:
-    explicit Scanner(std::istream &in = std::cin,
-                     std::ostream &out = std::cout);
-
     Scanner(std::string const &infile, std::string const &outfile);
     using ScannerBase::pushStream;
         
@@ -35,12 +32,6 @@ private:
     static std::string escape(char c);
     static std::string escape(std::string const &matched);
 };
-
-// $insert scannerConstructors
-inline Scanner::Scanner(std::istream &in, std::ostream &out)
-    :
-    ScannerBase(in, out)
-{}
 
 inline Scanner::Scanner(std::string const &infile, std::string const &outfile)
     :

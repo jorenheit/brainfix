@@ -51,6 +51,7 @@ class Compiler: public CompilerBase
     std::ostringstream                  d_codeBuffer;
     std::stack<int>                     d_stack;
     ScopeStack                          d_scopeStack;
+    std::vector<std::string>            d_includePaths;
     
     enum class Stage
         {
@@ -72,12 +73,13 @@ public:
          INT32
         };
 
-    Compiler(std::string const &file, CellType type);
+    Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths);
     int compile();
     void write(std::ostream &out);
 
 private:
     int parse();
+    void pushStream(std::string const &file);
     void addFunction(BFXFunction const &bfxFunc);
     void addGlobals(std::vector<std::pair<std::string, int>> const &declarations);
     void addConstant(std::string const &ident, int const num);

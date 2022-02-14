@@ -6,10 +6,11 @@
 
 struct Options
 {
-    int                err{0};
-    Compiler::CellType cellType{Compiler::CellType::INT8};
-    std::string        bfxFile;
-    std::ostream*      outStream{nullptr};
+    int                       err{0};
+    Compiler::CellType        cellType{Compiler::CellType::INT8};
+    std::vector<std::string>  includePaths;
+    std::string               bfxFile;
+    std::ostream*             outStream{nullptr};
 };
 
 void printHelp(std::string const &progName)
@@ -19,6 +20,8 @@ void printHelp(std::string const &progName)
               << "-h                  Display this text.\n"
               << "-t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of\n"
                  "                    int8, int16 and int32 (int8 by default).\n"
+              << "-I [path to folder] Specify additional include-path.\n"
+              << "                    This option may appear multiple times to specify multiple folders.\n"
               << "-o [file, stdout]   Specify where the generate BF is output to.\n\n"
               << "Example: " << progName << " -n 2 -o program.bf program.bfx\n";
 }
@@ -69,6 +72,18 @@ Options parseCmdLine(std::vector<std::string> const &args)
                 opt.err = 1;
                 return opt;
             }
+        }
+        else if (args[idx] == "-I")
+        {
+            if (idx == args.size() - 1)
+            {
+                std::cerr << "ERROR: No argument passed to option \'-I\'.\n";
+                opt.err = 1;
+                return opt;
+            }
+            
+            opt.includePaths.push_back(args[idx + 1]);
+            idx += 2;
         }
         else if (args[idx] == "-o")
         {
@@ -140,7 +155,7 @@ int main(int argc, char **argv) try
         return 1;
     }
     
-    Compiler c(opt.bfxFile, opt.cellType);
+    Compiler c(opt.bfxFile, opt.cellType, opt.includePaths);
     int err = c.compile();
 
     if (err) return err;
