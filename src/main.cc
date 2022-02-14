@@ -23,7 +23,7 @@ void printHelp(std::string const &progName)
               << "-I [path to folder] Specify additional include-path.\n"
               << "                    This option may appear multiple times to specify multiple folders.\n"
               << "-o [file, stdout]   Specify where the generate BF is output to.\n\n"
-              << "Example: " << progName << " -n 2 -o program.bf program.bfx\n";
+              << "Example: " << progName << " -o program.bf -I ../std/ -t int16 program.bfx\n";
 }
 
 Options parseCmdLine(std::vector<std::string> const &args)
