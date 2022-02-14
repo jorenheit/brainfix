@@ -177,7 +177,7 @@ void Compiler::addGlobals(std::vector<std::pair<std::string, int>> const &declar
         std::string const &ident = var.first;
         int const sz = var.second;
         errorIf(sz <= 0, "Global declaration of \"", ident, "\" has invalid size specification.");
-        d_memory.allocateGlobal(ident, sz);
+        d_memory.allocate(ident, "", sz);
     }
 }
 
@@ -204,18 +204,15 @@ bool Compiler::isCompileTimeConstant(std::string const &ident) const
 
 int Compiler::allocate(std::string const &ident, int const sz)
 {
-    int const addr = d_scopeStack.empty() ?
-        d_memory.allocateGlobal(ident, sz) :
-        d_memory.allocateLocal(ident, d_scopeStack.currentScopeString(), sz);
-    
+    int const addr = d_memory.allocate(ident, d_scopeStack.currentScopeString(), sz);
     errorIf(addr < 0, "Variable ", ident, ": variable previously declared.");
     return addr;
 }
 
 int Compiler::addressOf(std::string const &ident)
 {
-    int const addr = d_memory.findLocal(ident, d_scopeStack.currentScopeString());
-    return (addr != -1) ? addr : d_memory.findGlobal(ident);
+    int const addr = d_memory.find(ident, d_scopeStack.currentScopeString());
+    return (addr != -1) ? addr : d_memory.find(ident, "");
 }
 
 int Compiler::allocateTemp(int const sz)
@@ -344,7 +341,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
             // Allocate local variable for the function of the correct size
             // and copy argument to this location
             int const sz = d_memory.sizeOf(argAddr);
-            int paramAddr = d_memory.allocateLocal(paramIdent, func.name(), sz);
+            int paramAddr = d_memory.allocate(paramIdent, func.name(), sz);
             errorIf(paramAddr < 0,
                     "Could not allocate parameter", paramIdent, ". ",
                     "Possibly due to duplicate parameter-names.");
@@ -371,7 +368,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     {
         // Locate the address of the return-variable
         std::string retVar = func.returnVariable();
-        ret = d_memory.findLocal(retVar, func.name());
+        ret = d_memory.find(retVar, func.name());
         errorIf(ret == -1,
                 "Returnvalue \"", retVar, "\" of function \"", func.name(),
                 "\" seems not to have been declared in the main scope of the function-body.");
@@ -431,7 +428,7 @@ int Compiler::initializeExpression(std::string const &ident, int const sz, Instr
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
 
-    errorIf(d_memory.findLocal(ident, d_scopeStack.currentScopeString()) != -1,
+    errorIf(d_memory.find(ident, d_scopeStack.currentScopeString()) != -1,
             "Variable ", ident, " previously declared.");
     
     int rhsAddr = rhs();

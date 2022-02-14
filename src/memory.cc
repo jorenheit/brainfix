@@ -9,7 +9,8 @@ void Memory::Cell::backup()
                                size
         });
 
-    cellType = CellSpec::RESERVED;
+    // cells that have been backed up are protected -> cannot be cleared
+    cellType = CellSpec::PROTECTED;
 }
 
 void Memory::Cell::restore()
@@ -27,7 +28,7 @@ void Memory::Cell::restore()
             
 void Memory::Cell::clear()
 {
-    assert(cellType != CellSpec::RESERVED && "Cannot clear a reserved cell");
+    assert(cellType != CellSpec::PROTECTED && "Cannot clear a protected cell");
     
     identifier.clear();
     scope.clear();
@@ -91,9 +92,9 @@ int Memory::getTempBlock(std::string const &scope, int const sz)
     return start;
 }
 
-int Memory::allocateLocal(std::string const &ident, std::string const &scope, int const sz)
+int Memory::allocate(std::string const &ident, std::string const &scope, int const sz)
 {
-    if (findLocal(ident, scope) != -1)
+    if (find(ident, scope) != -1)
         return  -1;
     
     int addr = findFree(sz);
@@ -102,7 +103,7 @@ int Memory::allocateLocal(std::string const &ident, std::string const &scope, in
     cell.identifier = ident;
     cell.scope = scope;
     cell.size = sz;
-    cell.cellType = CellSpec::LOCAL;
+    cell.cellType = CellSpec::NAMED;
 
     for (int i = 1; i != sz; ++i)
     {
@@ -114,30 +115,7 @@ int Memory::allocateLocal(std::string const &ident, std::string const &scope, in
     return addr;
 }
 
-int Memory::allocateGlobal(std::string const &ident, int const sz)
-{
-    if (findGlobal(ident) != -1)
-        return  -1;
-    
-    int addr = findFree(sz);
-    Cell &cell = d_memory[addr];
-    cell.clear();
-    cell.identifier = ident;
-    cell.scope = "";
-    cell.size = sz;
-    cell.cellType = CellSpec::GLOBAL;
-    
-    for (int i = 1; i != sz; ++i)
-    {
-        Cell &cell = d_memory[addr + i];
-        cell.clear();
-        cell.cellType = CellSpec::REFERENCED;
-    }
-
-    return addr;
-}
-
-int Memory::findLocal(std::string const &ident, std::string const &scope)
+int Memory::find(std::string const &ident, std::string const &scope)
 {
     auto it = std::find_if(d_memory.begin(), d_memory.end(),
                            [&](Cell const &cell)
@@ -151,22 +129,6 @@ int Memory::findLocal(std::string const &ident, std::string const &scope)
 
     return -1;
 }
-
-int Memory::findGlobal(std::string const &ident)
-{
-    auto it = std::find_if(d_memory.begin(), d_memory.end(),
-                           [&](Cell const &cell)
-                           {
-                               return cell.cellType == CellSpec::GLOBAL &&
-                                   cell.identifier == ident;
-                           });
-    
-    if (it != d_memory.end())
-        return it - d_memory.begin();
-
-    return -1;
-}
-
 
 void Memory::backup(int const addr)
 {
@@ -208,6 +170,8 @@ void Memory::markAsTemp(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     Cell &cell = d_memory[addr];
+    
+    assert(cell.cellType != CellSpec::PROTECTED && "calling markAsTemp on protected cell");
     cell.identifier = "";
     cell.cellType = CellSpec::TEMP;
 }
@@ -218,7 +182,9 @@ void Memory::rename(int const addr, std::string const &ident, std::string const 
     Cell &cell = d_memory[addr];
     cell.identifier = ident;
     cell.scope = scope;
-    cell.cellType = scope.empty() ? CellSpec::GLOBAL : CellSpec::LOCAL;
+
+    if (cell.cellType != CellSpec::PROTECTED)
+        cell.cellType = CellSpec::NAMED;
 }
 
 std::string Memory::identifier(int const addr) const
