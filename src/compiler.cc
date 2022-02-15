@@ -119,76 +119,17 @@ void Compiler::error()
               << d_scanner.filename() << '\n';
 }
 
-bool Compiler::ScopeStack::empty() const
-{
-    return d_stack.empty();
-}
-
-std::string Compiler::ScopeStack::currentFunction() const
-{
-    return empty() ? "" : d_stack.back().first;
-}
-
-std::string Compiler::ScopeStack::currentScopeString() const
-{
-    std::string result = currentFunction();
-    if (d_stack.size() == 0)
-        return result;
-    
-    for (int scopeId: d_stack.back().second)
-        result += std::string("::") + std::to_string(scopeId);
-
-    return result;
-}
-
-bool Compiler::ScopeStack::containsFunction(std::string const &name) const
-{
-    auto const it = std::find_if(d_stack.begin(), d_stack.end(),
-                                 [&](std::pair<std::string, StackType<int>> const &item) 
-                                 {   
-                                     return item.first == name;
-                                 });
-
-    return it != d_stack.end();
-}
-
-void Compiler::ScopeStack::pushFunctionScope(std::string const &name)
-{
-    d_stack.push_back(std::pair<std::string, StackType<int>>(name, StackType<int>{}));
-}
-
-std::string Compiler::ScopeStack::popFunctionScope()
-{
-    std::string top = currentScopeString();
-    d_stack.pop_back();
-    return top;
-}
-
-void Compiler::ScopeStack::pushSubScope()
-{
-    static int counter = 0;
-    
-    auto &subScopeStack = d_stack.back().second;
-    subScopeStack.push_back(++counter);
-}
-
-std::string Compiler::ScopeStack::popSubScope()
-{
-    auto &subScopeStack = d_stack.back().second;
-    std::string top = currentScopeString();
-    subScopeStack.pop_back();
-    return top;
-}
-
 void Compiler::addFunction(BFXFunction const &bfxFunc)
 {
-    validateFunction(bfxFunc);
+    errorIf(!validateFunction(bfxFunc), "Duplicate parameters used in the definition of function \"",
+            bfxFunc.name(), "\".");
+
     auto result = d_functionMap.insert({bfxFunc.name(), bfxFunc});
     errorIf(!result.second,
             "Redefinition of function \"", bfxFunc.name(), "\" is not allowed.");
 }
 
-void Compiler::validateFunction(BFXFunction const &bfxFunc)
+bool Compiler::validateFunction(BFXFunction const &bfxFunc)
 {
     // Check if parameters are unique
     auto const &params = bfxFunc.params();
@@ -196,9 +137,10 @@ void Compiler::validateFunction(BFXFunction const &bfxFunc)
     for (auto const &p: params)
     {
         auto result = paramSet.insert(p.first);
-        errorIf(!result.second, "Parameter \"", p.first ,
-                "\" was used multiple times in the definition of function \"", bfxFunc.name(), "\".");
+        if (!result.second)
+            return false;
     }
+    return true;
 }
 
 void Compiler::addGlobals(std::vector<std::pair<std::string, int>> const &declarations)
@@ -235,14 +177,14 @@ bool Compiler::isCompileTimeConstant(std::string const &ident) const
 
 int Compiler::allocate(std::string const &ident, int const sz)
 {
-    int const addr = d_memory.allocate(ident, d_scopeStack.currentScopeString(), sz);
+    int const addr = d_memory.allocate(ident, d_scope.current(), sz);
     errorIf(addr < 0, "Variable ", ident, ": variable previously declared.");
     return addr;
 }
 
 int Compiler::addressOf(std::string const &ident)
 {
-    int const addr = d_memory.find(ident, d_scopeStack.currentScopeString());
+    int addr = d_memory.find(ident, d_scope.current());
     addr = (addr != -1) ? addr : d_memory.find(ident, "");
     errorIf(addr < 0, "Variable \"", ident, "\" not defined in this scope.");
     return addr;
@@ -250,12 +192,12 @@ int Compiler::addressOf(std::string const &ident)
 
 int Compiler::allocateTemp(int const sz)
 {
-    return d_memory.getTemp(d_scopeStack.currentFunction(), sz);
+    return d_memory.getTemp(d_scope.function(), sz);
 }
 
 int Compiler::allocateTempBlock(int const sz)
 {
-    return d_memory.getTempBlock(d_scopeStack.currentFunction(), sz);
+    return d_memory.getTempBlock(d_scope.function(), sz);
 }
 
 int Compiler::inlineBF(std::string const &code)
@@ -301,7 +243,7 @@ bool Compiler::validateInlineBF(std::string const &code)
 
 int Compiler::sizeOfOperator(std::string const &ident)
 {
-    int const sz = d_memory.sizeOf(ident, d_scopeStack.currentScopeString());
+    int const sz = d_memory.sizeOf(ident, d_scope.current());
     errorIf(sz == 0, "Variable \"", ident ,"\" not defined in this scope.");
 
     int const tmp = allocateTemp();
@@ -319,7 +261,7 @@ int Compiler::movePtr(std::string const &ident)
 int Compiler::statement(Instruction const &instr)
 {
     instr();
-    d_memory.freeTemps(d_scopeStack.currentFunction());
+    d_memory.freeTemps(d_scope.current());
     return -1;
 }
 
@@ -328,7 +270,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     // Check if the function exists
     bool const isFunction = d_functionMap.find(name) != d_functionMap.end();
     errorIf(!isFunction,"Call to unknown function \"", name, "\"");
-    errorIf(d_scopeStack.containsFunction(name),
+    errorIf(d_scope.containsFunction(name),
             "Function \"", name, "\" is called recursively. Recursion is not allowed.");
     
     // Get the list of parameters
@@ -372,9 +314,9 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     }
     
     // Execute body of the function
-    d_scopeStack.pushFunctionScope(func.name());
+    d_scope.pushFunction(func.name());
     func.body()();
-    d_scopeStack.popFunctionScope();
+    d_scope.popFunction();
     
 
     // Move return variable to local scope before cleaning up (if non-void)
@@ -404,7 +346,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         else
         {
             // Pull the variable into local (sub)scope as a temp
-            d_memory.rename(ret, "", d_scopeStack.currentScopeString());
+            d_memory.rename(ret, "", d_scope.current());
             d_memory.markAsTemp(ret);
         }
     }
@@ -443,7 +385,7 @@ int Compiler::initializeExpression(std::string const &ident, int const sz, Instr
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
 
-    errorIf(d_memory.find(ident, d_scopeStack.currentScopeString()) != -1,
+    errorIf(d_memory.find(ident, d_scope.current()) != -1,
             "Variable ", ident, " previously declared.");
     
     int rhsAddr = rhs();
@@ -451,7 +393,7 @@ int Compiler::initializeExpression(std::string const &ident, int const sz, Instr
     int const lhsSize = (sz == -1) ? rhsSize : sz;
     if (d_memory.isTemp(rhsAddr) && rhsSize == lhsSize)
     {
-        d_memory.rename(rhsAddr, ident, d_scopeStack.currentScopeString());
+        d_memory.rename(rhsAddr, ident, d_scope.current());
         return rhsAddr;
     }
     else
@@ -840,9 +782,9 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
                  << "[";
 
     {
-        d_scopeStack.pushSubScope();
+        d_scope.push();
         ifBody();
-        std::string const outOfScope = d_scopeStack.popSubScope();
+        std::string const outOfScope = d_scope.pop();
         d_memory.freeLocals(outOfScope);
     }
     
@@ -852,9 +794,9 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
                  << "[";
 
     {
-        d_scopeStack.pushSubScope();
+        d_scope.push();
         elseBody();
-        std::string const outOfScope = d_scopeStack.popSubScope();
+        std::string const outOfScope = d_scope.pop();
         d_memory.freeLocals(outOfScope);
     }
     
@@ -879,7 +821,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 {
     int const flag = allocateTemp();
     d_memory.push(flag);
-    d_scopeStack.pushSubScope();
+    d_scope.push();
 
     init();
     int const conditionAddr = condition();
@@ -893,7 +835,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
     d_codeBuffer << d_bfGen.assign(flag, condition())
                  << "]";
 
-    std::string outOfScope = d_scopeStack.popSubScope();
+    std::string outOfScope = d_scope.pop();
     d_memory.pop();
     
     d_memory.freeLocals(outOfScope);
@@ -906,7 +848,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     int const conditionAddr = condition();
     errorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
 
-    d_scopeStack.pushSubScope();
+    d_scope.push();
     d_memory.push(flag);
 
     d_codeBuffer << d_bfGen.assign(flag, conditionAddr)
@@ -916,7 +858,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     d_codeBuffer << d_bfGen.assign(flag, condition())
                  << "]";
 
-    std::string outOfScope = d_scopeStack.popSubScope();
+    std::string outOfScope = d_scope.pop();
     d_memory.pop();
 
     d_memory.freeLocals(outOfScope);
@@ -943,9 +885,9 @@ int Compiler::switchStatement(Instruction const &compareExpr,
                      << "["
                      <<     d_bfGen.setToValue(goToDefault, 0);
 
-        d_scopeStack.pushSubScope();
+        d_scope.push();
         pr.second();
-        std::string const outOfScope = d_scopeStack.popSubScope();
+        std::string const outOfScope = d_scope.pop();
         d_memory.freeLocals(outOfScope);
 
         d_codeBuffer << d_bfGen.setToValue(flag, 0)
@@ -957,9 +899,9 @@ int Compiler::switchStatement(Instruction const &compareExpr,
     d_codeBuffer << d_bfGen.movePtr(goToDefault)
                  << "[";
 
-    d_scopeStack.pushSubScope();
+    d_scope.push();
     defaultCase();
-    std::string const outOfScope = d_scopeStack.popSubScope();
+    std::string const outOfScope = d_scope.pop();
     d_memory.freeLocals(outOfScope);
 
     d_codeBuffer << d_bfGen.setToValue(goToDefault, 0)

@@ -6,6 +6,10 @@
 #include <string>
 #include <variant>
 #include <cassert>
+#include <deque>
+
+
+// namespace BFX ?????
 
 using Instruction = std::function<int()>;
 
@@ -70,6 +74,25 @@ public:
     {
         return d_returnVar.empty();
     }
+};
+
+
+class Scope
+{
+    template <typename T>
+    using StackType = std::deque<T>;
+
+    StackType<std::pair<std::string, StackType<int>>> d_stack;
+        
+public:
+    bool empty() const;
+    std::string function() const;
+    std::string current() const;
+    bool containsFunction(std::string const &name) const;
+    void pushFunction(std::string const &name);
+    void push();
+    std::string popFunction();
+    std::string pop();
 };
     
 class AddressOrInstruction

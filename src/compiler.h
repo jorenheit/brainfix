@@ -11,8 +11,6 @@
 
 #include <string>
 #include <map>
-#include <deque>
-#include <stack>
 #include <sstream>
 #include "scanner.h"
 #include "bfgenerator.h"
@@ -20,24 +18,6 @@
 
 class Compiler: public CompilerBase
 {
-    class ScopeStack
-    {
-        template <typename T>
-        using StackType = std::deque<T>;
-
-        StackType<std::pair<std::string, StackType<int>>> d_stack;
-        
-    public:
-        bool empty() const;
-        std::string currentFunction() const;
-        std::string currentScopeString() const;
-        bool containsFunction(std::string const &name) const;
-        void pushFunctionScope(std::string const &name);
-        void pushSubScope();
-        std::string popFunctionScope();
-        std::string popSubScope();
-    };
-    
     static constexpr int TAPE_SIZE_INITIAL = 30000;
     long const MAX_INT;
     long const MAX_ARRAY_SIZE;
@@ -49,7 +29,7 @@ class Compiler: public CompilerBase
     std::map<std::string, BFXFunction>  d_functionMap;
     std::map<std::string, int>          d_constMap;
     std::ostringstream                  d_codeBuffer;
-    ScopeStack                          d_scopeStack;
+    Scope                               d_scope;
     std::vector<std::string>            d_includePaths;
     
     enum class Stage
@@ -86,7 +66,7 @@ private:
     int  compileTimeConstant(std::string const &ident) const;
     bool isCompileTimeConstant(std::string const &ident) const;
 
-    static void validateFunction(BFXFunction const &bfxFunc);
+    static bool validateFunction(BFXFunction const &bfxFunc);
     static bool validateInlineBF(std::string const &ident);
     static std::string cancelOppositeCommands(std::string const &bf);
     
