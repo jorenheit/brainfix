@@ -182,9 +182,23 @@ std::string Compiler::ScopeStack::popSubScope()
 
 void Compiler::addFunction(BFXFunction const &bfxFunc)
 {
+    validateFunction(bfxFunc);
     auto result = d_functionMap.insert({bfxFunc.name(), bfxFunc});
     errorIf(!result.second,
             "Redefinition of function \"", bfxFunc.name(), "\" is not allowed.");
+}
+
+void Compiler::validateFunction(BFXFunction const &bfxFunc)
+{
+    // Check if parameters are unique
+    auto const &params = bfxFunc.params();
+    std::set<std::string> paramSet;
+    for (auto const &p: params)
+    {
+        auto result = paramSet.insert(p.first);
+        errorIf(!result.second, "Parameter \"", p.first ,
+                "\" was used multiple times in the definition of function \"", bfxFunc.name(), "\".");
+    }
 }
 
 void Compiler::addGlobals(std::vector<std::pair<std::string, int>> const &declarations)
@@ -349,9 +363,9 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
                 "\": the expression passed as argument ", idx, " returns void.");
 
         // Check if the parameter is passed by value or reference
-        BFXFunction::Parameter const &p = params[idx];
-        std::string const &paramIdent = p.first;
-        BFXFunction::ParameterType paramType = p.second;
+        BFXFunction::Parameter const &p          = params[idx];
+        std::string const            &paramIdent = p.first;
+        BFXFunction::ParameterType    paramType  = p.second;
         if (paramType == BFXFunction::ParameterType::Value)
         {
             // Allocate local variable for the function of the correct size
@@ -360,7 +374,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
             int paramAddr = d_memory.allocate(paramIdent, func.name(), sz);
             errorIf(paramAddr < 0,
                     "Could not allocate parameter", paramIdent, ". ",
-                    "Possibly due to duplicate parameter-names.");
+                    "This should never happen.");
             
             assign(paramAddr, argAddr);
         }

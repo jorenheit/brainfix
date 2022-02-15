@@ -3,6 +3,7 @@
     // Include this file in the sources of the class Compiler.
 
 // $insert class.h
+#include <set>
 #include "compiler.h"
 
 inline void Compiler::print()
