@@ -5,12 +5,12 @@ void Memory::Cell::backup()
     d_backupStack.push(Members{
                                identifier,
                                scope,
-                               cellType,
+                               content,
                                size
         });
 
     // cells that have been backed up are protected -> cannot be cleared
-    cellType = CellSpec::PROTECTED;
+    content = Content::PROTECTED;
 }
 
 void Memory::Cell::restore()
@@ -20,7 +20,7 @@ void Memory::Cell::restore()
     Members const &m = d_backupStack.top();
     identifier = std::get<0>(m);
     scope      = std::get<1>(m);
-    cellType   = std::get<2>(m);
+    content   = std::get<2>(m);
     size       = std::get<3>(m);
 
     d_backupStack.pop();
@@ -28,12 +28,12 @@ void Memory::Cell::restore()
             
 void Memory::Cell::clear()
 {
-    assert(cellType != CellSpec::PROTECTED && "Cannot clear a protected cell");
+    assert(content != Content::PROTECTED && "Cannot clear a protected cell");
     
     identifier.clear();
     scope.clear();
     size = 0;
-    cellType = CellSpec::EMPTY;
+    content = Content::EMPTY;
 }
         
 int Memory::findFree(int const sz)
@@ -65,13 +65,13 @@ int Memory::getTemp(std::string const &scope, int const sz)
     cell.identifier = "";
     cell.scope = scope;
     cell.size = sz;
-    cell.cellType = CellSpec::TEMP;
+    cell.content = Content::TEMP;
 
     for (int i = 1; i != sz; ++i)
     {
         Cell &cell = d_memory[start + i];
         cell.clear();
-        cell.cellType = CellSpec::REFERENCED;
+        cell.content = Content::REFERENCED;
     }
 
     return start;
@@ -86,7 +86,7 @@ int Memory::getTempBlock(std::string const &scope, int const sz)
         cell.clear();
         cell.scope = scope;
         cell.size = 1;
-        cell.cellType = CellSpec::TEMP;
+        cell.content = Content::TEMP;
     }
 
     return start;
@@ -103,13 +103,13 @@ int Memory::allocate(std::string const &ident, std::string const &scope, int con
     cell.identifier = ident;
     cell.scope = scope;
     cell.size = sz;
-    cell.cellType = CellSpec::NAMED;
+    cell.content = Content::NAMED;
 
     for (int i = 1; i != sz; ++i)
     {
         Cell &cell = d_memory[addr + i];
         cell.clear();
-        cell.cellType = CellSpec::REFERENCED;
+        cell.content = Content::REFERENCED;
     }
 
     return addr;
@@ -145,7 +145,7 @@ void Memory::restore(int const addr)
 void Memory::freeTemps(std::string const &scope)
 {
     freeIf([&](Cell const &cell){
-               return cell.cellType == CellSpec::TEMP &&
+               return cell.content == Content::TEMP &&
                    cell.scope == scope;
            });
 }
@@ -177,9 +177,9 @@ void Memory::markAsTemp(int const addr)
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     Cell &cell = d_memory[addr];
     
-    assert(cell.cellType != CellSpec::PROTECTED && "calling markAsTemp on protected cell");
+    assert(cell.content != Content::PROTECTED && "calling markAsTemp on protected cell");
     cell.identifier = "";
-    cell.cellType = CellSpec::TEMP;
+    cell.content = Content::TEMP;
 }
 
 void Memory::rename(int const addr, std::string const &ident, std::string const &scope)
@@ -189,8 +189,8 @@ void Memory::rename(int const addr, std::string const &ident, std::string const 
     cell.identifier = ident;
     cell.scope = scope;
 
-    if (cell.cellType != CellSpec::PROTECTED)
-        cell.cellType = CellSpec::NAMED;
+    if (cell.content != Content::PROTECTED)
+        cell.content = Content::NAMED;
 }
 
 std::string Memory::identifier(int const addr) const
@@ -208,6 +208,6 @@ std::string Memory::scope(int const addr) const
 bool Memory::isTemp(int const addr) const
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    return d_memory[addr].cellType == CellSpec::TEMP;
+    return d_memory[addr].content == Content::TEMP;
 }
 

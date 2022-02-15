@@ -10,7 +10,7 @@
 class Memory
 {
 public: 
-    enum class CellSpec
+    enum class Content
         {
          EMPTY,
          NAMED,
@@ -24,11 +24,11 @@ private:
     {
         std::string identifier;
         std::string scope;
-        CellSpec    cellType;
+        Content     content;
         int         size;
         
         Cell():
-            cellType(CellSpec::EMPTY)
+            content(Content::EMPTY)
         {}
         
         void clear();
@@ -36,13 +36,13 @@ private:
         void restore();
         bool empty() const
         {
-            return cellType == CellSpec::EMPTY;
+            return content == Content::EMPTY;
         }
 
     private:
         using Members = std::tuple<std::string,
                                    std::string,
-                                   CellSpec,
+                                   Content,
                                    int>;
 
         std::stack<Members> d_backupStack;
@@ -95,7 +95,7 @@ void Memory::freeIf(Predicate&& pred)
             for (int offset = 1; offset < cell.size; ++offset)
             {
                 Cell &referenced = d_memory[idx + offset];
-                assert(referenced.cellType == CellSpec::REFERENCED &&
+                assert(referenced.content == Content::REFERENCED &&
                        "Trying to free a referenced cell that is not marked as referenced");
                 
                 referenced.clear();
