@@ -256,21 +256,6 @@ int Compiler::allocateTempBlock(int const sz)
     return d_memory.getTempBlock(d_scopeStack.currentFunction(), sz);
 }
 
-void Compiler::pushStack(int const addr)
-{
-    d_memory.backup(addr);
-    d_stack.push(addr);
-}
-
-int Compiler::popStack()
-{
-    int const addr = d_stack.top();
-    d_memory.restore(addr);
-    d_stack.pop();
-    return addr;
-}
-
-
 int Compiler::inlineBF(std::string const &code)
 {
     errorIf(!validateInlineBF(code),
@@ -381,7 +366,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         else // Reference
         {
             references.push_back(argAddr);
-            pushStack(argAddr);
+            d_memory.push(argAddr);
             d_memory.rename(argAddr, paramIdent, func.name());
         }
     }
@@ -426,7 +411,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
 
     // Pull referenced arguments back into original scope
     for (size_t i = 0; i != references.size(); ++i)
-        popStack();
+        d_memory.pop();
     
     // Clean up and return
     d_memory.freeLocals(func.name());
@@ -849,8 +834,8 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     assign(ifFlag, conditionAddr);
     int const elseFlag = logicalNot(ifFlag);
 
-    pushStack(ifFlag);
-    pushStack(elseFlag); 
+    d_memory.push(ifFlag);
+    d_memory.push(elseFlag); 
 
     d_codeBuffer << d_bfGen.movePtr(ifFlag)
                  << "[";
@@ -877,8 +862,8 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     d_codeBuffer << d_bfGen.setToValue(elseFlag, 0)
                  << "]";
 
-    popStack();
-    popStack();
+    d_memory.pop();
+    d_memory.pop();
     return -1;
 }
 
@@ -894,7 +879,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
                            Instruction const &increment, Instruction const &body)
 {
     int const flag = allocateTemp();
-    pushStack(flag);
+    d_memory.push(flag);
     d_scopeStack.pushSubScope();
 
     init();
@@ -910,7 +895,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
                  << "]";
 
     std::string outOfScope = d_scopeStack.popSubScope();
-    popStack();
+    d_memory.pop();
     
     d_memory.freeLocals(outOfScope);
     return -1;
@@ -923,7 +908,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     errorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
 
     d_scopeStack.pushSubScope();
-    pushStack(flag);
+    d_memory.push(flag);
 
     d_codeBuffer << d_bfGen.assign(flag, conditionAddr)
                  << "[";
@@ -933,7 +918,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
                  << "]";
 
     std::string outOfScope = d_scopeStack.popSubScope();
-    popStack();
+    d_memory.pop();
 
     d_memory.freeLocals(outOfScope);
     return -1;
@@ -945,15 +930,15 @@ int Compiler::switchStatement(Instruction const &compareExpr,
 {
     int const compareAddr = compareExpr();
     int const goToDefault = allocateTemp();
-    pushStack(compareAddr);
-    pushStack(goToDefault);
+    d_memory.push(compareAddr);
+    d_memory.push(goToDefault);
 
     d_codeBuffer << d_bfGen.setToValue(goToDefault, 1);
     for (auto const &pr: cases)
     {
         int const caseAddr = pr.first();
         int const flag = allocateTemp();
-        pushStack(flag);
+        d_memory.push(flag);
         
         d_codeBuffer << d_bfGen.equal(compareAddr, caseAddr, flag)
                      << "["
@@ -967,7 +952,7 @@ int Compiler::switchStatement(Instruction const &compareExpr,
         d_codeBuffer << d_bfGen.setToValue(flag, 0)
                      << "]";
 
-        popStack();
+        d_memory.pop();
     }
 
     d_codeBuffer << d_bfGen.movePtr(goToDefault)
@@ -981,8 +966,8 @@ int Compiler::switchStatement(Instruction const &compareExpr,
     d_codeBuffer << d_bfGen.setToValue(goToDefault, 0)
                  << "]";
     
-    popStack(); // goToDefault
-    popStack(); // compareAddr
+    d_memory.pop(); // goToDefault
+    d_memory.pop(); // compareAddr
     return -1;
 }
 

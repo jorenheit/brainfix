@@ -49,7 +49,8 @@ private:
     };
 
     std::vector<Memory::Cell> d_memory;
-
+    std::stack<int> d_protectedStack;
+    
 public:
     Memory(size_t sz):
         d_memory(sz)
@@ -62,8 +63,8 @@ public:
     int find(std::string const &ident, std::string const &scope) const;
     int sizeOf(int const addr) const;
     int sizeOf(std::string const &ident, std::string const &scope) const;
-    void backup(int const addr);
-    void restore(int const addr);
+    int pop();
+    void push(int const addr);
     void freeTemps(std::string const &scope);
     void freeLocals(std::string const &scope);
     void markAsTemp(int const addr);

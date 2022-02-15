@@ -49,7 +49,6 @@ class Compiler: public CompilerBase
     std::map<std::string, BFXFunction>  d_functionMap;
     std::map<std::string, int>          d_constMap;
     std::ostringstream                  d_codeBuffer;
-    std::stack<int>                     d_stack;
     ScopeStack                          d_scopeStack;
     std::vector<std::string>            d_includePaths;
     
@@ -96,8 +95,6 @@ private:
     int  allocateTemp(int const sz = 1);
     int  allocateTempBlock(int const sz);
     int  addressOf(std::string const &ident);
-    void pushStack(int const addr);
-    int  popStack();
 
         // Instruction generator
     template <auto Member, typename ... Args>

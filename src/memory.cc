@@ -130,16 +130,19 @@ int Memory::find(std::string const &ident, std::string const &scope) const
     return -1;
 }
 
-void Memory::backup(int const addr)
+void Memory::push(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     d_memory[addr].backup();
+    d_protectedStack.push(addr);
 }
 
-void Memory::restore(int const addr)
+int Memory::pop()
 {
-    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    int const addr = d_protectedStack.top();
     d_memory[addr].restore();
+    d_protectedStack.pop();
+    return addr;
 }
 
 void Memory::freeTemps(std::string const &scope)
