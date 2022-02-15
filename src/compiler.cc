@@ -243,7 +243,9 @@ int Compiler::allocate(std::string const &ident, int const sz)
 int Compiler::addressOf(std::string const &ident)
 {
     int const addr = d_memory.find(ident, d_scopeStack.currentScopeString());
-    return (addr != -1) ? addr : d_memory.find(ident, "");
+    addr = (addr != -1) ? addr : d_memory.find(ident, "");
+    errorIf(addr < 0, "Variable \"", ident, "\" not defined in this scope.");
+    return addr;
 }
 
 int Compiler::allocateTemp(int const sz)
@@ -310,8 +312,6 @@ int Compiler::sizeOfOperator(std::string const &ident)
 int Compiler::movePtr(std::string const &ident)
 {
     int const addr = addressOf(ident);
-    errorIf(addr < 0, "Variable \"", ident ,"\" not defined in this scope.");
-
     d_codeBuffer << d_bfGen.movePtr(addr);
     return -1;
 }
@@ -494,7 +494,6 @@ int Compiler::fetch(std::string const &ident)
         return constVal(compileTimeConstant(ident));
     
     int const addr = addressOf(ident);
-    errorIf(addr < 0, "Variable \"", ident, "\" undefined in this scope.");
     return addr;
 }
 

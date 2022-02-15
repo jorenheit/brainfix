@@ -82,11 +82,11 @@ private:
     void addFunction(BFXFunction const &bfxFunc);
     void addGlobals(std::vector<std::pair<std::string, int>> const &declarations);
     void addConstant(std::string const &ident, int const num);
-    void validateFunction(BFXFunction const &bfxFunc);
 
     int  compileTimeConstant(std::string const &ident) const;
     bool isCompileTimeConstant(std::string const &ident) const;
 
+    static void validateFunction(BFXFunction const &bfxFunc);
     static bool validateInlineBF(std::string const &ident);
     static std::string cancelOppositeCommands(std::string const &bf);
     
