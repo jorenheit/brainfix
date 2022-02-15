@@ -188,7 +188,7 @@ function bar(&x)
 ```
 
 
-#### Passign array-elements by reference
+#### Passing array-elements by reference
 When an array-element is accessed through the index-operator (more on arrays in the dedicated section below), the result of this expression is actually a temporary copy of the actual element. This is because the position of the BF-pointer has to be known at all times, even when the index is a runtime variable (for example determined by user-input). Therefore, when passing an array-element by reference to a function, a reference to the temporary copy is passed rather than the actual element. This limitation is easily side-stepped by passing both the array and the index seperately:
 
 ```javascript
