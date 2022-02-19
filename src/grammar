@@ -8,10 +8,11 @@
 %polymorphic    INT:                    int;
                 CHAR:                   char;
                 STRING:                 std::string;
+                STRING_LIST:            std::vector<std::string>;
                 INSTRUCTION:            Instruction;
                 INSTRUCTION_LIST:       std::vector<Instruction>;
-                DECLARATION:            std::pair<std::string, int>;
-                DECLARATION_LIST:       std::vector<std::pair<std::string, int>>;
+                DECLARATION:            std::pair<std::string, TypeSystem::Type>;
+                DECLARATION_LIST:       std::vector<std::pair<std::string, TypeSystem::Type>>;
                 PARAMETER:              BFXFunction::Parameter;
                 PARAMETER_LIST:         std::vector<BFXFunction::Parameter>;
                 INSTRUCTION_PAIR:       std::pair<Instruction, Instruction>;
@@ -19,7 +20,8 @@
                 BFX_FUNCTION:           BFXFunction;
 
 // Keywords
-%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT 
+%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE
+%token SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT STRUCT
 
 %nonassoc then
 %nonassoc ELSE
@@ -34,6 +36,7 @@
 %left '*' '/' '%'
 %right INC DEC  '!' unaryMinus
 %left '['
+%left '.'
 %nonassoc _var
 %nonassoc _arr
 
@@ -58,6 +61,7 @@
 %type <INSTRUCTION>         constant_literal
 %type <INSTRUCTION>         string_literal
 %type <INSTRUCTION>         anonymous_array
+%type <INSTRUCTION>         anonymous_struct
 %type <INSTRUCTION>         function_call
 %type <INSTRUCTION>         scope_block
 %type <INSTRUCTION>         code_body
@@ -67,7 +71,7 @@
 %type <PARAMETER_LIST>      parameter_list
 %type <PARAMETER_LIST>      optional_parameter_list
 %type <BFX_FUNCTION>        function_header
-
+%type <STRING_LIST>         field
 %%
 
 program:
@@ -82,6 +86,8 @@ program:
     program include_directive
 |
     program const_definition
+|
+    program struct_definition
 ;
 
 include_directive:
@@ -121,6 +127,15 @@ const_definition:
     {
         addConstant($2, $4);
     }
+;
+
+struct_definition:
+    STRUCT IDENT '{' variable_specification_list ';' '}'
+    {
+        addStruct($2, $4);
+    }
+|
+    struct_definition ';'
 ;
 
 scope_block:
@@ -245,12 +260,14 @@ expression:
            ($1).second
         );
     }
-|
+|    
     constant_literal
 |
     string_literal
 |
     anonymous_array
+|
+    anonymous_struct
 |
     function_call
 |
@@ -524,12 +541,25 @@ variable:
     {
         $$ = instruction<&Compiler::fetch>($1);
     }
-// |
-//     IDENT '.' IDENT
-//     {
-//         $$ = instruction<&Compiler::fetch>($1, $3);
-//     }
+|
+    field
+    {
+        $$ = instruction<&Compiler::fetchField>($1);
+    }
 ;    
+
+field:
+    IDENT '.' IDENT
+    {
+        $$ = std::vector<std::string>{$1, $3};
+    }
+|
+    field '.' IDENT
+    {
+        ($1).push_back($3);
+        $$ = $1;
+    }
+;
 
 constant_literal:
     NUM
@@ -591,6 +621,13 @@ anonymous_array:
            );
     }
 ;
+
+anonymous_struct:
+    IDENT '{' optional_expression_list '}'
+    {
+        $$ = instruction<&Compiler::structInitializer>($1, $3);  
+    }
+;    
 
 function_call:
     IDENT '(' optional_expression_list ')'
@@ -676,22 +713,47 @@ variable_declaration:
 variable_specification:
     IDENT
     {
-        $$ = std::pair<std::string, int>($1, 1);
+        $$ = std::pair<std::string, TypeSystem::Type>
+        {
+            $1,
+            TypeSystem::Type(1)
+        };
     }
 |
     '[' ']' IDENT
     {
-        $$ = std::pair<std::string, int>($3, -1);
+        $$ = std::pair<std::string, TypeSystem::Type>
+        {
+            $3,
+            TypeSystem::Type(-1)
+        };
     }
 |
     '[' NUM ']' IDENT
     {
-        $$ = std::pair<std::string, int>($4, $2);
+        $$ = std::pair<std::string, TypeSystem::Type>
+        {
+            $4,
+            TypeSystem::Type($2)
+        };
     }
 |
     '[' IDENT ']' IDENT
     {
-        $$ = std::pair<std::string, int>($4, compileTimeConstant($2));
+        $$ = std::pair<std::string, TypeSystem::Type>
+        {
+            $4,
+            TypeSystem::Type(compileTimeConstant($2))
+        };
+    }
+|
+    '[' STRUCT IDENT ']' IDENT
+    {
+        $$ = std::pair<std::string, TypeSystem::Type>
+        {
+            $5,
+            TypeSystem::Type($3)
+        };
     }
 ;    
 
@@ -699,7 +761,7 @@ variable_specification:
 variable_specification_list:
     variable_specification
     {   
-        $$ = std::vector<std::pair<std::string, int>>();
+        $$ = std::vector<std::pair<std::string, TypeSystem::Type>>();
         ($$).push_back($1);
     }
 |

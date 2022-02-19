@@ -7,11 +7,13 @@
 #include <variant>
 #include <cassert>
 #include <deque>
-
+#include "typesystem.h"
 
 // namespace BFX ?????
 
 using Instruction = std::function<int()>;
+using VariableDeclaration = std::pair<std::string,
+                                      std::variant<int, std::string>>;
 
 class BFXFunction
 {
@@ -75,7 +77,6 @@ public:
         return d_returnVar.empty();
     }
 };
-
 
 class Scope
 {

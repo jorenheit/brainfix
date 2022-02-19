@@ -129,6 +129,27 @@ void Compiler::addFunction(BFXFunction const &bfxFunc)
             "Redefinition of function \"", bfxFunc.name(), "\" is not allowed.");
 }
 
+void Compiler::addStruct(std::string const &name,
+                         std::vector<std::pair<std::string, TypeSystem::Type>> const &fields)
+{
+    // Check fields
+    for (auto const &pr: fields)
+    {
+        std::string const &fieldName = pr.first;
+        TypeSystem::Type const &type = pr.second;
+        errorIf(!type.defined(),"Variable \'", fieldName, "\' declared with unknown (struct) type.");
+
+        int const sz = type.size();
+        errorIf(sz == 0, "Cannot declare field \"", fieldName, "\" of size 0.");
+        errorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
+                "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded in struct definition (got ", sz, ").");
+    }
+
+    // All OK, add to typesystem
+    bool const added = TypeSystem::add(name, fields);
+    errorIf(!added, "Struct ", name, " previously defined.");
+}
+
 bool Compiler::validateFunction(BFXFunction const &bfxFunc)
 {
     // Check if parameters are unique
@@ -143,14 +164,14 @@ bool Compiler::validateFunction(BFXFunction const &bfxFunc)
     return true;
 }
 
-void Compiler::addGlobals(std::vector<std::pair<std::string, int>> const &declarations)
+void Compiler::addGlobals(std::vector<std::pair<std::string, TypeSystem::Type>> const &declarations)
 {
     for (auto const &var: declarations)
     {
         std::string const &ident = var.first;
-        int const sz = var.second;
-        errorIf(sz <= 0, "Global declaration of \"", ident, "\" has invalid size specification.");
-        d_memory.allocate(ident, "", sz);
+        TypeSystem::Type const &type = var.second;
+        errorIf(type.size() <= 0, "Global declaration of \"", ident, "\" has invalid size specification.");
+        d_memory.allocate(ident, "", type);
     }
 }
 
@@ -175,9 +196,9 @@ bool Compiler::isCompileTimeConstant(std::string const &ident) const
     return d_constMap.find(ident) != d_constMap.end();
 }
 
-int Compiler::allocate(std::string const &ident, int const sz)
+int Compiler::allocate(std::string const &ident, TypeSystem::Type type)
 {
-    int const addr = d_memory.allocate(ident, d_scope.current(), sz);
+    int const addr = d_memory.allocate(ident, d_scope.current(), type);
     errorIf(addr < 0, "Variable ", ident, ": variable previously declared.");
     return addr;
 }
@@ -188,6 +209,11 @@ int Compiler::addressOf(std::string const &ident)
     addr = (addr != -1) ? addr : d_memory.find(ident, "");
     errorIf(addr < 0, "Variable \"", ident, "\" not defined in this scope.");
     return addr;
+}
+
+int Compiler::allocateTemp(TypeSystem::Type type)
+{
+    return d_memory.getTemp(d_scope.function(), type);
 }
 
 int Compiler::allocateTemp(int const sz)
@@ -297,8 +323,9 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         {
             // Allocate local variable for the function of the correct size
             // and copy argument to this location
-            int const sz = d_memory.sizeOf(argAddr);
-            int paramAddr = d_memory.allocate(paramIdent, func.name(), sz);
+            //            int const sz = d_memory.sizeOf(argAddr);
+
+            int paramAddr = d_memory.allocate(paramIdent, func.name(), d_memory.type(argAddr));
             errorIf(paramAddr < 0,
                     "Could not allocate parameter", paramIdent, ". ",
                     "This should never happen.");
@@ -312,7 +339,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
             d_memory.rename(argAddr, paramIdent, func.name());
         }
     }
-    
+
     // Execute body of the function
     d_scope.pushFunction(func.name());
     func.body()();
@@ -369,44 +396,56 @@ int Compiler::constVal(int const num)
     return tmp;
 }
 
-int Compiler::declareVariable(std::string const &ident, int const sz)
+int Compiler::declareVariable(std::string const &ident, TypeSystem::Type type)
 {
+    errorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
+
+    
+    int const sz = type.size();
     errorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
     errorIf(sz < 0,
             "Size must be specified in declaration without initialization of variable ", ident);
-    errorIf(sz > MAX_ARRAY_SIZE,
-            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
 
-    return allocate(ident, sz);
+    errorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
+                "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
+
+    return allocate(ident, type);
 }
 
-int Compiler::initializeExpression(std::string const &ident, int const sz, Instruction const &rhs)
+int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type type, Instruction const &rhs)
 {
-    errorIf(sz > MAX_ARRAY_SIZE,
-            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
+    errorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
 
+    int const sz = type.size();
+    errorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
+    errorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
+            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
     errorIf(d_memory.find(ident, d_scope.current()) != -1,
             "Variable ", ident, " previously declared.");
     
     int rhsAddr = rhs();
-    int const rhsSize = d_memory.sizeOf(rhsAddr);
-    int const lhsSize = (sz == -1) ? rhsSize : sz;
-    if (d_memory.isTemp(rhsAddr) && rhsSize == lhsSize)
+    TypeSystem::Type rhsType = d_memory.type(rhsAddr);
+    
+    if (d_memory.isTemp(rhsAddr) && (sz == -1 || type == rhsType))
     {
         d_memory.rename(rhsAddr, ident, d_scope.current());
         return rhsAddr;
     }
-    else
+    else if (type == rhsType || (type.isIntType() && rhsType.isIntType()))
     {
-        return assign(allocate(ident, lhsSize), rhsAddr);
+        return assign(allocate(ident, type), rhsAddr);
     }
+
+    compilerError("Type mismatch in assignment of \"", rhsType.name(),
+                  "\" to variable \"", ident, "\" of type \"", type.name(), "\"." );
+    return -1;
 }
 
 
 int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void expression in assignment.");
-    
+
     int const leftSize = d_memory.sizeOf(lhs);
     int const rightSize = d_memory.sizeOf(rhs);
 
@@ -437,6 +476,61 @@ int Compiler::fetch(std::string const &ident)
     
     int const addr = addressOf(ident);
     return addr;
+}
+
+int Compiler::fetchField(std::vector<std::string> const &expr)
+{
+    assert(expr.size() > 1 && "Got field with less than 2 elements");
+    
+    int const addr = addressOf(expr[0]);
+    errorIf(addr < 0, "Unknown variable \"", expr[0], "\".");
+
+    TypeSystem::Type type = d_memory.type(addr);
+    errorIf(!type.isStructType(), "Type \"", type.name(), "\" is not a structure.");
+
+    auto def = type.definition();
+    for (auto const &f: def.fields())
+    {
+        if (f.name == expr[1])
+        {
+            if (expr.size() == 2)
+            {
+                return (addr + f.offset);
+            }
+            else
+            {
+                return fetchNestedField(expr, addr + f.offset, 1);
+            }
+        }
+    }
+
+    compilerError("Structure \"", type.name(), "\" does not contain field \"", expr[1], "\".");
+    return -1;
+}
+
+int Compiler::fetchNestedField(std::vector<std::string> const &expr, int const baseAddr, size_t const baseIdx)
+{
+    TypeSystem::Type type = d_memory.type(baseAddr);
+    errorIf(!type.isStructType(), "Type \"", type.name(), "\" is not a structure.");
+    
+    auto def = type.definition();
+    for (auto const &f: def.fields())
+    {
+        if (f.name == expr[baseIdx + 1])
+        {
+            if (baseIdx + 2 == expr.size())
+            {
+                return (baseAddr + f.offset);
+            }
+            else
+            {
+                return fetchNestedField(expr, baseAddr + f.offset, baseIdx + 1);
+            }
+        }
+    }
+
+    compilerError("Structure \"", type.name(), "\" does not contain field \"", expr[baseIdx + 1], "\".");
+    return -1;
 }
 
 int Compiler::arrayFromSizeStaticValue(int const sz, int const val)
@@ -493,6 +587,36 @@ int Compiler::arrayFromString(std::string const &str)
 
     return start;
 }
+
+int Compiler::structInitializer(std::string const name, std::vector<Instruction> const &values)
+{
+    TypeSystem::Type type(name);
+    errorIf(!type.defined(), "Unknown (struct) type \"", name, "\".");
+
+    
+    auto const def = type.definition();
+    errorIf(values.size() > def.fields().size(),
+            "Too many field-initializers provided to struct \"", name, "\": ",
+            "expects ", def.fields().size(), ", got ", values.size(), ".");
+
+    int const addr = allocateTemp(type);
+    for (size_t i = 0; i != values.size(); ++i)
+    {
+        auto const &field = def.fields()[i];
+        
+        int val = values[i]();
+        TypeSystem::Type valType = d_memory.type(val);
+        TypeSystem::Type fieldType = field.type;
+        
+        errorIf(!(valType == fieldType),
+                "Type mismatch in initialization of \"", name , ".", field.name, "\".");
+
+        assign(addr + field.offset, val);
+    }
+
+    return addr;
+}
+
 
 int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index)
 {

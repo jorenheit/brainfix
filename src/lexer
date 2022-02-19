@@ -17,6 +17,7 @@ blanks [[:blank:]\n]
 "include"                   return CompilerBase::INCLUDE;
 "function"                  return CompilerBase::FUNCTION;
 "let"                       return CompilerBase::LET;
+"struct"                    return CompilerBase::STRUCT;
 "global"                    return CompilerBase::GLOBAL;
 "const"                     return CompilerBase::CONST;
 "for"                       return CompilerBase::FOR;

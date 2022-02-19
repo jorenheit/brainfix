@@ -24,13 +24,13 @@ class Compiler: public CompilerBase
 
     Scanner     d_scanner;
     Memory      d_memory;
+    Scope       d_scope;
     BFGenerator d_bfGen;
 
     std::map<std::string, BFXFunction>  d_functionMap;
     std::map<std::string, int>          d_constMap;
-    std::ostringstream                  d_codeBuffer;
-    Scope                               d_scope;
     std::vector<std::string>            d_includePaths;
+    std::ostringstream                  d_codeBuffer;
     
     enum class Stage
         {
@@ -43,6 +43,7 @@ class Compiler: public CompilerBase
     Stage       d_stage{Stage::IDLE};
     std::string d_instructionFilename;
     int         d_instructionLineNr;
+
     
 public:
     enum class CellType
@@ -60,8 +61,10 @@ private:
     int parse();
     void pushStream(std::string const &file);
     void addFunction(BFXFunction const &bfxFunc);
-    void addGlobals(std::vector<std::pair<std::string, int>> const &declarations);
+    void addGlobals(std::vector<std::pair<std::string, TypeSystem::Type>> const &declarations);
     void addConstant(std::string const &ident, int const num);
+    void addStruct(std::string const &name,
+                   std::vector<std::pair<std::string, TypeSystem::Type>> const &fields);
 
     int  compileTimeConstant(std::string const &ident) const;
     bool isCompileTimeConstant(std::string const &ident) const;
@@ -71,7 +74,8 @@ private:
     static std::string cancelOppositeCommands(std::string const &bf);
     
     // Memory management uitilities
-    int  allocate(std::string const &ident, int const sz = 1);
+    int  allocate(std::string const &ident, TypeSystem::Type type);
+    int  allocateTemp(TypeSystem::Type type);
     int  allocateTemp(int const sz = 1);
     int  allocateTempBlock(int const sz);
     int  addressOf(std::string const &ident);
@@ -111,12 +115,16 @@ private:
     int arrayFromSizeDynamicValue(int const sz, AddressOrInstruction const &val);
     int arrayFromList(std::vector<Instruction> const &list);
     int arrayFromString(std::string const &str);
+    int structInitializer(std::string const name, std::vector<Instruction> const &values);
     int call(std::string const &functionName, std::vector<Instruction> const &args = {});
-    int declareVariable(std::string const &ident, int const sz);
-    int initializeExpression(std::string const &ident, int const sz, Instruction const &rhs);
+    int declareVariable(std::string const &ident, TypeSystem::Type type);
+    int initializeExpression(std::string const &ident, TypeSystem::Type type,
+                             Instruction const &rhs);
     int assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int fetch(std::string const &ident);
-    int fetchField(std::string const &ident, std::string const &field);
+    int fetchField(std::vector<std::string> const &expr);
+    int fetchNestedField(std::vector<std::string> const &expr, int const baseAddr, size_t const baseIdx);
+    
     int fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index);
     int assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs);
     int preIncrement(AddressOrInstruction const &addr);

@@ -51,7 +51,7 @@ std::string BFGenerator::assign(int const lhs, int const rhs)
     validateAddr(lhs, rhs);
     
     int const tmp = f_getTemp();
-
+        
     std::ostringstream ops;
     ops    << setToValue(lhs, 0)
            << setToValue(tmp, 0)
