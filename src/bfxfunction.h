@@ -98,35 +98,37 @@ public:
     
 class AddressOrInstruction
 {
-    std::variant<int, Instruction> d_variant;
-    mutable bool d_ready{false};
-    mutable int d_value{-1};
+    enum class Kind
+        {
+         ADDRESS,
+         INSTRUCTION
+        };
+    
+    mutable Kind d_kind;
+    mutable int d_addr;
+    Instruction const d_instr;
     
 public:
-    AddressOrInstruction(int i):
-        d_variant(i)
+    AddressOrInstruction(int addr):
+        d_kind(Kind::ADDRESS),
+        d_addr(addr)
     {}
     
-    AddressOrInstruction(Instruction const &f):
-        d_variant(f)
+    AddressOrInstruction(Instruction const &instr):
+        d_kind(Kind::INSTRUCTION),
+        d_instr(instr)
     {}
-
-    int get() const
-    {
-        if (!d_ready)
-        {
-            d_value = std::holds_alternative<int>(d_variant) ?
-                std::get<int>(d_variant) :
-                std::get<Instruction>(d_variant)();
-
-            d_ready = true;
-        }
-        return d_value;
-    }
 
     operator int() const
     {
-        return get();
+        if (d_kind == Kind::INSTRUCTION)
+        {
+            // Lazy evaluation
+            d_addr = d_instr();
+            d_kind = Kind::ADDRESS;
+        }
+        
+        return d_addr;
     }
 };
 
