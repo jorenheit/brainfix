@@ -104,6 +104,8 @@ int Compiler::compile()
     d_stage = Stage::CODEGEN;
     call("main");
     d_stage = Stage::FINISHED;
+
+    //    d_memory.dump();
     return 0;
 }
 
@@ -132,10 +134,18 @@ void Compiler::addFunction(BFXFunction const &bfxFunc)
 void Compiler::addStruct(std::string const &name,
                          std::vector<std::pair<std::string, TypeSystem::Type>> const &fields)
 {
-    // Check fields
+    std::set<std::string> set;
+    auto duplicateField = [&](std::string const &str) -> bool
+                          {
+                              return !set.insert(str).second;
+                          };
+    
     for (auto const &pr: fields)
     {
         std::string const &fieldName = pr.first;
+        errorIf(duplicateField(fieldName),
+                "Field \"", fieldName, "\" previously declared in definition of struct \"", name, "\".");
+        
         TypeSystem::Type const &type = pr.second;
         errorIf(!type.defined(),"Variable \'", fieldName, "\' declared with unknown (struct) type.");
 

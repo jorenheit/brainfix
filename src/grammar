@@ -57,6 +57,7 @@
 %type <DECLARATION>         variable_declaration
 %type <DECLARATION>         variable_specification
 %type <DECLARATION_LIST>    variable_specification_list
+%type <DECLARATION_LIST>    struct_body
 %type <INSTRUCTION_PAIR>    array_element
 %type <INSTRUCTION>         constant_literal
 %type <INSTRUCTION>         string_literal
@@ -130,13 +131,24 @@ const_definition:
 ;
 
 struct_definition:
-    STRUCT IDENT '{' variable_specification_list ';' '}'
+    STRUCT IDENT '{' struct_body '}'
     {
         addStruct($2, $4);
     }
 |
     struct_definition ';'
 ;
+
+struct_body:
+    variable_specification_list ';'
+|
+    struct_body variable_specification_list ';'
+    {
+        ($1).insert($1.begin(), $2.begin(), $2.end());
+        $$ = $1;
+    }
+;    
+
 
 scope_block:
     '{' code_body '}'

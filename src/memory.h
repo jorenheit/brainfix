@@ -23,8 +23,6 @@ public:
 private:
     struct Cell
     {
-        static std::string const INT_TYPE;
-        
         std::string identifier;
         std::string scope;
         Content     content;
@@ -60,6 +58,7 @@ private:
 
     std::vector<Memory::Cell> d_memory;
     std::stack<int> d_protectedStack;
+    int d_maxAddr{0};
     
 public:
     Memory(size_t sz):
@@ -71,7 +70,6 @@ public:
     int getTemp(std::string const &scope, int const sz = 1);
     int getTempBlock(std::string const &scope, int const sz);
     int allocate(std::string const &ident, std::string const &scope, TypeSystem::Type type);
-    
     int find(std::string const &ident, std::string const &scope) const;
     int sizeOf(int const addr) const;
     int sizeOf(std::string const &ident, std::string const &scope) const;
@@ -87,10 +85,11 @@ public:
     TypeSystem::Type type(int const addr) const;
     TypeSystem::Type type(std::string const &ident, std::string const &scope) const;
 
+    void dump() const;
     
 private:    
     int findFree(int sz = 1);
-    void place(std::string const &ident, std::string const &scope, TypeSystem::Type type, int const addr);
+    void place(TypeSystem::Type type, int const addr, bool const recursive = false);
 
     template <typename Predicate>
     void freeIf(Predicate &&pred);

@@ -1,8 +1,5 @@
 #include "memory.h"
 
-std::string const Memory::Cell::INT_TYPE = "__reserved__int__";
-
-
 void Memory::Cell::backup()
 {
     d_backupStack.push(Members{
@@ -62,27 +59,8 @@ int Memory::findFree(int const sz)
 
 int Memory::getTemp(std::string const &scope, TypeSystem::Type type)
 {
-    // int const sz = type.size();
-    // int const start = findFree(sz);
-    // Cell &cell = d_memory[start];
-
-    // cell.identifier = "";
-    // cell.scope = scope;
-    // cell.content = Content::TEMP;
-    // cell.type = type;
-
-    // for (int i = 1; i != sz; ++i)
-    // {
-    //     Cell &cell = d_memory[start + i];
-    //     cell.clear();
-    //     cell.content = Content::REFERENCED;
-    // }
-
-    // return start;
-
     return allocate("", scope, type);
 }
-
 
 int Memory::getTemp(std::string const &scope, int const sz)
 {
@@ -109,25 +87,25 @@ int Memory::allocate(std::string const &ident, std::string const &scope, TypeSys
     assert(type.defined() && "Trying to allocate undefined type");
     
     if (!ident.empty() && find(ident, scope) != -1)
-    {
         return  -1;
-    }
 
     int const addr = findFree(type.size());
-    place(ident, scope, type, addr);
-    return addr;
-}
-
-void Memory::place(std::string const &ident, std::string const &scope, TypeSystem::Type type, int const addr)
-{
+    if (addr + type.size() > d_maxAddr)
+        d_maxAddr = addr + type.size();
+    
     Cell &cell = d_memory[addr];
     cell.clear();
     cell.identifier = ident;
     cell.scope = scope;
+    cell.content = ident.empty() ? Content::TEMP : Content::NAMED;
     cell.type = type;
-    cell.content = scope.empty() ? Content::REFERENCED :
-        ident.empty() ? Content::TEMP : Content::NAMED;
+    
+    place(type, addr);
+    return addr;
+}
 
+void Memory::place(TypeSystem::Type type, int const addr, bool const recursive)
+{
     if (type.isIntType())
     {
         for (int i = 1; i != type.size(); ++i)
@@ -136,16 +114,23 @@ void Memory::place(std::string const &ident, std::string const &scope, TypeSyste
             cell.clear();
             cell.content = Content::REFERENCED;
         }
-        
         return;
     }
-    
+
+    if (recursive)
+    {
+        Cell &cell = d_memory[addr];
+        cell.clear();
+        cell.content = Content::REFERENCED;
+        cell.type = type;
+    }
+        
     auto const &definition = type.definition();
     for (auto const &f: definition.fields())
     {
         if (f.type.isStructType())
         {
-            place("", "", f.type, addr + f.offset);
+            place(f.type, addr + f.offset, true);
             continue;
         }
 
@@ -271,4 +256,27 @@ TypeSystem::Type Memory::type(std::string const &ident, std::string const &scope
 {
     int const addr = find(ident, scope);
     return d_memory[addr].type;
+}
+
+void Memory::dump() const
+{
+    static std::string const contentStrings[] =
+        {
+         "EMPTY",
+         "NAMED",
+         "TEMP",
+         "REFERENCED",
+         "PROTECTED"
+        };
+    
+    std::cerr << "addr  |  var  |  scope  |  type  |  content  \n";
+    for (int i = 0; i != d_maxAddr; ++i)
+    {
+        Cell const &c = d_memory[i];
+        if (c.content == Content::EMPTY)
+            continue;
+        
+        std::cerr << i << "\t" << c.identifier <<  '\t' << c.scope << '\t'
+                  << c.type.name() << '\t' << contentStrings[static_cast<int>(c.content)] << '\n';
+    }
 }
