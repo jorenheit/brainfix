@@ -6,10 +6,9 @@ std::map<std::string, TypeSystem::StructDefinition> TypeSystem::typeMap;
 int TypeSystem::Type::size() const
 {
     if (isIntType())
-        return std::get<int>(d_var);
+        return d_size;
 
-    std::string const &name = std::get<std::string>(d_var);
-    auto const it = TypeSystem::typeMap.find(name);
+    auto const it = TypeSystem::typeMap.find(d_name);
     if (it == TypeSystem::typeMap.end())
         return -1;
 
@@ -19,10 +18,9 @@ int TypeSystem::Type::size() const
 std::string TypeSystem::Type::name() const
 {
     if (isStructType())
-        return std::get<std::string>(d_var);
+        return d_name;
 
-    int const sz = std::get<int>(d_var);
-    return TypeSystem::intName(sz);
+    return TypeSystem::intName(d_size);
 }
 
 bool TypeSystem::Type::defined() const

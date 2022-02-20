@@ -22,17 +22,19 @@ public:
              STRUCT
             };
 
-        std::variant<int, std::string> d_var;
+        int d_size{-1};
+        std::string d_name{""};
+        //        std::variant<int, std::string> d_var;
         Kind d_kind{Kind::NULLTYPE};
         
     public:
         Type(std::string const &name):
-            d_var(name),
+            d_name(name),
             d_kind(Kind::STRUCT)
         {}
 
         Type(int const sz):
-            d_var(sz),
+            d_size(sz),
             d_kind(Kind::INT)
         {}
 
