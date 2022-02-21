@@ -637,7 +637,7 @@ anonymous_array:
 anonymous_struct:
     IDENT '{' optional_expression_list '}'
     {
-        $$ = instruction<&Compiler::structInitializer>($1, $3);  
+        $$ = instruction<&Compiler::anonymousStructObject>($1, $3);  
     }
 ;    
 

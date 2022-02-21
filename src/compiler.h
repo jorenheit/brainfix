@@ -115,7 +115,7 @@ private:
     int arrayFromSizeDynamicValue(int const sz, AddressOrInstruction const &val);
     int arrayFromList(std::vector<Instruction> const &list);
     int arrayFromString(std::string const &str);
-    int structInitializer(std::string const name, std::vector<Instruction> const &values);
+    int anonymousStructObject(std::string const name, std::vector<Instruction> const &values);
     int call(std::string const &functionName, std::vector<Instruction> const &args = {});
     int declareVariable(std::string const &ident, TypeSystem::Type type);
     int initializeExpression(std::string const &ident, TypeSystem::Type type,

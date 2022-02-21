@@ -598,12 +598,11 @@ int Compiler::arrayFromString(std::string const &str)
     return start;
 }
 
-int Compiler::structInitializer(std::string const name, std::vector<Instruction> const &values)
+int Compiler::anonymousStructObject(std::string const name, std::vector<Instruction> const &values)
 {
     TypeSystem::Type type(name);
     errorIf(!type.defined(), "Unknown (struct) type \"", name, "\".");
 
-    
     auto const def = type.definition();
     errorIf(values.size() > def.fields().size(),
             "Too many field-initializers provided to struct \"", name, "\": ",
