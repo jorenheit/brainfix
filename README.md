@@ -275,6 +275,8 @@ function main()
 {
     let [struct Particle] p;
 
+    p.id = 42;
+
     p.pos.x = 1;
     p.pos.y = 2;
     p.pos.z = 3;
