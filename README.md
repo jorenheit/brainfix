@@ -114,7 +114,7 @@ The compiler targets the canonical BrainF*ck machine, where cells are unsigned i
 
 ## Language
 ### Functions
-A BrainFix program consists of a series of functions (one of which is called `main()`). Apart from global variable declarations, `const` declarations and file inclusion (more on those later), no other syntax is allowed at global scope. In other words: BF code is only generated in function-bodies.
+A BrainFix program consists of a series of functions (one of which is called `main()`). Apart from global variable declarations, `const` declarations, user-defined types (structs) and file inclusion (more on those later), no other syntax is allowed at global scope. In other words: BF code is only generated in function-bodies.
 
 A function without a return-value is defined like we saw in the Hello World example and may take any number of parameters. For example:
 
@@ -187,7 +187,6 @@ function bar(&x)
 
 ```
 
-
 #### Passing array-elements by reference
 When an array-element is accessed through the index-operator (more on arrays in the dedicated section below), the result of this expression is actually a temporary copy of the actual element. This is because the position of the BF-pointer has to be known at all times, even when the index is a runtime variable (for example determined by user-input). Therefore, when passing an array-element by reference to a function, a reference to the temporary copy is passed rather than the actual element. This limitation is easily side-stepped by passing both the array and the index seperately:
 
@@ -214,7 +213,7 @@ function main()
 Unfortunately, recursion is not allowed in BrainFix. Most compilers implement function calls as jumps. However, this is not possible in BF code because there is no JMP instruction that allows us to jump to arbitrary places in the code. It should be possible in principle, but would be very hard to implement (and would probably require a lot more memory to accomodate the algorithms that could make it happen). Therefore, the compiler will throw an error when recursion is detected.
 
 ### Variable Declarations
-New variables are declared using the `let` keyword and can from that point on only be accessed in the same scope; this includes the scope of `if`, `for` and `while` statements. At the declaration, the size of the variable can be specified using square brackets. Variables without a size specifier are allocated as having size 1. It's also possible to let the compiler deduce the size of the variable by adding empty brackets to the declaration. In this case, the variable must be initialized in the same statement in order for the compiler to know its size. After the declaration, only same-sized variables can be assigned to eachother, in which case the elements of the right-hand-side will be copied into the corresponding left-hand-side elements. There is one exception to this rule: an single value (size 1) can be assigned to an array as a means to initialize or refill the entire array with this value;
+New variables are declared using the `let` keyword and can from that point on only be accessed in the same scope; this includes the scope of `if`, `for` and `while` statements. At the declaration, the size (or type, see below) of the variable can be specified using square brackets. Variables declared without a size-specifier are allocated as having size 1. It's also possible to let the compiler deduce the size of the variable by adding empty brackets `[]` to the declaration. In this case, the variable must be initialized in the same statement in order for the compiler to know its size. After the declaration, only same-sized variables can be assigned to eachother, in which case the elements of the right-hand-side will be copied into the corresponding left-hand-side elements. There is one exception to this rule: an single value (size 1) can be assigned to an array as a means to initialize or refill the entire array with this value.
 
 ```javascript
 function main()
@@ -230,6 +229,7 @@ function main()
 }
 ```
 
+#### Initializing Variables
 In the example above, we see how a string is used to initialize an array-variable. Other ways to initialize arrays all involve the `#` symbol to indicate an array-literal. In each of these cases, the size-specification can be empty, as the compiler is able to figure out the resulting size from its initializer.
 
 ```javascript
@@ -246,8 +246,45 @@ function main()
     let [zVal] arr;               // ERROR: size-specifier is runtime variable
 }
 ```
-
 Size specifications must be known at compiletime; see the section on the `const` keyword below on how to define named compile-time constants.
+
+#### Structs
+In addition to declaring a variable by specifying its size, its type can be specified using the `struct` keyword and a previously defined struct-identifier. The definition of this `struct` must appear somewhere at global scope and can contain fields of any type, including other user defined types.
+
+```javascript
+struct Vec3
+{
+    x, y, z;
+}; // semicolon is optional
+
+struct Particle
+{
+    [struct Vec3] pos, [struct Vec3] vel; // nested structs
+    id;                                   // fields specified over multiple lines
+}; 
+
+function print_vec3(&v)
+{
+    printc('(');
+    printd(v.x); prints(", ");
+    printd(v.y); prints(", ");
+    printd(v.z); prints(")\n");
+}
+
+function main()
+{
+    let [struct Particle] p;
+
+    p.pos.x = 1;
+    p.pos.y = 2;
+    p.pos.z = 3;
+
+    p.vel = Vec3{4, 5, 6};  // initializing using an anonymous Vec3 instance
+
+    print_vec3(p.pos);
+    print_vec3(p.vel);
+}
+```
 
 #### Numbers
 All numbers are treated as unsigned 8-bit integers. The compiler will throw an error on the use of the unary minus sign. A warning is issued when the program contains numbers that exceed the range of a single byte (255).
