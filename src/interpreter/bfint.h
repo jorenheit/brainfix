@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <stack>
+#include <cassert>
 
 class BFInterpreterBase
 {
@@ -15,7 +16,7 @@ public:
         d_array(arraySize),
         d_code(code)
     {}
-
+    
     virtual void run(std::istream &in = std::cin, std::ostream &out = std::cout) = 0;
 };
 
@@ -66,24 +67,37 @@ public:
     }
 
 private:
+    int consume(Ops op)
+    {
+        assert(d_code[d_codePointer] == op && "codepointer should be pointing at op now");
+        
+        int n = 1;
+        while (d_code[d_codePointer + n] == op)
+            ++n;
+
+        d_codePointer += (n - 1);
+        return n;
+    }
+    
     void plus()
     {
-        CellType val = d_array[d_arrayPointer];
-        d_array[d_arrayPointer] = ++val;
+        int const n = consume(PLUS);
+        d_array[d_arrayPointer] = static_cast<CellType>(d_array[d_arrayPointer] + n);
     }
     
     void minus()
     {
-        CellType val = d_array[d_arrayPointer];
-        d_array[d_arrayPointer] = --val;
+        int const n = consume(MINUS);
+        d_array[d_arrayPointer] = static_cast<CellType>(d_array[d_arrayPointer] - n);
     }
 
     void pointerInc()
     {
-        if (++d_arrayPointer >= d_array.size())
-        {
+        int const n = consume(RIGHT);
+        d_arrayPointer += n;
+
+        while (d_arrayPointer >= d_array.size())
             d_array.resize(2 * d_array.size());
-        }
     }
 
     void pointerDec()
@@ -91,7 +105,8 @@ private:
         if (d_arrayPointer == 0)
             throw std::string("Error: trying to decrement pointer beyond beginning.");
 
-        --d_arrayPointer;
+        int const n = consume(LEFT);
+        d_arrayPointer -= n;
     }
 
     void startLoop()
