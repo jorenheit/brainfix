@@ -43,7 +43,7 @@ class Compiler: public CompilerBase
     Stage       d_stage{Stage::IDLE};
     std::string d_instructionFilename;
     int         d_instructionLineNr;
-
+    bool        d_constEvalEnabled{true};
     
 public:
     enum class CellType
@@ -69,6 +69,11 @@ private:
     int  compileTimeConstant(std::string const &ident) const;
     bool isCompileTimeConstant(std::string const &ident) const;
 
+    bool setConstEval(bool const val);
+    bool enableConstEval();
+    bool disableConstEval();
+    void sync(int const addr);
+    
     static bool validateFunction(BFXFunction const &bfxFunc);
     static bool validateInlineBF(std::string const &ident);
     static std::string cancelOppositeCommands(std::string const &bf);
@@ -127,6 +132,8 @@ private:
     
     int fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index);
     int assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs);
+    int scanCell(std::string const &ident);
+    int printCell(AddressOrInstruction const &target);
     int preIncrement(AddressOrInstruction const &addr);
     int preDecrement(AddressOrInstruction const &addr);
     int postIncrement(AddressOrInstruction const &addr);
@@ -152,7 +159,8 @@ private:
     int modulo(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int divMod(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int modDiv(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
-    std::pair<int, int> divModPair(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
+    void divModPair(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs,
+               int const divResult, int const modResult);
 
     int ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody);  
     int forStatement(Instruction const &init, Instruction const &condition,
@@ -162,6 +170,11 @@ private:
                         std::vector<std::pair<Instruction, Instruction>> const &cases,
                         Instruction const &defaultCase);
 
+    // Constant evaluation
+
+    template <int VolatileMask, typename BFGenFunc, typename ConstFunc, typename ... Args>
+    int eval(BFGenFunc&& bfFunc, ConstFunc&& constFunc, int const resultAddr, Args&& ... args);
+    
     // Error handling (implementations below)
     template <typename First, typename ... Rest>
     void compilerError(First const &first, Rest&& ... rest) const;
@@ -237,6 +250,58 @@ void Compiler::warningIf(bool const condition, First const &first, Rest&& ... re
     if (condition)
         compilerWarning(first, std::forward<Rest>(rest)...);
 }
+
+template <int VolatileMask, typename BFGenFunc, typename ConstFunc, typename ... Args>
+int Compiler::eval(BFGenFunc&& bfFunc, ConstFunc&& constFunc, int const resultAddr, Args&& ... args)
+{
+    static_assert((std::is_convertible_v<int, Args> && ...),
+                  "Operands to constEval must be (convertible) to int (addresses).");
+
+    // TODO: handle different cell-sizes (int8, 16 etc)
+
+    static constexpr int N = (sizeof ... (Args));
+    int const arguments[N] = {args ...};
+    constexpr auto isVolatile = [](int const argIdx)
+                                {
+                                    return VolatileMask & (1 << (N - argIdx - 1));
+                                };
+    
+
+    bool const canBeConstEvaluated = (not d_memory.valueUnknown(args) && ...);
+    if (canBeConstEvaluated && d_constEvalEnabled)
+    {
+        // Evaluate using constfunc
+        d_memory.value(resultAddr) = constFunc(d_memory.value(args) ...);
+        d_memory.setSync(resultAddr, false);
+        
+        // Application of constFunc may have resulted in side-effects if it accepted
+        // reference-parameters. Check Mask for volatile values ->
+        // for each changed value, set its sync-flag to false.
+        
+        for (int i = 0; i != N; ++i)
+            if (isVolatile(i))
+                d_memory.setSync(arguments[i], false);
+    }
+    else 
+    {
+        if (d_constEvalEnabled)
+            for (int i = 0; i != N; ++i)
+                sync(arguments[i]);
+        
+        bfFunc();
+
+        // Runtime evaluation has resulted in now unknown values. The mask indicates which
+        // addresses may have changed during runtime. The return-address will always be
+        // set as unknown.
+        d_memory.setValueUnknown(resultAddr);
+        for (int i = 0; i != N; ++i)
+            if (isVolatile(i))
+                d_memory.setValueUnknown(arguments[i]);
+    }
+
+    return resultAddr;
+}
+
 
 
 #endif //COMPILER_H

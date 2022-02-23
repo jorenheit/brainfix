@@ -86,6 +86,57 @@ void Compiler::pushStream(std::string const &file)
     compilerError("Could not find included file \"", file, "\".");
 }
 
+void Compiler::sync(int const addr)
+{
+    assert(d_constEvalEnabled && "Cannot sync when constant evaluation is disabled");
+
+    bool const valueKnown = not d_memory.valueUnknown(addr);
+    bool const synced     = d_memory.isSync(addr);
+    if (valueKnown && !synced)
+    {
+        d_codeBuffer << d_bfGen.setToValue(addr, d_memory.value(addr));
+        d_memory.setSync(addr, true);
+    }
+}
+
+bool Compiler::setConstEval(bool const enable)
+{
+    static int count = 0;
+    if (enable)
+    {
+        assert(count != 0 && "Unbalanced enableConstEval/disableConstEval");
+        if (--count == 0)
+            d_constEvalEnabled = true;
+    }
+    else
+    {
+        ++count;
+        if (not d_constEvalEnabled)
+            return false;
+
+        // Sync all variables that are currently in scope.
+        std::vector<int> scopeCells = d_memory.cellsInScope(d_scope.current());
+        for (int const addr: scopeCells)
+        {
+            sync(addr);
+        }
+
+        d_constEvalEnabled = false;
+    }
+
+    return d_constEvalEnabled;
+}
+
+bool Compiler::enableConstEval()
+{
+    return setConstEval(true);
+}
+
+bool Compiler::disableConstEval()
+{
+    return setConstEval(false);
+}
+
 int Compiler::compile()
 {
     assert(d_stage == Stage::IDLE && "Calling Compiler::compile() multiple times");
@@ -101,6 +152,8 @@ int Compiler::compile()
     errorIf(d_functionMap.find("main") == d_functionMap.end(),
             "No entrypoint provided. The entrypoint should be main().");
 
+    d_constEvalEnabled = true;
+    
     d_stage = Stage::CODEGEN;
     call("main");
     d_stage = Stage::FINISHED;
@@ -283,7 +336,17 @@ int Compiler::sizeOfOperator(std::string const &ident)
     errorIf(sz == 0, "Variable \"", ident ,"\" not defined in this scope.");
 
     int const tmp = allocateTemp();
-    d_codeBuffer << d_bfGen.setToValue(tmp, sz);
+    if (d_constEvalEnabled)
+    {
+        d_memory.value(tmp) = sz;
+        d_memory.setSync(tmp, false);
+    }
+    else
+    {
+        d_codeBuffer << d_bfGen.setToValue(tmp, sz);
+        d_memory.setValueUnknown(tmp);
+    }
+    
     return tmp;
 }
 
@@ -402,7 +465,17 @@ int Compiler::constVal(int const num)
     warningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
     
     int const tmp = allocateTemp();
-    d_codeBuffer << d_bfGen.setToValue(tmp, num);
+
+    if (d_constEvalEnabled)
+    {
+        d_memory.value(tmp) = num;
+        d_memory.setSync(tmp, false);
+    }
+    else
+    {
+        d_codeBuffer << d_bfGen.setToValue(tmp, num);
+        d_memory.setValueUnknown(tmp); // TODO: can this be avoided? It's a constant...
+    }
     return tmp;
 }
 
@@ -455,20 +528,68 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
 int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void expression in assignment.");
-
+    
     int const leftSize = d_memory.sizeOf(lhs);
     int const rightSize = d_memory.sizeOf(rhs);
-
+    
     if (leftSize > 1 && rightSize == 1)
     {
         // Fill array with value
-        for (int i = 0; i != leftSize; ++i)
-            d_codeBuffer << d_bfGen.assign(lhs + i, rhs);
+        if (d_constEvalEnabled && !d_memory.valueUnknown(rhs))
+        {
+            for (int i = 0; i != d_memory.sizeOf(lhs); ++i)
+            {
+                d_memory.value(lhs + i) = d_memory.value(rhs);
+                d_memory.setSync(lhs + i, false);
+            }
+        }
+        else
+        {
+            for (int i = 0; i != leftSize; ++i)
+            {
+                d_codeBuffer << d_bfGen.assign(lhs + i, rhs);
+                d_memory.setValueUnknown(lhs + i);
+            }
+        }
     }
     else if (leftSize == rightSize)
     {
         // Same size -> copy
-        d_codeBuffer << d_bfGen.assign(lhs, rhs, leftSize);
+        if (d_constEvalEnabled)
+        {
+            for (int i = 0; i != leftSize; ++i)
+            {
+                if (!d_memory.valueUnknown(rhs + i))
+                {
+                    d_memory.value(lhs + i) = d_memory.value(rhs + i);
+                    d_memory.setSync(lhs + i, false);
+                }
+                else
+                {
+                    d_codeBuffer << d_bfGen.assign(lhs + i, rhs + i);
+                    d_memory.setValueUnknown(lhs + i);
+                }
+            }
+        }
+        else
+        {
+            d_codeBuffer << d_bfGen.assign(lhs, rhs, leftSize);
+            for (int i = 0; i != leftSize; ++i)
+                d_memory.setValueUnknown(lhs + i);
+        }
+    }
+    else if (leftSize == 1 && !d_memory.type(rhs).isStructType())
+    {
+        if (d_constEvalEnabled && !d_memory.valueUnknown(rhs))
+        {
+            d_memory.value(lhs) = d_memory.value(rhs);
+            d_memory.setSync(lhs, false);
+        }
+        else
+        {
+            d_codeBuffer << d_bfGen.assign(lhs, rhs);
+            d_memory.setValueUnknown(lhs);
+        }
     }
     else
     {
@@ -550,10 +671,26 @@ int Compiler::arrayFromSizeStaticValue(int const sz, int const val)
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
     
+    // TODO: can this function be removed? 
+    
     int const start = allocateTemp(sz);
-    for (int idx = 0; idx != sz; ++idx)
-        d_codeBuffer << d_bfGen.setToValue(start + idx, val);
-
+    if (d_constEvalEnabled)
+    {
+        for (int idx = 0; idx != sz; ++idx)
+        {
+            d_memory.value(start + idx) = val;
+            d_memory.setSync(start + idx, false);
+        }
+    }
+    else
+    {
+        for (int idx = 0; idx != sz; ++idx)
+        {
+            d_codeBuffer << d_bfGen.setToValue(start + idx, val);
+            d_memory.setValueUnknown(start + idx);
+        }
+    }
+    
     return start;
 }
 
@@ -576,10 +713,28 @@ int Compiler::arrayFromList(std::vector<Instruction> const &list)
 
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
-    
+
+    std::vector<std::pair<int, int>> runtimeElements; // {index, address}
     int start = allocateTemp(sz);
     for (int idx = 0; idx != sz; ++idx)
-        d_codeBuffer << d_bfGen.assign(start + idx, list[idx]());
+    {
+        int const elementAddr = list[idx]();
+        if (d_constEvalEnabled && !d_memory.valueUnknown(elementAddr))
+        {
+            d_memory.value(start + idx) = d_memory.value(elementAddr);
+            d_memory.setSync(start + idx, false);
+        }
+        else
+            runtimeElements.push_back({idx, elementAddr});
+    }
+
+    for (auto const &pr: runtimeElements)
+    {
+        int const elementIdx = pr.first;
+        int const elementAddr = pr.second;
+        d_codeBuffer << d_bfGen.assign(start + elementIdx, elementAddr);
+        d_memory.setValueUnknown(start + elementIdx);
+    }
 
     return start;
 }
@@ -592,8 +747,23 @@ int Compiler::arrayFromString(std::string const &str)
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
 
     int const start = allocateTemp(sz);
-    for (int idx = 0; idx != sz; ++idx)
-        d_codeBuffer << d_bfGen.setToValue(start + idx, str[idx]);
+    if (d_constEvalEnabled)
+    {
+        for (int idx = 0; idx != sz; ++idx)
+        {
+            d_memory.value(start + idx) = str[idx];
+            d_memory.setSync(start + idx, false);
+        }
+            
+    }
+    else
+    {
+        for (int idx = 0; idx != sz; ++idx)
+        {
+            d_codeBuffer << d_bfGen.setToValue(start + idx, str[idx]);
+            d_memory.setValueUnknown(start + idx);
+        }
+    }
 
     return start;
 }
@@ -629,21 +799,63 @@ int Compiler::anonymousStructObject(std::string const name, std::vector<Instruct
 
 int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index)
 {
-    int const sz = d_memory.sizeOf(arr);
-    int const ret = allocateTemp();
+    // TODO: implement compile-time bounds checking
 
-    d_codeBuffer << d_bfGen.fetchElement(arr, sz, index, ret);
-    return ret;
+    if (d_constEvalEnabled && !d_memory.valueUnknown(index))
+    {
+        return arr + d_memory.value(index);
+    }
+    else
+    {
+        int const sz = d_memory.sizeOf(arr);
+        int const ret = allocateTemp();
+        d_codeBuffer << d_bfGen.fetchElement(arr, sz, index, ret);
+        d_memory.setValueUnknown(ret);
+        return ret;
+    }
 }
 
 int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs)
 {
-    int const sz = d_memory.sizeOf(arr);
-    d_codeBuffer << d_bfGen.assignElement(arr, sz, index, rhs);
-    
-    // Attention: can't return the address of the modified cell, so we return the
-    // address of the known RHS-cell.
-    return rhs;
+    if (d_constEvalEnabled && !d_memory.valueUnknown(index) && !d_memory.valueUnknown(rhs))
+    {
+        // Case 1: index and rhs both known
+        int const addr = arr + d_memory.value(index);
+        d_memory.value(addr) = d_memory.value(rhs);
+        d_memory.setSync(addr, false);
+        return addr;
+    }
+    else if (d_constEvalEnabled && !d_memory.valueUnknown(index))
+    {
+        // Case 2: only index known
+        int const addr = arr + d_memory.value(index);
+
+        d_codeBuffer << d_bfGen.assign(addr, rhs);
+        d_memory.setValueUnknown(addr);
+        return addr;
+    }
+    else
+    {
+        // Case 3: Index unkown or constant evaluation is disabled ->
+        // make sure index and rhs are synced and use full algorithm .
+        // This may alter any of the array elements -> set all elements to unknown status.
+        
+        if (d_constEvalEnabled)
+        {
+            sync(index);
+            sync(rhs);
+        }
+        
+        int const sz = d_memory.sizeOf(arr);
+        d_codeBuffer << d_bfGen.assignElement(arr, sz, index, rhs);
+        for (int i = 0; i != sz; ++i)
+            d_memory.setValueUnknown(arr + i);
+
+        // Attention: can't return the address of the modified cell, so we return the
+        // address of the known RHS-cell.
+        // TODO: check if returning -1 (void) works out
+        return rhs;
+    }
 }
 
 
@@ -668,69 +880,122 @@ int Compiler::applyBinaryFunctionToElement(AddressOrInstruction const &arr,
     return returnAddr;
 }
 
+int Compiler::scanCell(std::string const &ident)
+{
+    int const addr = addressOf(ident);
+    d_memory.setValueUnknown(addr);
+    d_codeBuffer << d_bfGen.scan(addr);
+    return addr;
+}
+
+int Compiler::printCell(AddressOrInstruction const &target)
+{
+    if (d_constEvalEnabled)
+        sync(target);
+    
+    d_codeBuffer << d_bfGen.print(target);
+    return target;
+}
 
 int Compiler::preIncrement(AddressOrInstruction const &target)
 {
     errorIf(target < 0, "Cannot increment void-expression.");
-
-    d_codeBuffer << d_bfGen.incr(target);
-    return target;
-}
-
-int Compiler::preDecrement(AddressOrInstruction const &target)
-{
-    errorIf(target < 0, "Cannot decrement void-expression.");
     
-    d_codeBuffer << d_bfGen.decr(target);
-    return target;
+    auto bf   = [&, this](){
+                    d_codeBuffer << d_bfGen.incr(target);
+                };
+    auto func = [](int x){ return ++x; };
+    
+    return eval<0b0>(bf, func, target, target);
 }
 
 int Compiler::postIncrement(AddressOrInstruction const &target)
 {
     errorIf(target < 0, "Cannot increment void-expression.");
-    
-    int const tmp = allocateTemp();
-    d_codeBuffer << d_bfGen.assign(tmp, target)
-                 << d_bfGen.incr(target);
 
-    return tmp;
+    int const tmp = allocateTemp();
+    auto bf   = [&, this](){
+                    d_codeBuffer << d_bfGen.assign(tmp, target)
+                                 << d_bfGen.incr(target);
+                };
+    auto func = [](int &x){ return x++; };
+
+    return eval<0b1>(bf, func, tmp, target);
 }
+
+int Compiler::preDecrement(AddressOrInstruction const &target)
+{
+    errorIf(target < 0, "Cannot decrement void-expression.");
+
+    auto bf   = [&, this](){
+                    d_codeBuffer << d_bfGen.decr(target);
+                };
+    auto func = [](int x){ return --x; };
+    
+    return eval<0b0>(bf, func, target, target);
+}
+
 
 int Compiler::postDecrement(AddressOrInstruction const &target)
 {
     errorIf(target < 0, "Cannot decrement void-expression.");
 
     int const tmp = allocateTemp();
-    d_codeBuffer << d_bfGen.assign(tmp, target)
-                 << d_bfGen.decr(target);
+    auto bf   = [&, this](){
+                    d_codeBuffer << d_bfGen.assign(tmp, target)
+                                 << d_bfGen.incr(target);
+                };
+    auto func = [](int &x){ return x--; };
 
-    return tmp;
+    return eval<0b1>(bf, func, tmp, target);
 }
 
 int Compiler::addTo(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
 
-    d_codeBuffer << d_bfGen.addTo(lhs, rhs);
-    return lhs;
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.addTo(lhs, rhs);
+               };
+
+    auto func = [](int x, int y){
+                    return x + y;
+                };
+
+    return eval<0b00>(bf, func, lhs, lhs, rhs);
 }
 
 int Compiler::add(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
-    
+
     int const ret = allocateTemp();
-    d_codeBuffer << d_bfGen.assign(ret, lhs)
-                 << d_bfGen.addTo(ret, rhs);
-    return ret;
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.assign(ret, lhs)
+                                << d_bfGen.addTo(ret, rhs);
+               };
+
+    auto func = [](int x, int y){
+                    return x + y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
 }
 
 int Compiler::subtractFrom(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
+
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.subtractFrom(lhs, rhs);
+               };
+
+    auto func = [](int x, int y){
+                    return x - y;
+                };
+
+    return eval<0b00>(bf, func, lhs, lhs, rhs);
     
-    d_codeBuffer << d_bfGen.subtractFrom(lhs, rhs);
-    return lhs;
 }
 
 int Compiler::subtract(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
@@ -738,165 +1003,324 @@ int Compiler::subtract(AddressOrInstruction const &lhs, AddressOrInstruction con
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
 
     int const ret = allocateTemp();
-    d_codeBuffer << d_bfGen.assign(ret, lhs)
-                 << d_bfGen.subtractFrom(ret, rhs);
-    return ret;
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.assign(ret, lhs)
+                                << d_bfGen.subtractFrom(ret, rhs);
+               };
+
+    auto func = [](int x, int y){
+                    return x - y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
+    
 }
 
 int Compiler::multiplyBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
-    
-    d_codeBuffer << d_bfGen.multiplyBy(lhs, rhs);
-    return lhs;
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.multiplyBy(lhs, rhs);
+               };
+
+    auto func = [](int x, int y){
+                    return x * y;
+                };
+
+    return eval<0b00>(bf, func, lhs, lhs, rhs);
 }
+
 
 int Compiler::multiply(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
 
     int const ret = allocateTemp();
-    d_codeBuffer << d_bfGen.multiply(lhs, rhs, ret);
-    return ret;
-}
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.multiply(lhs, rhs, ret);
+               };
 
-int Compiler::divideBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
-{
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
+    auto func = [](int x, int y){
+                    return x * y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
     
-    return assign(lhs, divide(lhs, rhs));
 }
 
 int Compiler::divide(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
-    
-    return divModPair(lhs, rhs).first;
+
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   int const dummy = allocateTemp();
+                   divModPair(lhs, rhs, ret, dummy);
+               };
+
+    auto func = [](int x, int y){
+                    return x / y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
 }
 
-int Compiler::moduloBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
+int Compiler::divideBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in modulo-operation.");
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
+
+    auto bf  = [&, this](){
+                   int const div = allocateTemp();
+                   int const dummy = allocateTemp();
+                   divModPair(lhs, rhs, div, dummy);
+                   assign(lhs, div);
+               };
+
+    auto func = [](int x, int y){
+                    return x / y;
+                };
+
+    return eval<0b00>(bf, func, lhs, lhs, rhs);
     
-    return assign(lhs, modulo(lhs, rhs));
 }
 
 int Compiler::modulo(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in modulo-operation.");
-    
-    return divModPair(lhs, rhs).second;
+
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   int const dummy = allocateTemp();
+                   divModPair(lhs, rhs, dummy, ret);
+               };
+
+    auto func = [](int x, int y){
+                    return x % y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
 }
+
+int Compiler::moduloBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
+{
+    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in modulo-operation.");
+
+    auto bf  = [&, this](){
+                   int const mod = allocateTemp();
+                   int const dummy = allocateTemp();
+                   divModPair(lhs, rhs, dummy, mod);
+                   assign(lhs, mod);
+               };
+
+    auto func = [](int x, int y){
+                    return x % y;
+                };
+
+    return eval<0b00>(bf, func, lhs, lhs, rhs);
+    
+}
+
 
 int Compiler::divMod(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in divmod-operation.");
+
+    int const mod = allocateTemp();
+    auto bf  = [&, this](){
+                   int const div = allocateTemp();
+                   divModPair(lhs, rhs, div, mod);
+                   assign(lhs, div);
+               };
+
+    auto func = [](int &x, int y){
+                    int ret = x % y; 
+                    x /= y;
+                    return ret;
+                };
+
+    return eval<0b10>(bf, func, mod, lhs, rhs);
     
-    auto const pr = divModPair(lhs, rhs);
-    assign(lhs, pr.first);
-    return pr.second;
 }
 
 int Compiler::modDiv(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in moddiv-operation.");
+
+    int const div = allocateTemp();
+    auto bf  = [&, this](){
+                   int const mod = allocateTemp();
+                   divModPair(lhs, rhs, div, mod);
+                   assign(lhs, mod);
+               };
+
+    auto func = [](int &x, int y){
+                    int ret = x / y; 
+                    x %= y;
+                    return ret;
+                };
+
+    return eval<0b10>(bf, func, div, lhs, rhs);
     
-    auto const pr = divModPair(lhs, rhs);
-    assign(lhs, pr.second);
-    return pr.first;
 }
 
-std::pair<int, int> Compiler::divModPair(AddressOrInstruction const &num, AddressOrInstruction const &denom)
+void Compiler::divModPair(AddressOrInstruction const &num, AddressOrInstruction const &denom, int const divResult, int const modResult)
 {
-    int const tmp = allocateTempBlock(2);
-    int const divResult = tmp + 0;
-    int const modResult = tmp + 1;
-
     d_codeBuffer << d_bfGen.divmod(num, denom, divResult, modResult);
-    return {divResult, modResult};
+    d_memory.setValueUnknown(divResult);
+    d_memory.setValueUnknown(modResult);
 }
 
 
 int Compiler::equal(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.equal(lhs, rhs, ret);
+               };
+
+    auto func = [](int x, int y){
+                    return x == y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
     
-    int const result = allocateTemp();
-    d_codeBuffer << d_bfGen.equal(lhs, rhs, result);
-    return result;
 }
 
 int Compiler::notEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.notEqual(lhs, rhs, ret);
+               };
+
+    auto func = [](int x, int y){
+                    return x != y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
     
-    int const result = allocateTemp();
-    d_codeBuffer << d_bfGen.notEqual(lhs, rhs, result);
-    return result;
 }
 
 int Compiler::less(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.less(lhs, rhs, ret);
+               };
+
+    auto func = [](int x, int y){
+                    return x < y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
     
-    int const result = allocateTemp();
-    d_codeBuffer << d_bfGen.less(lhs, rhs, result);
-    return result;
 }
 
 int Compiler::greater(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.greater(lhs, rhs, ret);
+               };
+
+    auto func = [](int x, int y){
+                    return x > y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
     
-    int const result = allocateTemp();
-    d_codeBuffer << d_bfGen.greater(lhs, rhs, result);
-    return result;
 }
 
 int Compiler::lessOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
-    
-    int const result = allocateTemp();
-    d_codeBuffer << d_bfGen.lessOrEqual(lhs, rhs, result);
-    return result;
+
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.lessOrEqual(lhs, rhs, ret);
+               };
+
+    auto func = [](int x, int y){
+                    return x <= y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
 }
 
 int Compiler::greaterOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.greaterOrEqual(lhs, rhs, ret);
+               };
+
+    auto func = [](int x, int y){
+                    return x >= y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
     
-    int const result = allocateTemp();
-    d_codeBuffer << d_bfGen.greaterOrEqual(lhs, rhs, result);
-    return result;
 }
 
 int Compiler::logicalNot(AddressOrInstruction const &arg)
 {
     errorIf(arg < 0, "Use of void-expression in not-operation.");
-    
-    int const result = allocateTemp();
-    d_codeBuffer << d_bfGen.logicalNot(arg, result);
 
-    return result;
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.logicalNot(arg, ret);
+               };
+
+    auto func = [](int x){
+                    return !x;
+                };
+
+    return eval<0b0>(bf, func, ret, arg);
+    
 }
 
 int Compiler::logicalAnd(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in and-operation.");
     
-    int const result = allocateTemp();
-    d_codeBuffer << d_bfGen.logicalAnd(lhs, rhs, result);
-    return result;
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.logicalAnd(lhs, rhs, ret);
+               };
+
+    auto func = [](int x, int y){
+                    return x && y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
+    
 }
 
 int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void-expression in or-operation.");
 
-    int const result = allocateTemp();
-    d_codeBuffer << d_bfGen.logicalOr(lhs, rhs, result);
-    return result;
+    int const ret = allocateTemp();
+    auto bf  = [&, this](){
+                   d_codeBuffer << d_bfGen.logicalOr(lhs, rhs, ret);
+               };
+
+    auto func = [](int x, int y){
+                    return x || y;
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
+    
 }
 
 int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody)
@@ -904,12 +1328,21 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     int const conditionAddr = condition();
     errorIf(conditionAddr < 0, "Use of void-expression in if-condition.");
 
+    if (d_constEvalEnabled && !d_memory.valueUnknown(conditionAddr))
+    {
+        d_scope.push();
+        (d_memory.value(conditionAddr) > 0 ? ifBody : elseBody)();
+        std::string const outOfScope = d_scope.pop();
+        d_memory.freeLocals(outOfScope);
+        return -1;
+    }
+
+    disableConstEval();
+    
     int const ifFlag = allocateTemp();
     assign(ifFlag, conditionAddr);
     int const elseFlag = logicalNot(ifFlag);
 
-    d_memory.push(ifFlag);
-    d_memory.push(elseFlag); 
 
     d_codeBuffer << d_bfGen.movePtr(ifFlag)
                  << "[";
@@ -936,8 +1369,8 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     d_codeBuffer << d_bfGen.setToValue(elseFlag, 0)
                  << "]";
 
-    d_memory.pop();
-    d_memory.pop();
+    enableConstEval();
+    
     return -1;
 }
 
@@ -952,16 +1385,20 @@ int Compiler::mergeInstructions(Instruction const &instr1, Instruction const &in
 int Compiler::forStatement(Instruction const &init, Instruction const &condition,
                            Instruction const &increment, Instruction const &body)
 {
+    // The body of the loop might contain expressions that change the number
+    // of iterations, even if this can be calculated at compile-time.
+    // TODO: add syntax for a for-loop that is guaranteed to be unrollable.
+
     int const flag = allocateTemp();
-    d_memory.push(flag);
     d_scope.push();
+    disableConstEval();
 
     init();
     int const conditionAddr = condition();
     errorIf(conditionAddr < 0, "Use of void-expression in for-condition.");
-    
-    d_codeBuffer << d_bfGen.assign(flag, conditionAddr)
-                 << "[";
+
+    d_codeBuffer << d_bfGen.assign(flag, conditionAddr);
+    d_codeBuffer << "[";
 
     body();
     increment();
@@ -969,21 +1406,20 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
                  << "]";
 
     std::string outOfScope = d_scope.pop();
-    d_memory.pop();
-    
     d_memory.freeLocals(outOfScope);
+
+    enableConstEval();
     return -1;
 }
 
 int Compiler::whileStatement(Instruction const &condition, Instruction const &body)
 {
-    int const flag = allocateTemp();
+    int const flag = allocateTemp(); // TODO: unnecessary? Why not write to conditionAddr?
     int const conditionAddr = condition();
     errorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
 
     d_scope.push();
-    d_memory.push(flag);
-
+    disableConstEval();
     d_codeBuffer << d_bfGen.assign(flag, conditionAddr)
                  << "[";
     body();
@@ -992,9 +1428,8 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
                  << "]";
 
     std::string outOfScope = d_scope.pop();
-    d_memory.pop();
-
     d_memory.freeLocals(outOfScope);
+    enableConstEval();
     return -1;
 }
 
@@ -1002,31 +1437,72 @@ int Compiler::switchStatement(Instruction const &compareExpr,
                               std::vector<std::pair<Instruction, Instruction>> const &cases,
                               Instruction const &defaultCase)
 {
+    std::vector<std::pair<int, int>> runtimeCases; // {index, caseAddr}
+    
     int const compareAddr = compareExpr();
+    if (d_constEvalEnabled && !d_memory.valueUnknown(compareAddr))
+    {
+        int const compareVal = d_memory.value(compareAddr);
+        for (size_t i = 0; i != cases.size(); ++i)
+        {
+            int const caseAddr = cases[i].first();
+            if (d_memory.valueUnknown(caseAddr))
+            {
+                runtimeCases.push_back({i, caseAddr});
+                continue;
+            }
+            
+            if (d_memory.value(caseAddr) == compareVal)
+            {
+                // Case match! execute case body
+                d_scope.push();
+                cases[i].second();
+                std::string const outOfScope = d_scope.pop();
+                d_memory.freeLocals(outOfScope);
+                return -1;
+            }
+        }
+
+        if (runtimeCases.size() == 0)
+        {
+            // all cases handled, no match -> handle default case
+            d_scope.push();
+            defaultCase();
+            std::string const outOfScope = d_scope.pop();
+            d_memory.freeLocals(outOfScope);
+            return -1;
+        }
+    }
+    else
+    {
+        // All cases are runtime-cases
+        for (size_t i = 0; i != cases.size(); ++i)
+            runtimeCases.push_back({i, cases[i].first()});
+    }
+
+    // No match found during compiletime --> handle runtime cases
+    disableConstEval();
     int const goToDefault = allocateTemp();
-    d_memory.push(compareAddr);
-    d_memory.push(goToDefault);
+    int const flag = allocateTemp();
 
     d_codeBuffer << d_bfGen.setToValue(goToDefault, 1);
-    for (auto const &pr: cases)
+    for (auto const &pr: runtimeCases)
     {
-        int const caseAddr = pr.first();
-        int const flag = allocateTemp();
-        d_memory.push(flag);
+        int const caseIdx  = pr.first;
+        int const caseAddr = pr.second;
         
         d_codeBuffer << d_bfGen.equal(compareAddr, caseAddr, flag)
                      << "["
                      <<     d_bfGen.setToValue(goToDefault, 0);
 
         d_scope.push();
-        pr.second();
+        cases[caseIdx].second();
         std::string const outOfScope = d_scope.pop();
         d_memory.freeLocals(outOfScope);
 
         d_codeBuffer << d_bfGen.setToValue(flag, 0)
                      << "]";
 
-        d_memory.pop();
     }
 
     d_codeBuffer << d_bfGen.movePtr(goToDefault)
@@ -1039,9 +1515,8 @@ int Compiler::switchStatement(Instruction const &compareExpr,
 
     d_codeBuffer << d_bfGen.setToValue(goToDefault, 0)
                  << "]";
-    
-    d_memory.pop(); // goToDefault
-    d_memory.pop(); // compareAddr
+
+    enableConstEval();
     return -1;
 }
 

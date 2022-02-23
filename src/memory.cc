@@ -5,8 +5,7 @@ void Memory::Cell::backup()
     d_backupStack.push(Members{
                                identifier,
                                scope,
-                               content,
-                               type,
+                               content
         });
 
     // cells that have been backed up are protected -> cannot be cleared
@@ -21,7 +20,6 @@ void Memory::Cell::restore()
     identifier = std::get<0>(m);
     scope      = std::get<1>(m);
     content    = std::get<2>(m);
-    type       = std::get<3>(m);  
 
     d_backupStack.pop();
 }
@@ -34,6 +32,8 @@ void Memory::Cell::clear()
     scope.clear();
     content = Content::EMPTY;
     type = TypeSystem::Type{};
+    value = 0;
+    synced = false;
 }
         
 int Memory::findFree(int const sz)
@@ -112,6 +112,7 @@ void Memory::place(TypeSystem::Type type, int const addr, bool const recursive)
         {
             Cell &cell = d_memory[addr + i];
             cell.clear();
+            cell.type = TypeSystem::Type(1);
             cell.content = Content::REFERENCED;
         }
         return;
@@ -143,6 +144,7 @@ void Memory::place(TypeSystem::Type type, int const addr, bool const recursive)
         {
             Cell &cell = d_memory[addr + f.offset + i];
             cell.clear();
+            cell.type = TypeSystem::Type(1);
             cell.content = Content::REFERENCED;
         }
     }
@@ -258,6 +260,56 @@ TypeSystem::Type Memory::type(std::string const &ident, std::string const &scope
     return d_memory[addr].type;
 }
 
+int Memory::value(int const addr) const
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    return d_memory[addr].value;
+}
+
+int &Memory::value(int const addr) 
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    return d_memory[addr].value;
+}
+
+bool Memory::valueUnknown(int const addr) const
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    return d_memory[addr].value == -1;
+}
+
+void Memory::setValueUnknown(int const addr)
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    d_memory[addr].value = -1;
+    d_memory[addr].synced = false;
+}
+
+void Memory::setSync(int const addr, bool val)
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    d_memory[addr].synced = val;
+}
+
+bool Memory::isSync(int const addr) const
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+    return d_memory[addr].synced;
+}
+
+std::vector<int> Memory::cellsInScope(std::string const &scope) const
+{
+    std::vector<int> result;
+    for (int i = 0; i != d_maxAddr; ++i)
+    {
+        if (scope.find(d_memory[i].scope) == 0)
+            result.push_back(i);
+    }
+    
+    return result;
+}
+
+
 void Memory::dump() const
 {
     static std::string const contentStrings[] =
@@ -269,7 +321,7 @@ void Memory::dump() const
          "PROTECTED"
         };
     
-    std::cerr << "addr  |  var  |  scope  |  type  |  content  \n";
+    std::cerr << "addr  |  var  |  scope  |  type  | content  |  value  |  synced | \n";
     for (int i = 0; i != d_maxAddr; ++i)
     {
         Cell const &c = d_memory[i];
@@ -277,6 +329,7 @@ void Memory::dump() const
             continue;
         
         std::cerr << i << "\t" << c.identifier <<  '\t' << c.scope << '\t'
-                  << c.type.name() << '\t' << contentStrings[static_cast<int>(c.content)] << '\n';
+                  << c.type.name() << '\t' << contentStrings[static_cast<int>(c.content)] << '\t'
+                  << c.value << '\t' << (c.synced ? "SYNCED" : "DESYNCED") << '\n';
     }
 }

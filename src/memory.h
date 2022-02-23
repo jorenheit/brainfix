@@ -23,14 +23,12 @@ public:
 private:
     struct Cell
     {
-        std::string identifier;
-        std::string scope;
-        Content     content;
+        std::string      identifier;
+        std::string      scope;
+        Content          content{Content::EMPTY};
         TypeSystem::Type type;
-        
-        Cell():
-            content(Content::EMPTY)
-        {}
+        int              value{0};
+        bool             synced{false};
         
         void clear();
         void backup();
@@ -47,10 +45,9 @@ private:
         }
 
     private:
-        using Members = std::tuple<std::string,
-                                   std::string,
-                                   Content,
-                                   TypeSystem::Type
+        using Members = std::tuple<std::string, // identifier
+                                   std::string, // scope
+                                   Content      // content
                                    >;
 
         std::stack<Members> d_backupStack;
@@ -80,10 +77,17 @@ public:
     void markAsTemp(int const addr);
     void rename(int const addr, std::string const &ident, std::string const &scope);
     bool isTemp(int const addr) const;
+    int value(int const addr) const;
+    int &value(int const addr);
+    bool valueUnknown(int const addr) const;
+    void setValueUnknown(int const addr);
+    void setSync(int const addr, bool val);
+    bool isSync(int const addr) const;
     std::string identifier(int const addr) const;
     std::string scope(int const addr) const;
     TypeSystem::Type type(int const addr) const;
     TypeSystem::Type type(std::string const &ident, std::string const &scope) const;
+    std::vector<int> cellsInScope(std::string const &scope) const;
 
     void dump() const;
     

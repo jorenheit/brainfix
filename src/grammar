@@ -20,7 +20,7 @@
                 BFX_FUNCTION:           BFXFunction;
 
 // Keywords
-%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE
+%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SCAN PRINT
 %token SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT STRUCT
 
 %nonassoc then
@@ -47,6 +47,7 @@
 
 %type <INSTRUCTION>         expression
 %type <INSTRUCTION>         statement
+%type <INSTRUCTION>         builtin_function
 %type <INSTRUCTION>         if_statement
 %type <INSTRUCTION>         for_statement
 %type <INSTRUCTION>         switch_statement
@@ -282,6 +283,8 @@ expression:
     anonymous_struct
 |
     function_call
+|
+    builtin_function
 |
     SIZEOF '(' IDENT ')'
     {
@@ -545,6 +548,18 @@ expression:
     expression OR expression
     {
         $$ = instruction<&Compiler::logicalOr>($1, $3);
+    }
+;
+
+builtin_function:
+    PRINT '(' expression ')'
+    {
+        $$ = instruction<&Compiler::printCell>($3);
+    }
+|
+    SCAN '(' IDENT ')'
+    {
+        $$ = instruction<&Compiler::scanCell>($3);
     }
 ;
 

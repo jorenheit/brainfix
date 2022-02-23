@@ -36,6 +36,8 @@ public:
     }
     
     std::string movePtr(int const addr);
+    std::string scan(int const addr);
+    std::string print(int const addr);
     std::string fetchElement(int const arrStart, int const arrSize, int const index, int const ret);
     std::string setToValue(int const addr, int const val);
     std::string setToValue(int const start, int const val, size_t const n);

@@ -45,6 +45,23 @@ std::string BFGenerator::setToValuePlus(int const addr, int const val, size_t co
 
     return ops.str();
 }
+std::string BFGenerator::scan(int const addr)
+{
+    std::ostringstream ops;
+    ops << movePtr(addr)
+        << ',';
+
+    return ops.str();
+}
+
+std::string BFGenerator::print(int const addr)
+{
+    std::ostringstream ops;
+    ops << movePtr(addr)
+        << '.';
+
+    return ops.str();
+}
 
 std::string BFGenerator::assign(int const lhs, int const rhs)
 {
