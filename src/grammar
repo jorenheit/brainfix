@@ -624,25 +624,28 @@ anonymous_array:
 |
     '#' '[' NUM ']'
     {
-        $$ = instruction<&Compiler::arrayFromSizeStaticValue>($3, 0);
+        $$ = instruction<&Compiler::arrayFromSize>(
+                 $3,
+                 instruction<&Compiler::constVal>(0)
+            );
     }
 |
     '#' '[' IDENT ']'
     {
-        $$ = instruction<&Compiler::arrayFromSizeStaticValue>(
+        $$ = instruction<&Compiler::arrayFromSize>(
                 compileTimeConstant($3),
-                0
+                instruction<&Compiler::constVal>(0)
            );
     }
 |
     '#' '[' NUM ',' expression ']'
     {
-        $$ = instruction<&Compiler::arrayFromSizeDynamicValue>($3, $5);
+        $$ = instruction<&Compiler::arrayFromSize>($3, $5);
     }
 |
     '#' '[' IDENT ',' expression ']'
     {
-        $$ = instruction<&Compiler::arrayFromSizeDynamicValue>(
+        $$ = instruction<&Compiler::arrayFromSize>(
                 compileTimeConstant($3),
                 $5
            );
@@ -667,6 +670,11 @@ for_statement:
     FOR '(' expression ';' expression ';' expression ')' statement
     {
         $$ = instruction<&Compiler::forStatement>($3, $5, $7, $9);
+    }
+|
+    FOR '*' '(' expression ';' expression ';' expression ')' statement
+    {
+        $$ = instruction<&Compiler::forStarStatement>($4, $6, $8, $10);
     }
 ;
 

@@ -262,7 +262,16 @@ bool Compiler::isCompileTimeConstant(std::string const &ident) const
 int Compiler::allocate(std::string const &ident, TypeSystem::Type type)
 {
     int const addr = d_memory.allocate(ident, d_scope.current(), type);
-    errorIf(addr < 0, "Variable ", ident, ": variable previously declared.");
+
+    if (!d_returnExistingAddressOnAlloc)
+    {
+        errorIf(addr < 0, "Variable ", ident, ": variable previously declared.");
+    }
+    else if (addr < 0)
+    {
+        return d_memory.find(ident, d_scope.current());
+    }
+
     return addr;
 }
 
@@ -335,19 +344,7 @@ int Compiler::sizeOfOperator(std::string const &ident)
     int const sz = d_memory.sizeOf(ident, d_scope.current());
     errorIf(sz == 0, "Variable \"", ident ,"\" not defined in this scope.");
 
-    int const tmp = allocateTemp();
-    if (d_constEvalEnabled)
-    {
-        d_memory.value(tmp) = sz;
-        d_memory.setSync(tmp, false);
-    }
-    else
-    {
-        d_codeBuffer << d_bfGen.setToValue(tmp, sz);
-        d_memory.setValueUnknown(tmp);
-    }
-    
-    return tmp;
+    return constVal(sz);
 }
 
 int Compiler::movePtr(std::string const &ident)
@@ -465,16 +462,13 @@ int Compiler::constVal(int const num)
     warningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
     
     int const tmp = allocateTemp();
+    d_memory.value(tmp) = num;
+    d_memory.setSync(tmp, false);
 
-    if (d_constEvalEnabled)
-    {
-        d_memory.value(tmp) = num;
-        d_memory.setSync(tmp, false);
-    }
-    else
+    if (!d_constEvalEnabled)
     {
         d_codeBuffer << d_bfGen.setToValue(tmp, num);
-        d_memory.setValueUnknown(tmp); // TODO: can this be avoided? It's a constant...
+        d_memory.setSync(tmp, true);
     }
     return tmp;
 }
@@ -503,8 +497,10 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
     errorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
     errorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
-    errorIf(d_memory.find(ident, d_scope.current()) != -1,
-            "Variable ", ident, " previously declared.");
+
+    if (!d_returnExistingAddressOnAlloc)
+        errorIf(d_memory.find(ident, d_scope.current()) != -1,
+                "Variable ", ident, " previously declared.");
     
     int rhsAddr = rhs();
     TypeSystem::Type rhsType = d_memory.type(rhsAddr);
@@ -664,47 +660,12 @@ int Compiler::fetchNestedField(std::vector<std::string> const &expr, int const b
     return -1;
 }
 
-int Compiler::arrayFromSizeStaticValue(int const sz, int const val)
-{
-    warningIf(val > MAX_INT, "use of value ", val, " exceeds limit of ", MAX_INT, ".");
-    
-    errorIf(sz > MAX_ARRAY_SIZE,
-            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
-    
-    // TODO: can this function be removed? 
-    
-    int const start = allocateTemp(sz);
-    if (d_constEvalEnabled)
-    {
-        for (int idx = 0; idx != sz; ++idx)
-        {
-            d_memory.value(start + idx) = val;
-            d_memory.setSync(start + idx, false);
-        }
-    }
-    else
-    {
-        for (int idx = 0; idx != sz; ++idx)
-        {
-            d_codeBuffer << d_bfGen.setToValue(start + idx, val);
-            d_memory.setValueUnknown(start + idx);
-        }
-    }
-    
-    return start;
-}
-
-
-int Compiler::arrayFromSizeDynamicValue(int const sz, AddressOrInstruction const &val)
+int Compiler::arrayFromSize(int const sz, Instruction const &fill)
 {
     errorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
 
-    errorIf(d_memory.sizeOf(val) > 1,
-            "Array fill-value must refer to a variable of size 1, but it is of size ",
-            d_memory.sizeOf(val), ".");
-    
-    return assign(allocateTemp(sz), val);
+    return assign(allocateTemp(sz), fill());
 }
 
 int Compiler::arrayFromList(std::vector<Instruction> const &list)
@@ -883,8 +844,8 @@ int Compiler::applyBinaryFunctionToElement(AddressOrInstruction const &arr,
 int Compiler::scanCell(std::string const &ident)
 {
     int const addr = addressOf(ident);
-    d_memory.setValueUnknown(addr);
     d_codeBuffer << d_bfGen.scan(addr);
+    d_memory.setValueUnknown(addr);
     return addr;
 }
 
@@ -1382,6 +1343,37 @@ int Compiler::mergeInstructions(Instruction const &instr1, Instruction const &in
     return -1;
 }
 
+int Compiler::forStarStatement(Instruction const &init, Instruction const &condition,
+                               Instruction const &increment, Instruction const &body)
+{
+    if (!d_constEvalEnabled)
+        return forStatement(init, condition, increment, body);
+
+    d_scope.push();
+    
+    init();
+    int conditionAddr = condition();
+    errorIf(d_memory.valueUnknown(conditionAddr),
+            "Condition could not be const-evaluated on entering for*.");
+
+    while (d_memory.value(conditionAddr))
+    {
+        body();
+        increment();
+        conditionAddr = condition();
+        errorIf(d_memory.valueUnknown(conditionAddr),
+                "Condition could not be const-evaluated while iterating for*.");
+
+        d_returnExistingAddressOnAlloc = true;
+    }
+    d_returnExistingAddressOnAlloc = false;
+    
+    std::string outOfScope = d_scope.pop();
+    d_memory.freeLocals(outOfScope);
+
+    return -1;
+}
+
 int Compiler::forStatement(Instruction const &init, Instruction const &condition,
                            Instruction const &increment, Instruction const &body)
 {
@@ -1414,17 +1406,16 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 
 int Compiler::whileStatement(Instruction const &condition, Instruction const &body)
 {
-    int const flag = allocateTemp(); // TODO: unnecessary? Why not write to conditionAddr?
     int const conditionAddr = condition();
     errorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
 
     d_scope.push();
     disableConstEval();
-    d_codeBuffer << d_bfGen.assign(flag, conditionAddr)
+    d_codeBuffer << d_bfGen.movePtr(conditionAddr)
                  << "[";
     body();
 
-    d_codeBuffer << d_bfGen.assign(flag, condition())
+    d_codeBuffer << d_bfGen.assign(conditionAddr, condition())
                  << "]";
 
     std::string outOfScope = d_scope.pop();

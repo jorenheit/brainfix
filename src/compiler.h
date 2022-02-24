@@ -44,6 +44,7 @@ class Compiler: public CompilerBase
     std::string d_instructionFilename;
     int         d_instructionLineNr;
     bool        d_constEvalEnabled{true};
+    bool        d_returnExistingAddressOnAlloc{false};
     
 public:
     enum class CellType
@@ -116,8 +117,7 @@ private:
     int constVal(int const val);
     int statement(Instruction const &instr);
     int mergeInstructions(Instruction const &instr1, Instruction const &instr2);
-    int arrayFromSizeStaticValue(int const sz, int const val = 0);
-    int arrayFromSizeDynamicValue(int const sz, AddressOrInstruction const &val);
+    int arrayFromSize(int const sz, Instruction const &fill);
     int arrayFromList(std::vector<Instruction> const &list);
     int arrayFromString(std::string const &str);
     int anonymousStructObject(std::string const name, std::vector<Instruction> const &values);
@@ -164,7 +164,9 @@ private:
 
     int ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody);  
     int forStatement(Instruction const &init, Instruction const &condition,
-                     Instruction const &increment, Instruction const &body);    
+                     Instruction const &increment, Instruction const &body);
+    int forStarStatement(Instruction const &init, Instruction const &condition,
+                         Instruction const &increment, Instruction const &body);    
     int whileStatement(Instruction const &condition, Instruction const &body);
     int switchStatement(Instruction const &compareExpr,
                         std::vector<std::pair<Instruction, Instruction>> const &cases,
