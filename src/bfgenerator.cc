@@ -94,17 +94,6 @@ std::string BFGenerator::assign(int const lhs, int const rhs)
     return ops.str();
 }
 
-std::string BFGenerator::assign(int const dest, int const src, size_t const n)
-{
-    validateAddr(dest, src);
-    
-    std::ostringstream ops;
-    for (size_t idx = 0; idx != n; ++idx)
-        ops << assign(dest + idx, src + idx);
-
-    return ops.str();
-}
-
 std::string BFGenerator::movePtr(int const addr)
 {
     validateAddr(addr);

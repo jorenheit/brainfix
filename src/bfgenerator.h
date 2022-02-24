@@ -44,7 +44,6 @@ public:
     std::string setToValuePlus(int const addr, int const val);
     std::string setToValuePlus(int const addr, int const val, size_t const n);
     std::string assign(int const lhs, int const rhs);
-    std::string assign(int const dest, int const src, size_t const n);
     std::string assignElement(int const arrStart, int const arrSize, int const index, int const val);
     std::string addTo(int const target, int const rhs);
     std::string addConst(int const target, int const amount);

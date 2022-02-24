@@ -78,6 +78,7 @@ private:
     void sync(int const addr);
     void constEvalSetToValue(int const addr, int const val);
     void runtimeSetToValue(int const addr, int const val);
+    void runtimeAssign(int const lhs, int const rhs);
     
     static bool validateFunction(BFXFunction const &bfxFunc);
     static bool validateInlineBF(std::string const &ident);

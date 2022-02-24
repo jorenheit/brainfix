@@ -532,7 +532,7 @@ void Compiler::runtimeSetToValue(int const addr, int const newVal)
     {
         d_codeBuffer << d_bfGen.setToValue(addr, newVal);
     }
-    else 
+    else // known and sync'd
     {
         int const oldVal = d_memory.value(addr);
         int const diff = newVal - oldVal;
@@ -545,6 +545,13 @@ void Compiler::runtimeSetToValue(int const addr, int const newVal)
     d_memory.value(addr) = newVal;
     d_memory.setSync(addr, true);
 }
+
+void Compiler::runtimeAssign(int const lhs, int const rhs)
+{
+    d_codeBuffer << d_bfGen.assign(lhs, rhs);
+    d_memory.setValueUnknown(lhs);
+}
+    
 
 int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
@@ -559,17 +566,12 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
         if (d_constEvalEnabled && !d_memory.valueUnknown(rhs))
         {
             for (int i = 0; i != leftSize; ++i)
-            {
                 constEvalSetToValue(lhs + i, d_memory.value(rhs));
-            }
         }
         else
         {
             for (int i = 0; i != leftSize; ++i)
-            {
-                d_codeBuffer << d_bfGen.assign(lhs + i, rhs);
-                d_memory.setValueUnknown(lhs + i);
-            }
+                runtimeAssign(lhs + i, rhs);
         }
     }
     else if (leftSize == rightSize)
@@ -580,34 +582,23 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
             for (int i = 0; i != leftSize; ++i)
             {
                 if (!d_memory.valueUnknown(rhs + i))
-                {
                     constEvalSetToValue(lhs + i, d_memory.value(rhs + i));
-                }
                 else
-                {
-                    d_codeBuffer << d_bfGen.assign(lhs + i, rhs + i);
-                    d_memory.setValueUnknown(lhs + i);
-                }
+                    runtimeAssign(lhs + i, rhs + i);
             }
         }
         else
         {
-            d_codeBuffer << d_bfGen.assign(lhs, rhs, leftSize);
             for (int i = 0; i != leftSize; ++i)
-                d_memory.setValueUnknown(lhs + i);
+                runtimeAssign(lhs + i, rhs + i);
         }
     }
     else if (leftSize == 1 && !d_memory.type(rhs).isStructType())
     {
         if (d_constEvalEnabled && !d_memory.valueUnknown(rhs))
-        {
             constEvalSetToValue(lhs, d_memory.value(rhs));
-        }
         else
-        {
-            d_codeBuffer << d_bfGen.assign(lhs, rhs);
-            d_memory.setValueUnknown(lhs);
-        }
+            runtimeAssign(lhs, rhs);
     }
     else
     {
