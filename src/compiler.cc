@@ -20,12 +20,14 @@ namespace _MaxInt
     }
 }
 
-Compiler::Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths):
+Compiler::Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths,
+                   bool const constEval):
     MAX_INT(_MaxInt::get(type)),
     MAX_ARRAY_SIZE(MAX_INT - 5),
     d_scanner(file, ""),
     d_memory(TAPE_SIZE_INITIAL),
-    d_includePaths(paths)
+    d_includePaths(paths),
+    d_constEvalEnabled(constEval)
 {
     d_bfGen.setTempRequestFn([this](){
                                  return allocateTemp();
@@ -149,8 +151,6 @@ int Compiler::compile()
     errorIf(d_functionMap.find("main") == d_functionMap.end(),
             "No entrypoint provided. The entrypoint should be main().");
 
-    d_constEvalEnabled = true;
-    
     d_stage = Stage::CODEGEN;
     call("main");
     d_stage = Stage::FINISHED;

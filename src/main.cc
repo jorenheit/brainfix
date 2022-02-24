@@ -11,6 +11,7 @@ struct Options
     std::vector<std::string>  includePaths;
     std::string               bfxFile;
     std::ostream*             outStream{nullptr};
+    bool                      constEval{true};
 };
 
 void printHelp(std::string const &progName)
@@ -22,6 +23,8 @@ void printHelp(std::string const &progName)
                  "                    int8, int16 and int32 (int8 by default).\n"
               << "-I [path to folder] Specify additional include-path.\n"
               << "                    This option may appear multiple times to specify multiple folders.\n"
+              << "-O0                 Do NOT do any constant expression evaluation.\n"
+              << "-O1                 Do constant expression evaluation (default).\n "
               << "-o [file, stdout]   Specify where the generate BF is output to.\n\n"
               << "Example: " << progName << " -o program.bf -I ../std/ -t int16 program.bfx\n";
 }
@@ -115,6 +118,15 @@ Options parseCmdLine(std::vector<std::string> const &args)
                 idx += 2;
             }
         }
+        else if (args[idx] == "-O0")
+        {
+            opt.constEval = false;
+            ++idx;
+        }
+        else if (args[idx] == "-O1")
+        {
+            ++idx;
+        }
         else if (idx == args.size() - 1)
         {
             opt.bfxFile = args.back();
@@ -155,7 +167,7 @@ int main(int argc, char **argv) try
         return 1;
     }
     
-    Compiler c(opt.bfxFile, opt.cellType, opt.includePaths);
+    Compiler c(opt.bfxFile, opt.cellType, opt.includePaths, opt.constEval);
     int err = c.compile();
 
     if (err) return err;

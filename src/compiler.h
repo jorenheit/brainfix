@@ -56,7 +56,7 @@ public:
          INT32
         };
 
-    Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths);
+    Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths, bool constEval);
     int compile();
     void write(std::ostream &out);
 
