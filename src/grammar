@@ -617,7 +617,7 @@ string_literal:
 ;
 
 anonymous_array:
-    '#' '(' expression_list ')'
+    '#' '{' expression_list '}'
     {
         $$ = instruction<&Compiler::arrayFromList>($3);
     }

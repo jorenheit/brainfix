@@ -93,11 +93,7 @@ void Compiler::sync(int const addr)
     bool const valueKnown = not d_memory.valueUnknown(addr);
     bool const synced     = d_memory.isSync(addr);
     if (valueKnown && !synced)
-    {
         runtimeSetToValue(addr, d_memory.value(addr));
-        // d_memory.setSync(addr, true);
-        // d_codeBuffer << d_bfGen.setToValue(addr, d_memory.value(addr));
-    }
 }
 
 bool Compiler::setConstEval(bool const enable)
@@ -466,10 +462,8 @@ int Compiler::constVal(int const num)
     constEvalSetToValue(tmp, num);
 
     if (!d_constEvalEnabled)
-    {
-        d_memory.setSync(tmp, true);
-        d_codeBuffer << d_bfGen.setToValue(tmp, num);
-    }
+        runtimeSetToValue(tmp, num);
+
     return tmp;
 }
 
@@ -552,7 +546,6 @@ void Compiler::runtimeAssign(int const lhs, int const rhs)
     d_memory.setValueUnknown(lhs);
 }
     
-
 int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     errorIf(lhs < 0 || rhs < 0, "Use of void expression in assignment.");
@@ -724,11 +717,7 @@ int Compiler::arrayFromString(std::string const &str)
     {
         constEvalSetToValue(start + idx, str[idx]);
         if (!d_constEvalEnabled)
-        {
             runtimeSetToValue(start + idx, str[idx]);
-            // d_memory.setSync(start + idx, true);
-            // d_codeBuffer << d_bfGen.setToValue(start + idx, str[idx]);
-        }
     }
 
     return start;
@@ -765,7 +754,11 @@ int Compiler::anonymousStructObject(std::string const name, std::vector<Instruct
 
 int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index)
 {
-    // TODO: implement compile-time bounds checking
+    int const indexValue = d_memory.value(index);
+    int const sz = d_memory.sizeOf(arr);
+    warningIf(indexValue >= sz,
+              "Array index (", indexValue, ") out of bounds: sizeof(",
+              d_memory.identifier(arr), ") = ", sz, ".");
 
     if (d_constEvalEnabled && !d_memory.valueUnknown(index))
     {
@@ -773,7 +766,6 @@ int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction
     }
     else
     {
-        int const sz = d_memory.sizeOf(arr);
         int const ret = allocateTemp();
         d_codeBuffer << d_bfGen.fetchElement(arr, sz, index, ret);
         d_memory.setValueUnknown(ret);
@@ -783,6 +775,12 @@ int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction
 
 int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs)
 {
+    int const indexValue = d_memory.value(index);
+    int const sz = d_memory.sizeOf(arr);
+    warningIf(indexValue >= sz,
+              "Array index (", indexValue, ") out of bounds: sizeof(",
+              d_memory.identifier(arr), ") = ", sz, ".");
+    
     if (d_constEvalEnabled && !d_memory.valueUnknown(index) && !d_memory.valueUnknown(rhs))
     {
         // Case 1: index and rhs both known
@@ -809,9 +807,10 @@ int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstructio
         {
             sync(index);
             sync(rhs);
+            for (int i = 0; i != sz; ++i)
+                sync(arr + i);
         }
         
-        int const sz = d_memory.sizeOf(arr);
         d_codeBuffer << d_bfGen.assignElement(arr, sz, index, rhs);
         for (int i = 0; i != sz; ++i)
             d_memory.setValueUnknown(arr + i);
