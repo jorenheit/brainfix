@@ -285,10 +285,10 @@ void Memory::setValueUnknown(int const addr)
     d_memory[addr].synced = false;
 }
 
-void Memory::setSync(int const addr, bool val)
+void Memory::setSync(int const addr, bool sync)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    d_memory[addr].synced = val;
+    d_memory[addr].synced = sync;
 }
 
 bool Memory::isSync(int const addr) const

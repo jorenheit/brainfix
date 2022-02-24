@@ -94,8 +94,9 @@ void Compiler::sync(int const addr)
     bool const synced     = d_memory.isSync(addr);
     if (valueKnown && !synced)
     {
-        d_codeBuffer << d_bfGen.setToValue(addr, d_memory.value(addr));
-        d_memory.setSync(addr, true);
+        runtimeSetToValue(addr, d_memory.value(addr));
+        // d_memory.setSync(addr, true);
+        // d_codeBuffer << d_bfGen.setToValue(addr, d_memory.value(addr));
     }
 }
 
@@ -462,13 +463,12 @@ int Compiler::constVal(int const num)
     warningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
     
     int const tmp = allocateTemp();
-    d_memory.value(tmp) = num;
-    d_memory.setSync(tmp, false);
+    constEvalSetToValue(tmp, num);
 
     if (!d_constEvalEnabled)
     {
-        d_codeBuffer << d_bfGen.setToValue(tmp, num);
         d_memory.setSync(tmp, true);
+        d_codeBuffer << d_bfGen.setToValue(tmp, num);
     }
     return tmp;
 }
@@ -520,6 +520,31 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
     return -1;
 }
 
+void Compiler::constEvalSetToValue(int const addr, int const val)
+{
+    d_memory.setSync(addr, false);
+    d_memory.value(addr) = val;
+}
+
+void Compiler::runtimeSetToValue(int const addr, int const newVal)
+{
+    if (d_memory.valueUnknown(addr) || !d_memory.isSync(addr))
+    {
+        d_codeBuffer << d_bfGen.setToValue(addr, newVal);
+    }
+    else 
+    {
+        int const oldVal = d_memory.value(addr);
+        int const diff = newVal - oldVal;
+        if (std::abs(diff) < newVal)
+            d_codeBuffer << d_bfGen.addConst(addr, newVal - oldVal);
+        else
+            d_codeBuffer << d_bfGen.setToValue(addr, newVal);
+    }
+
+    d_memory.value(addr) = newVal;
+    d_memory.setSync(addr, true);
+}
 
 int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
@@ -533,10 +558,9 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
         // Fill array with value
         if (d_constEvalEnabled && !d_memory.valueUnknown(rhs))
         {
-            for (int i = 0; i != d_memory.sizeOf(lhs); ++i)
+            for (int i = 0; i != leftSize; ++i)
             {
-                d_memory.value(lhs + i) = d_memory.value(rhs);
-                d_memory.setSync(lhs + i, false);
+                constEvalSetToValue(lhs + i, d_memory.value(rhs));
             }
         }
         else
@@ -557,8 +581,7 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
             {
                 if (!d_memory.valueUnknown(rhs + i))
                 {
-                    d_memory.value(lhs + i) = d_memory.value(rhs + i);
-                    d_memory.setSync(lhs + i, false);
+                    constEvalSetToValue(lhs + i, d_memory.value(rhs + i));
                 }
                 else
                 {
@@ -578,8 +601,7 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
     {
         if (d_constEvalEnabled && !d_memory.valueUnknown(rhs))
         {
-            d_memory.value(lhs) = d_memory.value(rhs);
-            d_memory.setSync(lhs, false);
+            constEvalSetToValue(lhs, d_memory.value(rhs));
         }
         else
         {
@@ -682,8 +704,7 @@ int Compiler::arrayFromList(std::vector<Instruction> const &list)
         int const elementAddr = list[idx]();
         if (d_constEvalEnabled && !d_memory.valueUnknown(elementAddr))
         {
-            d_memory.value(start + idx) = d_memory.value(elementAddr);
-            d_memory.setSync(start + idx, false);
+            constEvalSetToValue(start + idx, d_memory.value(elementAddr));
         }
         else
             runtimeElements.push_back({idx, elementAddr});
@@ -708,21 +729,14 @@ int Compiler::arrayFromString(std::string const &str)
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
 
     int const start = allocateTemp(sz);
-    if (d_constEvalEnabled)
+    for (int idx = 0; idx != sz; ++idx)
     {
-        for (int idx = 0; idx != sz; ++idx)
+        constEvalSetToValue(start + idx, str[idx]);
+        if (!d_constEvalEnabled)
         {
-            d_memory.value(start + idx) = str[idx];
-            d_memory.setSync(start + idx, false);
-        }
-            
-    }
-    else
-    {
-        for (int idx = 0; idx != sz; ++idx)
-        {
-            d_codeBuffer << d_bfGen.setToValue(start + idx, str[idx]);
-            d_memory.setValueUnknown(start + idx);
+            runtimeSetToValue(start + idx, str[idx]);
+            // d_memory.setSync(start + idx, true);
+            // d_codeBuffer << d_bfGen.setToValue(start + idx, str[idx]);
         }
     }
 
@@ -782,8 +796,7 @@ int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstructio
     {
         // Case 1: index and rhs both known
         int const addr = arr + d_memory.value(index);
-        d_memory.value(addr) = d_memory.value(rhs);
-        d_memory.setSync(addr, false);
+        constEvalSetToValue(addr, d_memory.value(rhs));
         return addr;
     }
     else if (d_constEvalEnabled && !d_memory.valueUnknown(index))
@@ -1356,15 +1369,20 @@ int Compiler::forStarStatement(Instruction const &init, Instruction const &condi
     errorIf(d_memory.valueUnknown(conditionAddr),
             "Condition could not be const-evaluated on entering for*.");
 
+    int count = 0;
     while (d_memory.value(conditionAddr))
     {
         body();
         increment();
         conditionAddr = condition();
         errorIf(d_memory.valueUnknown(conditionAddr),
-                "Condition could not be const-evaluated while iterating for*.");
+                "Condition could not be const-evaluated while iterating for* at iteration ", count, ".");
 
         d_returnExistingAddressOnAlloc = true;
+
+        if (count++ > MAX_LOOP_UNROLL_ITERATIONS)
+            compilerError("Error unrolling loop: number of iterations exceeds maximum of ",
+                          MAX_LOOP_UNROLL_ITERATIONS, ". Consider using `for` instead of `for*`.");
     }
     d_returnExistingAddressOnAlloc = false;
     
@@ -1377,10 +1395,6 @@ int Compiler::forStarStatement(Instruction const &init, Instruction const &condi
 int Compiler::forStatement(Instruction const &init, Instruction const &condition,
                            Instruction const &increment, Instruction const &body)
 {
-    // The body of the loop might contain expressions that change the number
-    // of iterations, even if this can be calculated at compile-time.
-    // TODO: add syntax for a for-loop that is guaranteed to be unrollable.
-
     int const flag = allocateTemp();
     d_scope.push();
     disableConstEval();
@@ -1402,6 +1416,39 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 
     enableConstEval();
     return -1;
+}
+
+int Compiler::whileStarStatement(Instruction const &condition, Instruction const &body)
+{
+    if (!d_constEvalEnabled)
+        return whileStatement(condition, body);
+
+    d_scope.push();
+    
+    int conditionAddr = condition();
+    errorIf(d_memory.valueUnknown(conditionAddr),
+            "Condition could not be const-evaluated on entering while*.");
+
+    int count = 0;
+    while (d_memory.value(conditionAddr))
+    {
+        body();
+        conditionAddr = condition();
+        errorIf(d_memory.valueUnknown(conditionAddr),
+                "Condition could not be const-evaluated while iterating while* at iteration ", count, ".");
+
+        d_returnExistingAddressOnAlloc = true;
+
+        if (count++ > MAX_LOOP_UNROLL_ITERATIONS)
+            compilerError("Error unrolling loop: number of iterations exceeds maximum of ",
+                          MAX_LOOP_UNROLL_ITERATIONS, ". Consider using `while` instead of `while*`.");
+    }
+    d_returnExistingAddressOnAlloc = false;
+    
+    std::string outOfScope = d_scope.pop();
+    d_memory.freeLocals(outOfScope);
+
+    return -1;    
 }
 
 int Compiler::whileStatement(Instruction const &condition, Instruction const &body)

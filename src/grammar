@@ -695,6 +695,11 @@ while_statement:
     {
         $$ = instruction<&Compiler::whileStatement>($3, $5);
     }
+|
+    WHILE '*' '(' expression ')' statement
+    {
+        $$ = instruction<&Compiler::whileStarStatement>($4, $6);
+    }
 ;
 
 switch_statement:

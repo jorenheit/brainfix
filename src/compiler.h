@@ -21,6 +21,8 @@ class Compiler: public CompilerBase
     static constexpr int TAPE_SIZE_INITIAL = 30000;
     long const MAX_INT;
     long const MAX_ARRAY_SIZE;
+    int  const MAX_LOOP_UNROLL_ITERATIONS = 256;
+    
 
     Scanner     d_scanner;
     Memory      d_memory;
@@ -74,6 +76,8 @@ private:
     bool enableConstEval();
     bool disableConstEval();
     void sync(int const addr);
+    void constEvalSetToValue(int const addr, int const val);
+    void runtimeSetToValue(int const addr, int const val);
     
     static bool validateFunction(BFXFunction const &bfxFunc);
     static bool validateInlineBF(std::string const &ident);
@@ -168,6 +172,8 @@ private:
     int forStarStatement(Instruction const &init, Instruction const &condition,
                          Instruction const &increment, Instruction const &body);    
     int whileStatement(Instruction const &condition, Instruction const &body);
+    int whileStarStatement(Instruction const &condition, Instruction const &body);
+    
     int switchStatement(Instruction const &compareExpr,
                         std::vector<std::pair<Instruction, Instruction>> const &cases,
                         Instruction const &defaultCase);
@@ -273,8 +279,7 @@ int Compiler::eval(BFGenFunc&& bfFunc, ConstFunc&& constFunc, int const resultAd
     if (canBeConstEvaluated && d_constEvalEnabled)
     {
         // Evaluate using constfunc
-        d_memory.value(resultAddr) = constFunc(d_memory.value(args) ...);
-        d_memory.setSync(resultAddr, false);
+        constEvalSetToValue(resultAddr, constFunc(d_memory.value(args) ...));
         
         // Application of constFunc may have resulted in side-effects if it accepted
         // reference-parameters. Check Mask for volatile values ->

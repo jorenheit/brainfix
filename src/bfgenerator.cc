@@ -111,7 +111,18 @@ std::string BFGenerator::movePtr(int const addr)
     
     int const diff = (int)addr - (int)d_pointer;
     d_pointer = addr;
-    return (diff >= 0) ? std::string(diff, '>')    : std::string(-diff, '<');
+    return (diff >= 0) ? std::string(diff, '>') : std::string(-diff, '<');
+}
+
+std::string BFGenerator::addConst(int const target, int const amount)
+{
+    validateAddr(target);
+
+    std::ostringstream ops;
+    ops << movePtr(target)
+        << ((amount >= 0) ? std::string(amount, '+') : std::string(-amount, '-'));
+
+    return ops.str();
 }
 
 std::string BFGenerator::addTo(int const target, int const rhs)
