@@ -31,8 +31,7 @@
 
 function printc(&c)
 {
-    __movePtr(c);
-    __bf(".");
+    __print(c);
 }
 
 function prints(&str)
@@ -45,17 +44,24 @@ function prints(&str)
 function println(&x)
 {
     prints(x);
-    printc('\n');
+    endl();
 }
 
 function printd(&x)
 {
-    prints(to_string(x));
+    let [3] str = to_string(x);
+    for(let i = 0; i != 3; ++i)
+        if (str[i])
+            printc(str[i]);
 }
+
 
 function printd_4(&x)
 {
-    prints(to_string_4(x));
+    let [4] str = to_string_4(x);
+    for(let i = 0; i != 4; ++i)
+        if (str[i])
+            printc(str[i]);
 }
 
 function str = to_string(x)
@@ -113,13 +119,17 @@ function print_vec(&v)
 {
     let sz = sizeof(v);
     printc('(');
-    for (let i = 0; i != sz; ++i)
+    for(let i = 0; i != sz; ++i)
     {
         printd(v[i]);
         if (i != sz - 1)
-            prints(", ");
+        {
+            printc(','); 
+            printc(' ');
+        }
     }
-    println(")");
+    printc(')');
+    endl();
 }
 
 function endl()
@@ -132,9 +142,8 @@ function c = scanc()
     /* The argument to __movePtr() is not evaluated,
     so the return value has to be instantiated explicitly. */
 
-    let c;
-    __movePtr(c);
-    __bf(",");
+   let c;
+   __scan(c);
 }
 
 function result = scand()
@@ -142,7 +151,7 @@ function result = scand()
     let [3] input = 0;
     scans(input);
 
-    let [3] powers = #(1, 10, 100);
+    let [3] powers = #{1, 10, 100};
     let result = 0;
     let j = 0;
     
@@ -159,7 +168,7 @@ function result = scand_4()
     let [4] input = 0;
     scans(input);
 
-    let [4] powers = #(1, 10, 100, 1000);
+    let [4] powers = #{1, 10, 100, 1000};
     let result = 0;
     let j = 0;
     
@@ -197,10 +206,10 @@ function result = to_int(&str)
     if (nDigits > 3)
         nDigits = 3;
 
-    let [3] powers = #(1, 10, 100);
+    let [3] powers = #{1, 10, 100};
     let result = 0;
     let j = 0;
-    for (let i = 0; i != nDigits; ++i)
+    for(let i = 0; i != nDigits; ++i)
     {
         let x = str[nDigits - 1 - i];
         if (x != 0)
@@ -214,10 +223,10 @@ function result = to_int_4(&str)
     if (nDigits > 4)
         nDigits = 4;
 
-    let [4] powers = #(1, 10, 100, 1000);
+    let [4] powers = #{1, 10, 100, 1000};
     let result = 0;
     let j = 0;
-    for (let i = 0; i != nDigits; ++i)
+    for(let i = 0; i != nDigits; ++i)
     {
         let x = str[nDigits - 1 - i];
         if (x != 0)
@@ -227,10 +236,9 @@ function result = to_int_4(&str)
     
 function str = to_binary_str(x)
 {
-    let [] powers = #(128, 64, 32, 16, 8, 4, 2, 1);
+    let [] powers = #{128, 64, 32, 16, 8, 4, 2, 1};
     let [] str = "00000000";
-    x %= 256;
-    for (let i = 0; i < sizeof(powers); ++i)
+    for(let i = 0; i < sizeof(powers); ++i)
     {
         let p = powers[i];
         if (x >= p)
@@ -245,6 +253,6 @@ function str = to_hex_str(x)
 {
     let lowNibble = (x /=% 16);
     let [] c      = "0123456789abcdef";
-    let [] str    = #('0', 'x', c[x], c[lowNibble]);
+    let [] str    = #{'0', 'x', c[x], c[lowNibble]};
 }
 

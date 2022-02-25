@@ -36,7 +36,7 @@ function f = factorial(&x)
     //   be implemented as a lookup-table... 
     
     let f = 1;
-    for (let i = 1; i <= x; ++i)
+    for(let i = 1; i <= x; ++i)
         f *= i;
 }
 
