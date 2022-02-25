@@ -45,9 +45,11 @@ Options:
                     int8, int16 and int32 (int8 by default).
 -I [path to folder] Specify additional include-path.
                     This option may appear multiple times to specify multiple folders.
--o [file, stdout]   Specify where the generate BF is output to.
+-O0                 Do NOT do any constant expression evaluation.
+-O1                 Do constant expression evaluation (default).
+ -o [file, stdout]   Specify where the generate BF is output to.
 
-Example: ./bfx -o program.bf -I ../std/ -t int16 program.bfx
+Example: ./bfx -o program.bf -O1 -I ../std/ -t int16 program.bfx
 ```
 
 ### Using the `bfint` executable
@@ -68,33 +70,48 @@ Example: bfint -t int16 -o stdout program.bf
 ### The type of a BrainF\*ck cell
 The type of the BF cell that is assumed during compilation with `bfx` can be specified using the `-t` option and will specify the size of the integers on the BF tape. By default, this is a single byte (8-bits). Other options are `int16` and `int32`. All generated BF-algorithms work with any of these architectures, so changing the type will not result in different BF-code. It will, however, allow the compiler to issue a warning if numbers are used throughout the program that exceed the maximum value of a cell. The same flag can be specified to `bfint`. This will change the size of the integers that the interpreter is operating on. For example, executing the `+` operation on a cell with value 255 will result in overflow (and wrap around to 0) when the interpreter is invoked with `-t int8` but not when it's invoked with `-t int16`. 
 
+### Constant Evaluation (`O0` vs `O1`)
+By default (option `-O1`), the compiler will perform as many calculations as it can at compile-time. For instance, consider the following expression:
+
+```javascript
+let n = 3 + 4;
+```
+The value 7 will be stored internally, but no BF-code will be generated because the value of `n` is not used to do anything. However, when the compiler is called with the `O0`-flag, every operation is translated directly to BF-code. In case of the example above, this will result in the following operations:
+
+1. Create a cell containing the number 3.
+2. Create a cell containing the number 4.
+3. Perform the addition algorithm on these cells.
+
+For obvious reasons, running in `O0`-mode will lead to significantly larger output. For example, the 'Hello World'-example below, when run in `O0`-mode, results in a total of approximately 12,000 BF-operations. In the default `O1`-mode, it's less than 1,200 operations.
+
 ### Example: Hello World
 Every programming language tutorial starts with a "Hello, World!" program of some sort. This is no exception:
 
 ```javascript
 // File: hello.bfx
-include "std/io.bfx"
+include "std.bfx"
 
 function main()
 {
     println("Hello, World!");
 }
 ```
-
+#### Comments
 The program starts with an end-of-line comment (C-comment blocks between `/*` and `*/` are also allowed) and then
 includes the IO-library which is included with this project. This exposes some basic IO-facilities the sourcefile.
 
-Next, the main-function is defined. Every valid BFX-program should contain a `main` function which takes no arguments
-and does not return anything. The order in which the functions are defined in a BFX-file does not matter; the compiler
-will always try to find main and use this as the entrypoint.
+#### `main`
+Next, the main-function is defined. Every valid BFX-program should contain a `main` function which takes no arguments and does not return anything. The order in which the functions are defined in a BFX-file does not matter; the compiler will always try to find main and use this as the entrypoint.
 
-In `main()`, the function `println()` from the IO library is called to print the argument and a newline to the console.
-Let's try:
+#### Compiling
+In `main()`, the function `println()` from the IO library is called to print the argument and a newline to the console. The IO library is part of the standard library, which is located in the `std` folder, which we have to pass as the include-path.
+
+Let's compile this example (assuming `bfx` and `bfint` are in your PATH):
 
 ```
-$ bfx -o hello.bf hello.bfx
+$ bfx -o hello.bf -I std/ hello.bfx
 $ bfint hello.bf
-$ Hello, World!
+Hello, World!
 ```
 
 ## Target Architecture
@@ -116,7 +133,7 @@ The compiler targets the canonical BrainF*ck machine, where cells are unsigned i
 ### Functions
 A BrainFix program consists of a series of functions (one of which is called `main()`). Apart from global variable declarations, `const` declarations, user-defined types (structs) and file inclusion (more on those later), no other syntax is allowed at global scope. In other words: BF code is only generated in function-bodies.
 
-A function without a return-value is defined like we saw in the Hello World example and may take any number of parameters. For example:
+A function without a return-value is defined like we saw in the 'Hello World' example and may take any number of parameters. For example:
 
 ```javascript
 function foo(x, y, z)
@@ -168,7 +185,7 @@ function bar(x)
 }
 ```
 
-However, BrainFix supports reference semantics as well! Parameters prefixed by `&` (like in C++) are passed by reference to the function. This will prevent the copy from taking place and will therefore be faster than passing it by value. However, it also introduces the possibility of subtle bugs, which is why it's not the default mode of operation.
+However, BrainFix supports reference semantics as well. Parameters prefixed by `&` (like in C++) are passed by reference to the function. This will prevent the copy from taking place and will therefore be faster than passing it by value. However, it also introduces the possibility of subtle bugs, which is why it's not the default mode of operation.
 
 ```javascript
 
@@ -187,28 +204,6 @@ function bar(&x)
 
 ```
 
-#### Passing array-elements by reference
-When an array-element is accessed through the index-operator (more on arrays in the dedicated section below), the result of this expression is actually a temporary copy of the actual element. This is because the position of the BF-pointer has to be known at all times, even when the index is a runtime variable (for example determined by user-input). Therefore, when passing an array-element by reference to a function, a reference to the temporary copy is passed rather than the actual element. This limitation is easily side-stepped by passing both the array and the index seperately:
-
-```javascript
-function modify1(&x)
-{
-    ++x;
-}
-
-function modify2(&arr, i)
-{
-    ++arr[i];
-}
-
-function main()
-{
-    let [] str = "Hello";
-    modify1(str[2]);   // str is still "Hello"
-    modify2(str, 2);   // str is now "Hemlo"
-}
-```
-
 #### Recursion
 Unfortunately, recursion is not allowed in BrainFix. Most compilers implement function calls as jumps. However, this is not possible in BF code because there is no JMP instruction that allows us to jump to arbitrary places in the code. It should be possible in principle, but would be very hard to implement (and would probably require a lot more memory to accomodate the algorithms that could make it happen). Therefore, the compiler will throw an error when recursion is detected.
 
@@ -223,7 +218,7 @@ function main()
     let [10] array1;      // array of size 10, not initialized
     let [] str = "Hello"; // the size of str is deduced as 5 and initialized to "Hello"
 
-    let [y] array2;       // ERROR: size of the array must be a compiletime constant
+    let [y] array2;       // ERROR: size of the array must be a number or const
     let [10] str2 = str;  // ERROR: size mismatch in assignment
     let [10] str3 = '0';  // OK: str3 is now a string of ten '0'-characters 
 }
@@ -239,17 +234,17 @@ function main()
     let v2 = 2;
     let zVal = 42;
 
-    let []x = #(v1, v2, 3, 4, 5); // initializer-list
+    let []x = #{v1, v2, 3, 4, 5}; // initializer-list
     let []y = #[5];               // 5 elements, all initialized to 0
     let []z = #[5, zVal];         // 5 elements, all initialized to 42
 
-    let [zVal] arr;               // ERROR: size-specifier is runtime variable
+    let [zVal] arr;               // ERROR: size-specifier is not const
 }
 ```
 Size specifications must be known at compiletime; see the section on the `const` keyword below on how to define named compile-time constants.
 
 #### Structs
-In addition to declaring a variable by specifying its size, its type can be specified using the `struct` keyword and a previously defined struct-identifier. The definition of this `struct` must appear somewhere at global scope and can contain fields of any type, including other user defined types.
+In addition to declaring a variable by specifying its size, its type can be specified using the `struct` keyword and a previously defined struct-identifier. The definition of this `struct` must appear somewhere at global scope and can contain fields of any type, including arrays and other user defined types.
 
 ```javascript
 struct Vec3
@@ -289,10 +284,10 @@ function main()
 ```
 
 #### Numbers
-All numbers are treated as unsigned 8-bit integers. The compiler will throw an error on the use of the unary minus sign. A warning is issued when the program contains numbers that exceed the range of a single byte (255).
+Only positive integers are supported; the compiler will throw an error on the use of the unary minus sign. A warning is issued when the program contains numbers that exceed the range of the specified type (e.g. 255 for the default `int8` type).
 
 #### Indexing
-Once an variable is declared (as an array), it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator. BrainFix does not do any bounds-checking, so be careful to make sure that the indices are within the bounds of the array. Anything may happen when going out of bounds...
+Once an variable is declared (as an array), it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator. When the index to the array can be resolved at compile-time, the compiler will check if it is withing bounds. Otherwise, it's up to the programmer to make sure the index is within the size of the indexed variable.
 
 ```javascript
 function main()
@@ -303,9 +298,51 @@ function main()
     --arr[1];     // 69  -> 68
     arr[2] = 0;   // 123 -> 0
 
-    arr[5] = 'x'; // WHOOPS! index out of bounds. Modifying other memory
+    arr[5] = 'x'; // Error will be reported!
+
+    let n = scand();
+    arr[n] = 'y'; // Anything may happen ...
+}
+```
+
+#### Passing array-elements by reference
+Operating on arrays using the index-operator usually works as expected. However, when an array-element is accessed through the index-operator (without operating on it), the result of this expression might be temporary copy of the actual element, depending on whether the index was resolved at compile-time. If it was, the behaviour is as expected and an actual reference to the indexed element will be passed to the function. If however, the index cannot be resolved at compiletime, a temporary value containing a *copy* of the element is returned by the index operator. is is because the position of the BF-pointer has to be known at all times, even when the index is a runtime variable (for example determined by user-input). This leads to different semantics in both cases, which could be confusing. Consider the following example to illustrate the two cases:
+
+```javascript
+function modify(&x)
+{
+    ++x;
 }
 
+function main()
+{
+    let [5] arr = #{1, 2, 3, 4, 5};
+
+    let n = 3;         // known at compiletime
+    let m = scand();   // known at runtime
+
+    ++arr[m];          // Works, even though m is a runtime variable
+
+    modify(arr[n]);    // Fine: modified the 3rd element in-place
+    modify(arr[m]);    // Fail: did not modify arr at all
+}
+```
+
+To be safe, one should always pass the array and its index as seperate arguments to an element-modifying function, unless you're sure that it will only be called in a constant evaluation context. For example:
+
+```javascript
+function modify(&arr, &idx)
+{
+    ++arr[idx];
+}
+
+function main()
+{
+    let [5] arr = #{1, 2, 3, 4, 5};
+
+    let m = scand();   // known at runtime
+    modify(arr, m);    // works now
+}
 ```
 
 #### `sizeof()`
@@ -394,7 +431,7 @@ function modDivExample()
 There are 4 ways to control flow in a BrainFix-program: `if` (-`else`), `switch`, `for` and `while`. Each of these uses similar syntax as to what we're familiar with from other C-like programming languages. Each of the flow-control mechanisms is illustrated in the example below:
 
 ```javascript
-include "../std/io.bfx"
+include "std.bfx"
 
 function main()
 {
@@ -426,6 +463,32 @@ function main()
                 endl();
             }
         }
+    }
+}
+```
+
+#### Preventing Loop Unrolling with `for*` and `while*`
+Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll each loop (both `for` and `while`) by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds 50, it will fall back on generating code for executing the loop at runtime.
+
+However, loop-unrolling can take a long time, resulting in long compilation times for loops with large bodies or many iterations. Especially in the latter case, it can take some time before the compiler realizes it shouldn't unroll the loop at all (since it has to evaluate the body 50 times before coming to this conclusion). To indicate to the compiler that it shouldn't attempt to unroll the loop, we can use `for*` and `while*` instead.
+
+```javascript
+function main()
+{
+    // The compiler will try to unroll this, even though we can see
+    // that it will take 100 iterations (> 50).
+    
+    for (let i = 0; i != 100; ++i)
+    {
+        printd(i);
+        endl();
+    }
+
+    // Use for* instead: same resulting BF-code, faster compilation
+    for* (let i = 0; i != 100; ++i)
+    {
+        printd(i);
+        endl();
     }
 }
 ```
@@ -480,27 +543,6 @@ All functions below are defined in `std/math.bfx`:
 |   `min(x,y)`     | Returns the minimum of x and y |
 |   `max(x,y)`     | Returns the maximum of x and y |
 
-### Direct Control With `__bf()` and `__movePtr()`
-For even more control, the intrinsics `__bf(code)` and `__movePtr(identifier)` are provided. The first injects BF code directly, provided that this code has no net effect on the pointer position (which must be known to the compiler at all times). The latter moves the pointer to the address of the provided identifier.
-
-The standard library uses the inline BF intrinsic in its definition of the `printc()` and `scanc()` functions. The language has no built-in facilities or operators that allow you to write or read bytes, so inline BF is used to make this happen:
-
-```javascript
-function printc(c)
-{
-    __movePtr(c);
-    __bf(".");
-}
-
-function c = scanc()
-{
-    /* The argument to __movePtr() is not evaluated,
-    so the return value has to be instantiated explicitly. */
-
-    c; __movePtr(c);
-    __bf(",");
-}
-```
 
 
 
