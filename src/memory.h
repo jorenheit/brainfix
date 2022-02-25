@@ -88,6 +88,10 @@ public:
     TypeSystem::Type type(int const addr) const;
     TypeSystem::Type type(std::string const &ident, std::string const &scope) const;
     std::vector<int> cellsInScope(std::string const &scope) const;
+    size_t cellsRequired() const
+    {
+        return d_maxAddr;
+    }
 
     void dump() const;
     

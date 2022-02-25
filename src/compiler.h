@@ -21,9 +21,8 @@ class Compiler: public CompilerBase
     static constexpr int TAPE_SIZE_INITIAL = 30000;
     long const MAX_INT;
     long const MAX_ARRAY_SIZE;
-    int  const MAX_LOOP_UNROLL_ITERATIONS = 256;
+    int  const MAX_LOOP_UNROLL_ITERATIONS = 100;
     
-
     Scanner     d_scanner;
     Memory      d_memory;
     Scope       d_scope;
@@ -47,7 +46,17 @@ class Compiler: public CompilerBase
     int         d_instructionLineNr;
     bool        d_constEvalEnabled{true};
     bool        d_returnExistingAddressOnAlloc{false};
-    
+
+    struct State
+    {
+        Memory memory;
+        Scope  scope;
+        BFGenerator bfGen;
+        std::string buffer;
+        bool constEval;
+        bool returnExisting;
+    };
+
 public:
     enum class CellType
         {
@@ -71,7 +80,10 @@ private:
 
     int  compileTimeConstant(std::string const &ident) const;
     bool isCompileTimeConstant(std::string const &ident) const;
-    
+
+    State save();
+    void restore(State &&state);
+
     bool setConstEval(bool const val);
     bool enableConstEval();
     bool disableConstEval();
@@ -170,17 +182,17 @@ private:
     int ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody);  
     int forStatement(Instruction const &init, Instruction const &condition,
                      Instruction const &increment, Instruction const &body);
-    int forStarStatement(Instruction const &init, Instruction const &condition,
-                         Instruction const &increment, Instruction const &body);    
+    int forStatementRuntime(Instruction const &init, Instruction const &condition,
+                            Instruction const &increment, Instruction const &body);    
     int whileStatement(Instruction const &condition, Instruction const &body);
-    int whileStarStatement(Instruction const &condition, Instruction const &body);
+    int whileStatementRuntime(Instruction const &condition, Instruction const &body);
     
     int switchStatement(Instruction const &compareExpr,
                         std::vector<std::pair<Instruction, Instruction>> const &cases,
                         Instruction const &defaultCase);
 
-    // Constant evaluation
 
+    // Constant evaluation
     template <int VolatileMask, typename BFGenFunc, typename ConstFunc, typename ... Args>
     int eval(BFGenFunc&& bfFunc, ConstFunc&& constFunc, int const resultAddr, Args&& ... args);
     

@@ -671,11 +671,6 @@ for_statement:
     {
         $$ = instruction<&Compiler::forStatement>($3, $5, $7, $9);
     }
-|
-    FOR '*' '(' expression ';' expression ';' expression ')' statement
-    {
-        $$ = instruction<&Compiler::forStarStatement>($4, $6, $8, $10);
-    }
 ;
 
 if_statement:
@@ -694,11 +689,6 @@ while_statement:
     WHILE '(' expression ')' statement
     {
         $$ = instruction<&Compiler::whileStatement>($3, $5);
-    }
-|
-    WHILE '*' '(' expression ')' statement
-    {
-        $$ = instruction<&Compiler::whileStarStatement>($4, $6);
     }
 ;
 

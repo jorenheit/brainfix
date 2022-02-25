@@ -42,6 +42,30 @@ Compiler::Compiler(std::string const &file, CellType type, std::vector<std::stri
                                 });
 }
 
+Compiler::State Compiler::save()
+{
+    return {
+            .memory         = d_memory,
+            .scope          = d_scope,
+            .bfGen          = d_bfGen,
+            .buffer         = d_codeBuffer.str(),
+            .constEval      = d_constEvalEnabled,
+            .returnExisting = d_returnExistingAddressOnAlloc
+    };
+}
+
+void Compiler::restore(State &&state)
+{
+    d_memory                       = std::move(state.memory);
+    d_scope                        = std::move(state.scope);
+    d_bfGen                        = std::move(state.bfGen);
+    d_constEvalEnabled             = state.constEval;
+    d_returnExistingAddressOnAlloc = state.returnExisting;
+    d_codeBuffer.str(state.buffer);
+    d_codeBuffer.seekp(0, std::ios_base::end);
+}
+
+
 int Compiler::lex()
 {
     int token = d_scanner.lex();
@@ -1346,18 +1370,22 @@ int Compiler::mergeInstructions(Instruction const &instr1, Instruction const &in
     return -1;
 }
 
-int Compiler::forStarStatement(Instruction const &init, Instruction const &condition,
-                               Instruction const &increment, Instruction const &body)
+int Compiler::forStatement(Instruction const &init, Instruction const &condition,
+                           Instruction const &increment, Instruction const &body)
 {
     if (!d_constEvalEnabled)
-        return forStatement(init, condition, increment, body);
+        return forStatementRuntime(init, condition, increment, body);
 
-    d_scope.push();
+    State state = save();
     
+    d_scope.push();
     init();
     int conditionAddr = condition();
-    errorIf(d_memory.valueUnknown(conditionAddr),
-            "Condition could not be const-evaluated on entering for*.");
+    if (d_memory.valueUnknown(conditionAddr))
+    {
+        restore(std::move(state));
+        return forStatementRuntime(init, condition, increment, body);
+    }
 
     int count = 0;
     while (d_memory.value(conditionAddr))
@@ -1365,25 +1393,24 @@ int Compiler::forStarStatement(Instruction const &init, Instruction const &condi
         body();
         increment();
         conditionAddr = condition();
-        errorIf(d_memory.valueUnknown(conditionAddr),
-                "Condition could not be const-evaluated while iterating for* at iteration ", count, ".");
-
         d_returnExistingAddressOnAlloc = true;
 
-        if (count++ > MAX_LOOP_UNROLL_ITERATIONS)
-            compilerError("Error unrolling loop: number of iterations exceeds maximum of ",
-                          MAX_LOOP_UNROLL_ITERATIONS, ". Consider using `for` instead of `for*`.");
-    }
+        if (d_memory.valueUnknown(conditionAddr) || count++ > MAX_LOOP_UNROLL_ITERATIONS)
+        {
+            restore(std::move(state));
+            return forStatementRuntime(init, condition, increment, body);
+        }
+    }    
+
     d_returnExistingAddressOnAlloc = false;
-    
     std::string outOfScope = d_scope.pop();
     d_memory.freeLocals(outOfScope);
 
     return -1;
 }
 
-int Compiler::forStatement(Instruction const &init, Instruction const &condition,
-                           Instruction const &increment, Instruction const &body)
+int Compiler::forStatementRuntime(Instruction const &init, Instruction const &condition,
+                                  Instruction const &increment, Instruction const &body)
 {
     int const flag = allocateTemp();
     d_scope.push();
@@ -1408,40 +1435,44 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
     return -1;
 }
 
-int Compiler::whileStarStatement(Instruction const &condition, Instruction const &body)
+int Compiler::whileStatement(Instruction const &condition, Instruction const &body)
 {
     if (!d_constEvalEnabled)
-        return whileStatement(condition, body);
+        return whileStatementRuntime(condition, body);
 
+    State state = save();
+    
     d_scope.push();
     
     int conditionAddr = condition();
-    errorIf(d_memory.valueUnknown(conditionAddr),
-            "Condition could not be const-evaluated on entering while*.");
+    if (d_memory.valueUnknown(conditionAddr))
+    {
+        restore(std::move(state));
+        return whileStatementRuntime(condition, body);
+    }
 
     int count = 0;
     while (d_memory.value(conditionAddr))
     {
         body();
         conditionAddr = condition();
-        errorIf(d_memory.valueUnknown(conditionAddr),
-                "Condition could not be const-evaluated while iterating while* at iteration ", count, ".");
-
         d_returnExistingAddressOnAlloc = true;
-
-        if (count++ > MAX_LOOP_UNROLL_ITERATIONS)
-            compilerError("Error unrolling loop: number of iterations exceeds maximum of ",
-                          MAX_LOOP_UNROLL_ITERATIONS, ". Consider using `while` instead of `while*`.");
+        
+        if (d_memory.valueUnknown(conditionAddr) || (count++ > MAX_LOOP_UNROLL_ITERATIONS))
+        {
+            restore(std::move(state));
+            return whileStatementRuntime(condition, body);
+        }
     }
-    d_returnExistingAddressOnAlloc = false;
     
+    d_returnExistingAddressOnAlloc = false;
     std::string outOfScope = d_scope.pop();
     d_memory.freeLocals(outOfScope);
 
     return -1;    
 }
 
-int Compiler::whileStatement(Instruction const &condition, Instruction const &body)
+int Compiler::whileStatementRuntime(Instruction const &condition, Instruction const &body)
 {
     int const conditionAddr = condition();
     errorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
