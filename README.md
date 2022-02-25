@@ -529,7 +529,7 @@ All functions below are defined in `std/io.bfx`:
 |   `to_hex_str(x)` | Returns hexadecimal representation of `x` as a string |
 
 ##### Big Numbers
-On the default architecture, where the cells are only 1 byte long, values can never grow beyond 255. It is therefore sufficient to assume that number will never grow beyond 3 digits. However, when the target architecture contains larger cells, the functions suffixed with `_4` can be used to extend some facilities to 4 digits. Printing and scanning even larger digits is also possible, but functions to the end are not provided by the standard library for the simple reason that these functions would be terribly slow and impractical.
+On the default architecture, where the cells are only 1 byte long, values can never grow beyond 255. It is therefore sufficient to assume that number will never grow beyond 3 digits. However, when the target architecture contains larger cells, the functions suffixed with `_4` can be used to extend some facilities to 4 digits. Printing and scanning even larger digits is also possible, but functions to this end are not provided by the standard library for the simple reason that these functions would be terribly slow and impractical.
 
 #### Math
 All functions below are defined in `std/math.bfx`:
