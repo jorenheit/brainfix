@@ -132,9 +132,7 @@ private:
                                      BinaryFunction func);
 
     // Instructions
-    int inlineBF(std::string const &str);
     int sizeOfOperator(std::string const &ident);
-    int movePtr(std::string const &ident);
     int constVal(int const val);
     int statement(Instruction const &instr);
     int mergeInstructions(Instruction const &instr1, Instruction const &instr2);
@@ -208,10 +206,10 @@ private:
     void compilerWarning(First const &first, Rest&& ... rest) const;
 
     template <typename First, typename ... Rest>
-    void errorIf(bool const condition, First const &first, Rest&& ... rest) const;
+    void compilerErrorIf(bool const condition, First const &first, Rest&& ... rest) const;
 
     template <typename First, typename ... Rest>
-    void warningIf(bool const condition, First const &first, Rest&& ... rest) const;
+    void compilerWarningIf(bool const condition, First const &first, Rest&& ... rest) const;
 
     template <typename ... Rest>
     void validateAddr__(std::string const &function, int first, Rest&& ... rest) const;
@@ -263,14 +261,14 @@ void Compiler::compilerError(First const &first, Rest&& ... rest) const
 }
 
 template <typename First, typename ... Rest>
-void Compiler::errorIf(bool const condition, First const &first, Rest&& ... rest) const
+void Compiler::compilerErrorIf(bool const condition, First const &first, Rest&& ... rest) const
 {
     if (condition)
         compilerError(first, std::forward<Rest>(rest)...);
 }
 
 template <typename First, typename ... Rest>
-void Compiler::warningIf(bool const condition, First const &first, Rest&& ... rest) const
+void Compiler::compilerWarningIf(bool const condition, First const &first, Rest&& ... rest) const
 {
     if (condition)
         compilerWarning(first, std::forward<Rest>(rest)...);

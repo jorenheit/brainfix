@@ -184,7 +184,7 @@ int Compiler::compile()
         return err;
     }
     
-    errorIf(d_functionMap.find("main") == d_functionMap.end(),
+    compilerErrorIf(d_functionMap.find("main") == d_functionMap.end(),
             "No entrypoint provided. The entrypoint should be main().");
 
     d_stage = Stage::CODEGEN;
@@ -209,11 +209,11 @@ void Compiler::error()
 
 void Compiler::addFunction(BFXFunction const &bfxFunc)
 {
-    errorIf(!validateFunction(bfxFunc), "Duplicate parameters used in the definition of function \"",
+    compilerErrorIf(!validateFunction(bfxFunc), "Duplicate parameters used in the definition of function \"",
             bfxFunc.name(), "\".");
 
     auto result = d_functionMap.insert({bfxFunc.name(), bfxFunc});
-    errorIf(!result.second,
+    compilerErrorIf(!result.second,
             "Redefinition of function \"", bfxFunc.name(), "\" is not allowed.");
 }
 
@@ -229,21 +229,21 @@ void Compiler::addStruct(std::string const &name,
     for (auto const &pr: fields)
     {
         std::string const &fieldName = pr.first;
-        errorIf(duplicateField(fieldName),
+        compilerErrorIf(duplicateField(fieldName),
                 "Field \"", fieldName, "\" previously declared in definition of struct \"", name, "\".");
         
         TypeSystem::Type const &type = pr.second;
-        errorIf(!type.defined(),"Variable \'", fieldName, "\' declared with unknown (struct) type.");
+        compilerErrorIf(!type.defined(),"Variable \'", fieldName, "\' declared with unknown (struct) type.");
 
         int const sz = type.size();
-        errorIf(sz == 0, "Cannot declare field \"", fieldName, "\" of size 0.");
-        errorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
+        compilerErrorIf(sz == 0, "Cannot declare field \"", fieldName, "\" of size 0.");
+        compilerErrorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
                 "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded in struct definition (got ", sz, ").");
     }
 
     // All OK, add to typesystem
     bool const added = TypeSystem::add(name, fields);
-    errorIf(!added, "Struct ", name, " previously defined.");
+    compilerErrorIf(!added, "Struct ", name, " previously defined.");
 }
 
 bool Compiler::validateFunction(BFXFunction const &bfxFunc)
@@ -266,22 +266,22 @@ void Compiler::addGlobals(std::vector<std::pair<std::string, TypeSystem::Type>> 
     {
         std::string const &ident = var.first;
         TypeSystem::Type const &type = var.second;
-        errorIf(type.size() <= 0, "Global declaration of \"", ident, "\" has invalid size specification.");
+        compilerErrorIf(type.size() <= 0, "Global declaration of \"", ident, "\" has invalid size specification.");
         d_memory.allocate(ident, "", type);
     }
 }
 
 void Compiler::addConstant(std::string const &ident, int const num)
 {
-    warningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
+    compilerWarningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
     auto result = d_constMap.insert({ident, num});
-    errorIf(!result.second,
+    compilerErrorIf(!result.second,
             "Redefinition of constant ", ident, " is not allowed.");
 }
 
 int Compiler::compileTimeConstant(std::string const &ident) const
 {
-    errorIf(!isCompileTimeConstant(ident),
+    compilerErrorIf(!isCompileTimeConstant(ident),
             ident, " is being used as a const but was not defined as such.");
     
     return d_constMap.at(ident);
@@ -298,7 +298,7 @@ int Compiler::allocate(std::string const &ident, TypeSystem::Type type)
 
     if (!d_returnExistingAddressOnAlloc)
     {
-        errorIf(addr < 0, "Variable ", ident, ": variable previously declared.");
+        compilerErrorIf(addr < 0, "Variable ", ident, ": variable previously declared.");
     }
     else if (addr < 0)
     {
@@ -312,7 +312,7 @@ int Compiler::addressOf(std::string const &ident)
 {
     int addr = d_memory.find(ident, d_scope.current());
     addr = (addr != -1) ? addr : d_memory.find(ident, "");
-    errorIf(addr < 0, "Variable \"", ident, "\" not defined in this scope.");
+    compilerErrorIf(addr < 0, "Variable \"", ident, "\" not defined in this scope.");
     return addr;
 }
 
@@ -329,16 +329,6 @@ int Compiler::allocateTemp(int const sz)
 int Compiler::allocateTempBlock(int const sz)
 {
     return d_memory.getTempBlock(d_scope.function(), sz);
-}
-
-int Compiler::inlineBF(std::string const &code)
-{
-    errorIf(!validateInlineBF(code),
-            "Inline BF may not have a net-effect on pointer-position. "
-            "Make sure left and right shifts cancel out within each set of [].");
-    
-    d_codeBuffer << code;
-    return -1;
 }
 
 bool Compiler::validateInlineBF(std::string const &code)
@@ -375,16 +365,9 @@ bool Compiler::validateInlineBF(std::string const &code)
 int Compiler::sizeOfOperator(std::string const &ident)
 {
     int const sz = d_memory.sizeOf(ident, d_scope.current());
-    errorIf(sz == 0, "Variable \"", ident ,"\" not defined in this scope.");
+    compilerErrorIf(sz == 0, "Variable \"", ident ,"\" not defined in this scope.");
 
     return constVal(sz);
-}
-
-int Compiler::movePtr(std::string const &ident)
-{
-    int const addr = addressOf(ident);
-    d_codeBuffer << d_bfGen.movePtr(addr);
-    return -1;
 }
 
 int Compiler::statement(Instruction const &instr)
@@ -398,14 +381,14 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
 {
     // Check if the function exists
     bool const isFunction = d_functionMap.find(name) != d_functionMap.end();
-    errorIf(!isFunction,"Call to unknown function \"", name, "\"");
-    errorIf(d_scope.containsFunction(name),
+    compilerErrorIf(!isFunction,"Call to unknown function \"", name, "\"");
+    compilerErrorIf(d_scope.containsFunction(name),
             "Function \"", name, "\" is called recursively. Recursion is not allowed.");
     
     // Get the list of parameters
     BFXFunction &func = d_functionMap.at(name);
     auto const &params = func.params();
-    errorIf(params.size() != args.size(),
+    compilerErrorIf(params.size() != args.size(),
             "Calling function \"", func.name(), "\" with invalid number of arguments. "
             "Expected ", params.size(), ", got ", args.size(), ".");
 
@@ -414,7 +397,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     {
         // Evaluate argument that's passed in and get its size
         int const argAddr = args[idx]();
-        errorIf(argAddr < 0,
+        compilerErrorIf(argAddr < 0,
                 "Invalid argument argument to function \"", func.name(),
                 "\": the expression passed as argument ", idx, " returns void.");
 
@@ -429,7 +412,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
             //            int const sz = d_memory.sizeOf(argAddr);
 
             int paramAddr = d_memory.allocate(paramIdent, func.name(), d_memory.type(argAddr));
-            errorIf(paramAddr < 0,
+            compilerErrorIf(paramAddr < 0,
                     "Could not allocate parameter", paramIdent, ". ",
                     "This should never happen.");
             
@@ -456,7 +439,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         // Locate the address of the return-variable
         std::string retVar = func.returnVariable();
         ret = d_memory.find(retVar, func.name());
-        errorIf(ret == -1,
+        compilerErrorIf(ret == -1,
                 "Returnvalue \"", retVar, "\" of function \"", func.name(),
                 "\" seems not to have been declared in the main scope of the function-body.");
 
@@ -492,7 +475,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
 
 int Compiler::constVal(int const num)
 {
-    warningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
+    compilerWarningIf(num > MAX_INT, "use of value ", num, " exceeds limit of ", MAX_INT, ".");
     
     int const tmp = allocateTemp();
     constEvalSetToValue(tmp, num);
@@ -505,15 +488,15 @@ int Compiler::constVal(int const num)
 
 int Compiler::declareVariable(std::string const &ident, TypeSystem::Type type)
 {
-    errorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
+    compilerErrorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
 
     
     int const sz = type.size();
-    errorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
-    errorIf(sz < 0,
+    compilerErrorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
+    compilerErrorIf(sz < 0,
             "Size must be specified in declaration without initialization of variable ", ident);
 
-    errorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
+    compilerErrorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
                 "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
 
     return allocate(ident, type);
@@ -521,15 +504,15 @@ int Compiler::declareVariable(std::string const &ident, TypeSystem::Type type)
 
 int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type type, Instruction const &rhs)
 {
-    errorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
+    compilerErrorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
 
     int const sz = type.size();
-    errorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
-    errorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
+    compilerErrorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
+    compilerErrorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
 
     if (!d_returnExistingAddressOnAlloc)
-        errorIf(d_memory.find(ident, d_scope.current()) != -1,
+        compilerErrorIf(d_memory.find(ident, d_scope.current()) != -1,
                 "Variable ", ident, " previously declared.");
     
     int rhsAddr = rhs();
@@ -584,7 +567,7 @@ void Compiler::runtimeAssign(int const lhs, int const rhs)
     
 int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void expression in assignment.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void expression in assignment.");
     
     int const leftSize = d_memory.sizeOf(lhs);
     int const rightSize = d_memory.sizeOf(rhs);
@@ -631,7 +614,7 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
     }
     else
     {
-        errorIf(true, "Cannot assign variables of unequal sizes (sizeof(lhs) = ", leftSize,
+        compilerErrorIf(true, "Cannot assign variables of unequal sizes (sizeof(lhs) = ", leftSize,
                 " vs sizeof(rhs) = ", rightSize, ").");
     }
 
@@ -652,10 +635,10 @@ int Compiler::fetchField(std::vector<std::string> const &expr)
     assert(expr.size() > 1 && "Got field with less than 2 elements");
     
     int const addr = addressOf(expr[0]);
-    errorIf(addr < 0, "Unknown variable \"", expr[0], "\".");
+    compilerErrorIf(addr < 0, "Unknown variable \"", expr[0], "\".");
 
     TypeSystem::Type type = d_memory.type(addr);
-    errorIf(!type.isStructType(), "Type \"", type.name(), "\" is not a structure.");
+    compilerErrorIf(!type.isStructType(), "Type \"", type.name(), "\" is not a structure.");
 
     auto def = type.definition();
     for (auto const &f: def.fields())
@@ -680,7 +663,7 @@ int Compiler::fetchField(std::vector<std::string> const &expr)
 int Compiler::fetchNestedField(std::vector<std::string> const &expr, int const baseAddr, size_t const baseIdx)
 {
     TypeSystem::Type type = d_memory.type(baseAddr);
-    errorIf(!type.isStructType(), "Type \"", type.name(), "\" is not a structure.");
+    compilerErrorIf(!type.isStructType(), "Type \"", type.name(), "\" is not a structure.");
     
     auto def = type.definition();
     for (auto const &f: def.fields())
@@ -704,7 +687,7 @@ int Compiler::fetchNestedField(std::vector<std::string> const &expr, int const b
 
 int Compiler::arrayFromSize(int const sz, Instruction const &fill)
 {
-    errorIf(sz > MAX_ARRAY_SIZE,
+    compilerErrorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
 
     return assign(allocateTemp(sz), fill());
@@ -714,7 +697,7 @@ int Compiler::arrayFromList(std::vector<Instruction> const &list)
 {
     int const sz = list.size();
 
-    errorIf(sz > MAX_ARRAY_SIZE,
+    compilerErrorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
 
     std::vector<std::pair<int, int>> runtimeElements; // {index, address}
@@ -745,7 +728,7 @@ int Compiler::arrayFromString(std::string const &str)
 {
     int const sz = str.size();
 
-    errorIf(sz > MAX_ARRAY_SIZE,
+    compilerErrorIf(sz > MAX_ARRAY_SIZE,
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
 
     int const start = allocateTemp(sz);
@@ -762,10 +745,10 @@ int Compiler::arrayFromString(std::string const &str)
 int Compiler::anonymousStructObject(std::string const name, std::vector<Instruction> const &values)
 {
     TypeSystem::Type type(name);
-    errorIf(!type.defined(), "Unknown (struct) type \"", name, "\".");
+    compilerErrorIf(!type.defined(), "Unknown (struct) type \"", name, "\".");
 
     auto const def = type.definition();
-    errorIf(values.size() > def.fields().size(),
+    compilerErrorIf(values.size() > def.fields().size(),
             "Too many field-initializers provided to struct \"", name, "\": ",
             "expects ", def.fields().size(), ", got ", values.size(), ".");
 
@@ -778,7 +761,7 @@ int Compiler::anonymousStructObject(std::string const name, std::vector<Instruct
         TypeSystem::Type valType = d_memory.type(val);
         TypeSystem::Type fieldType = field.type;
         
-        errorIf(!(valType == fieldType),
+        compilerErrorIf(!(valType == fieldType),
                 "Type mismatch in initialization of \"", name , ".", field.name, "\".");
 
         assign(addr + field.offset, val);
@@ -792,7 +775,7 @@ int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction
 {
     int const indexValue = d_memory.value(index);
     int const sz = d_memory.sizeOf(arr);
-    warningIf(d_boundsCheckingEnabled && indexValue >= sz,
+    compilerWarningIf(d_boundsCheckingEnabled && indexValue >= sz,
               "Array index (", indexValue, ") out of bounds: sizeof(",
               d_memory.identifier(arr), ") = ", sz, ".");
 
@@ -813,7 +796,7 @@ int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstructio
 {
     int const indexValue = d_memory.value(index);
     int const sz = d_memory.sizeOf(arr);
-    warningIf(d_boundsCheckingEnabled && indexValue >= sz,
+    compilerWarningIf(d_boundsCheckingEnabled && indexValue >= sz,
               "Array index (", indexValue, ") out of bounds: sizeof(",
               d_memory.identifier(arr), ") = ", sz, ".");
     
@@ -899,7 +882,7 @@ int Compiler::printCell(AddressOrInstruction const &target)
 
 int Compiler::preIncrement(AddressOrInstruction const &target)
 {
-    errorIf(target < 0, "Cannot increment void-expression.");
+    compilerErrorIf(target < 0, "Cannot increment void-expression.");
     
     auto bf   = [&, this](){
                     d_codeBuffer << d_bfGen.incr(target);
@@ -911,7 +894,7 @@ int Compiler::preIncrement(AddressOrInstruction const &target)
 
 int Compiler::postIncrement(AddressOrInstruction const &target)
 {
-    errorIf(target < 0, "Cannot increment void-expression.");
+    compilerErrorIf(target < 0, "Cannot increment void-expression.");
 
     int const tmp = allocateTemp();
     auto bf   = [&, this](){
@@ -925,7 +908,7 @@ int Compiler::postIncrement(AddressOrInstruction const &target)
 
 int Compiler::preDecrement(AddressOrInstruction const &target)
 {
-    errorIf(target < 0, "Cannot decrement void-expression.");
+    compilerErrorIf(target < 0, "Cannot decrement void-expression.");
 
     auto bf   = [&, this](){
                     d_codeBuffer << d_bfGen.decr(target);
@@ -938,7 +921,7 @@ int Compiler::preDecrement(AddressOrInstruction const &target)
 
 int Compiler::postDecrement(AddressOrInstruction const &target)
 {
-    errorIf(target < 0, "Cannot decrement void-expression.");
+    compilerErrorIf(target < 0, "Cannot decrement void-expression.");
 
     int const tmp = allocateTemp();
     auto bf   = [&, this](){
@@ -952,7 +935,7 @@ int Compiler::postDecrement(AddressOrInstruction const &target)
 
 int Compiler::addTo(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
 
     auto bf  = [&, this](){
                    d_codeBuffer << d_bfGen.addTo(lhs, rhs);
@@ -967,7 +950,7 @@ int Compiler::addTo(AddressOrInstruction const &lhs, AddressOrInstruction const 
 
 int Compiler::add(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in addition.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -984,7 +967,7 @@ int Compiler::add(AddressOrInstruction const &lhs, AddressOrInstruction const &r
 
 int Compiler::subtractFrom(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
 
     auto bf  = [&, this](){
                    d_codeBuffer << d_bfGen.subtractFrom(lhs, rhs);
@@ -1000,7 +983,7 @@ int Compiler::subtractFrom(AddressOrInstruction const &lhs, AddressOrInstruction
 
 int Compiler::subtract(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in subtraction.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1018,7 +1001,7 @@ int Compiler::subtract(AddressOrInstruction const &lhs, AddressOrInstruction con
 
 int Compiler::multiplyBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
     auto bf  = [&, this](){
                    d_codeBuffer << d_bfGen.multiplyBy(lhs, rhs);
                };
@@ -1033,7 +1016,7 @@ int Compiler::multiplyBy(AddressOrInstruction const &lhs, AddressOrInstruction c
 
 int Compiler::multiply(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in multiplication.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1050,7 +1033,7 @@ int Compiler::multiply(AddressOrInstruction const &lhs, AddressOrInstruction con
 
 int Compiler::divide(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1067,7 +1050,7 @@ int Compiler::divide(AddressOrInstruction const &lhs, AddressOrInstruction const
 
 int Compiler::divideBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
 
     auto bf  = [&, this](){
                    int const div = allocateTemp();
@@ -1086,7 +1069,7 @@ int Compiler::divideBy(AddressOrInstruction const &lhs, AddressOrInstruction con
 
 int Compiler::modulo(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in modulo-operation.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in modulo-operation.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1103,7 +1086,7 @@ int Compiler::modulo(AddressOrInstruction const &lhs, AddressOrInstruction const
 
 int Compiler::moduloBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in modulo-operation.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in modulo-operation.");
 
     auto bf  = [&, this](){
                    int const mod = allocateTemp();
@@ -1123,7 +1106,7 @@ int Compiler::moduloBy(AddressOrInstruction const &lhs, AddressOrInstruction con
 
 int Compiler::divMod(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in divmod-operation.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in divmod-operation.");
 
     int const mod = allocateTemp();
     auto bf  = [&, this](){
@@ -1144,7 +1127,7 @@ int Compiler::divMod(AddressOrInstruction const &lhs, AddressOrInstruction const
 
 int Compiler::modDiv(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in moddiv-operation.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in moddiv-operation.");
 
     int const div = allocateTemp();
     auto bf  = [&, this](){
@@ -1173,7 +1156,7 @@ void Compiler::divModPair(AddressOrInstruction const &num, AddressOrInstruction 
 
 int Compiler::equal(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1190,7 +1173,7 @@ int Compiler::equal(AddressOrInstruction const &lhs, AddressOrInstruction const 
 
 int Compiler::notEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1207,7 +1190,7 @@ int Compiler::notEqual(AddressOrInstruction const &lhs, AddressOrInstruction con
 
 int Compiler::less(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1224,7 +1207,7 @@ int Compiler::less(AddressOrInstruction const &lhs, AddressOrInstruction const &
 
 int Compiler::greater(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1241,7 +1224,7 @@ int Compiler::greater(AddressOrInstruction const &lhs, AddressOrInstruction cons
 
 int Compiler::lessOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1257,7 +1240,7 @@ int Compiler::lessOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction 
 
 int Compiler::greaterOrEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in comparison.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1274,7 +1257,7 @@ int Compiler::greaterOrEqual(AddressOrInstruction const &lhs, AddressOrInstructi
 
 int Compiler::logicalNot(AddressOrInstruction const &arg)
 {
-    errorIf(arg < 0, "Use of void-expression in not-operation.");
+    compilerErrorIf(arg < 0, "Use of void-expression in not-operation.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1290,8 +1273,8 @@ int Compiler::logicalNot(AddressOrInstruction const &arg)
 
 int Compiler::logicalAnd(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0,  "Use of void-expression in and-operation.");
-    errorIf(d_memory.value(lhs) && rhs < 0, "Use of void-expression in and-operation.");
+    compilerErrorIf(lhs < 0,  "Use of void-expression in and-operation.");
+    compilerErrorIf(d_memory.value(lhs) && rhs < 0, "Use of void-expression in and-operation.");
     
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1314,8 +1297,8 @@ int Compiler::logicalAnd(AddressOrInstruction const &lhs, AddressOrInstruction c
 
 int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0,  "Use of void-expression in or-operation.");
-    errorIf(d_memory.value(lhs) && rhs < 0, "Use of void-expression in or-operation.");
+    compilerErrorIf(lhs < 0,  "Use of void-expression in or-operation.");
+    compilerErrorIf(d_memory.value(lhs) && rhs < 0, "Use of void-expression in or-operation.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1339,7 +1322,7 @@ int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction co
 int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody)
 {
     int const conditionAddr = condition();
-    errorIf(conditionAddr < 0, "Use of void-expression in if-condition.");
+    compilerErrorIf(conditionAddr < 0, "Use of void-expression in if-condition.");
 
     if (d_constEvalEnabled && !d_memory.valueUnknown(conditionAddr))
     {
@@ -1443,7 +1426,7 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
 
     init();
     int const conditionAddr = condition();
-    errorIf(conditionAddr < 0, "Use of void-expression in for-condition.");
+    compilerErrorIf(conditionAddr < 0, "Use of void-expression in for-condition.");
 
     d_codeBuffer << d_bfGen.assign(flag, conditionAddr);
     d_codeBuffer << "[";
@@ -1500,7 +1483,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
 int Compiler::whileStatementRuntime(Instruction const &condition, Instruction const &body)
 {
     int const conditionAddr = condition();
-    errorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
+    compilerErrorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
 
     d_scope.push();
     disableConstEval();

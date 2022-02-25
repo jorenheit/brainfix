@@ -42,8 +42,6 @@ blanks [[:blank:]\n]
 "!="                        return CompilerBase::NE;
 "&&"                        return CompilerBase::AND;
 "||"                        return CompilerBase::OR;
-"__bf"                      return CompilerBase::INLINE_BF;
-"__movePtr"                 return CompilerBase::MOVE_PTR;
 "__scan"                    return CompilerBase::SCAN;
 "__print"                   return CompilerBase::PRINT;
 "sizeof"                    return CompilerBase::SIZEOF;

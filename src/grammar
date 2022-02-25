@@ -20,7 +20,7 @@
                 BFX_FUNCTION:           BFXFunction;
 
 // Keywords
-%token LET FUNCTION GLOBAL INLINE_BF MOVE_PTR INCLUDE SCAN PRINT
+%token LET FUNCTION GLOBAL INCLUDE SCAN PRINT
 %token SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT STRUCT
 
 %nonassoc then
@@ -232,16 +232,6 @@ statement:
     }
 |
     scope_block
-|
-    INLINE_BF '(' STR ')' ';'
-    {
-        $$ = instruction<&Compiler::inlineBF>($3);
-    }
-|
-    MOVE_PTR '(' IDENT ')' ';'
-    {
-        $$ = instruction<&Compiler::movePtr>($3);
-    }
 |
     for_statement
 |
