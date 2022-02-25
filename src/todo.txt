@@ -8,11 +8,13 @@
 [ ] Constants are still needed for O0 generation. However, it should be possible to have array-sizes
     specified by variables known at compile-time.
 [x] remove __bf and __movePtr
-[ ] Update readme
+[x] Update readme
     - new array init syntax: #{}
     - difference between O0 and O1
     - section "Numbers"
     - indexing: bounds check
+    - for* while*
+[x] Bug: runtime value 0 as index does not return first element    
     
     
 

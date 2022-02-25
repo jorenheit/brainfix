@@ -759,6 +759,13 @@ int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction
     }
     else
     {
+        if (d_constEvalEnabled)
+        {
+            sync(index);
+            for (int i = 0; i != sz; ++i)
+                sync(arr + i);
+        }
+        
         int const ret = allocateTemp();
         d_codeBuffer << d_bfGen.fetchElement(arr, sz, index, ret);
         d_memory.setValueUnknown(ret);

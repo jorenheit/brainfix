@@ -26,7 +26,7 @@ void printHelp(std::string const &progName)
               << "-O0                 Do NOT do any constant expression evaluation.\n"
               << "-O1                 Do constant expression evaluation (default).\n "
               << "-o [file, stdout]   Specify where the generate BF is output to.\n\n"
-              << "Example: " << progName << " -o program.bf -I ../std/ -t int16 program.bfx\n";
+              << "Example: " << progName << " -o program.bf -O1 -I ../std/ -t int16 program.bfx\n";
 }
 
 Options parseCmdLine(std::vector<std::string> const &args)
