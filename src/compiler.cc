@@ -50,7 +50,8 @@ Compiler::State Compiler::save()
             .bfGen          = d_bfGen,
             .buffer         = d_codeBuffer.str(),
             .constEval      = d_constEvalEnabled,
-            .returnExisting = d_returnExistingAddressOnAlloc
+            .returnExisting = d_returnExistingAddressOnAlloc,
+            .boundsChecking = d_boundsCheckingEnabled,
     };
 }
 
@@ -61,8 +62,19 @@ void Compiler::restore(State &&state)
     d_bfGen                        = std::move(state.bfGen);
     d_constEvalEnabled             = state.constEval;
     d_returnExistingAddressOnAlloc = state.returnExisting;
+    d_boundsCheckingEnabled        = state.boundsChecking;
     d_codeBuffer.str(state.buffer);
     d_codeBuffer.seekp(0, std::ios_base::end);
+}
+
+void Compiler::disableBoundChecking()
+{
+    d_boundsCheckingEnabled = false;
+}
+
+void Compiler::enableBoundChecking()
+{
+    d_boundsCheckingEnabled = true;
 }
 
 
@@ -780,7 +792,7 @@ int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction
 {
     int const indexValue = d_memory.value(index);
     int const sz = d_memory.sizeOf(arr);
-    warningIf(indexValue >= sz,
+    warningIf(d_boundsCheckingEnabled && indexValue >= sz,
               "Array index (", indexValue, ") out of bounds: sizeof(",
               d_memory.identifier(arr), ") = ", sz, ".");
 
@@ -801,7 +813,7 @@ int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstructio
 {
     int const indexValue = d_memory.value(index);
     int const sz = d_memory.sizeOf(arr);
-    warningIf(indexValue >= sz,
+    warningIf(d_boundsCheckingEnabled && indexValue >= sz,
               "Array index (", indexValue, ") out of bounds: sizeof(",
               d_memory.identifier(arr), ") = ", sz, ".");
     
@@ -1274,12 +1286,12 @@ int Compiler::logicalNot(AddressOrInstruction const &arg)
                 };
 
     return eval<0b0>(bf, func, ret, arg);
-    
 }
 
 int Compiler::logicalAnd(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in and-operation.");
+    errorIf(lhs < 0,  "Use of void-expression in and-operation.");
+    errorIf(d_memory.value(lhs) && rhs < 0, "Use of void-expression in and-operation.");
     
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1290,13 +1302,20 @@ int Compiler::logicalAnd(AddressOrInstruction const &lhs, AddressOrInstruction c
                     return x && y;
                 };
 
-    return eval<0b00>(bf, func, ret, lhs, rhs);
-    
+    // RHS will be evaluated, even if it won't be at runtime due to short circuiting
+    // This will result in a warning if it contains an out-of bounds index. Suppress this
+    // warning by disabling this check.
+
+    disableBoundChecking();
+    int const result = eval<0b00>(bf, func, ret, lhs, rhs);
+    enableBoundChecking();
+    return result;
 }
 
 int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
-    errorIf(lhs < 0 || rhs < 0, "Use of void-expression in or-operation.");
+    errorIf(lhs < 0,  "Use of void-expression in or-operation.");
+    errorIf(d_memory.value(lhs) && rhs < 0, "Use of void-expression in or-operation.");
 
     int const ret = allocateTemp();
     auto bf  = [&, this](){
@@ -1307,8 +1326,14 @@ int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction co
                     return x || y;
                 };
 
-    return eval<0b00>(bf, func, ret, lhs, rhs);
+    // RHS will be evaluated, even if it won't be at runtime due to short circuiting
+    // This will result in a warning if it contains an out-of bounds index. Suppress this
+    // warning by disabling this check.
     
+    disableBoundChecking(); 
+    int const result = eval<0b00>(bf, func, ret, lhs, rhs);
+    enableBoundChecking();
+    return result;
 }
 
 int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody)

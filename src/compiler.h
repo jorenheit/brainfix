@@ -46,6 +46,7 @@ class Compiler: public CompilerBase
     int         d_instructionLineNr;
     bool        d_constEvalEnabled{true};
     bool        d_returnExistingAddressOnAlloc{false};
+    bool        d_boundsCheckingEnabled{true};
 
     struct State
     {
@@ -55,6 +56,7 @@ class Compiler: public CompilerBase
         std::string buffer;
         bool constEval;
         bool returnExisting;
+        bool boundsChecking;
     };
 
 public:
@@ -87,6 +89,8 @@ private:
     bool setConstEval(bool const val);
     bool enableConstEval();
     bool disableConstEval();
+    void disableBoundChecking();
+    void enableBoundChecking();
     void sync(int const addr);
     void constEvalSetToValue(int const addr, int const val);
     void runtimeSetToValue(int const addr, int const val);

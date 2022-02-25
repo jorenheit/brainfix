@@ -11,8 +11,6 @@
     specified by variables known at compile-time.
 [ ] remove __bf and __movePtr
 [ ] Update readme
-    - for*
-    - while*
     - new array init syntax: #{}
     - difference between O0 and O1
     - section "Numbers"

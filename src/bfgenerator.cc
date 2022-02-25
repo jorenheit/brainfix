@@ -445,11 +445,12 @@ std::string BFGenerator::fetchElement(int const arrStart, int const arrSize, int
     static std::string const dynamicMoveRight = "[>[->+<]<[->+<]>-]";
     static std::string const dynamicMoveLeft  = "[<[-<+>]>[-<+>]<-]<";
 
-    // Allocate a bufferwith 2 additional cells:
+    // Allocate a buffer with 3 additional cells:
     // 1. to keep a copy of the index
     // 2. to store a temporary necessary for copying
+    // 3. to prevent overflow on off-by-one errors
 
-    int const bufSize = arrSize + 2;
+    int const bufSize = arrSize + 3;
     int const buf = f_getTempBlock(bufSize);
     int const dist = buf - arrStart;
 
@@ -489,7 +490,7 @@ std::string BFGenerator::assignElement(int const arrStart, int const arrSize, in
     static std::string const dynamicMoveRight = "[>>[->+<]<[->+<]<[->+<]>-]";
     static std::string const dynamicMoveLeft = "[[-<+>]<-]<";
                
-    int const bufSize = arrSize + 2;
+    int const bufSize = arrSize + 3;
     int const buf     = f_getTempBlock(bufSize);
     int const dist    = buf - arrStart;
 
