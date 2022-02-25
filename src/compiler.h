@@ -71,7 +71,7 @@ private:
 
     int  compileTimeConstant(std::string const &ident) const;
     bool isCompileTimeConstant(std::string const &ident) const;
-
+    
     bool setConstEval(bool const val);
     bool enableConstEval();
     bool disableConstEval();

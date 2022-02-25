@@ -143,7 +143,7 @@ private:
 
     void print(std::ostream &out)
     {
-        out << (char)d_array[d_arrayPointer];
+        out << (char)d_array[d_arrayPointer] << std::flush;
     }
 
     void read(std::istream &in)
