@@ -21,7 +21,7 @@ class Compiler: public CompilerBase
     static constexpr int TAPE_SIZE_INITIAL = 30000;
     long const MAX_INT;
     long const MAX_ARRAY_SIZE;
-    int  const MAX_LOOP_UNROLL_ITERATIONS = 100;
+    int  const MAX_LOOP_UNROLL_ITERATIONS = 50;
     
     Scanner     d_scanner;
     Memory      d_memory;
@@ -147,7 +147,7 @@ private:
     int assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int fetch(std::string const &ident);
     int fetchField(std::vector<std::string> const &expr);
-    int fetchNestedField(std::vector<std::string> const &expr, int const baseAddr, size_t const baseIdx);
+    int fetchFieldImpl(std::vector<std::string> const &expr, int const baseAddr, size_t const baseIdx);
     
     int fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index);
     int assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs);

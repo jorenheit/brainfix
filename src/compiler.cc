@@ -444,11 +444,10 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
                 "\" seems not to have been declared in the main scope of the function-body.");
 
         // Check if the return variable was passed into the function as a reference
-        bool returnVariableIsReferenceParameter = false;
-        for (int const addr: references)
-            if (addr == ret)
-                returnVariableIsReferenceParameter = true;
-
+        bool const returnVariableIsReferenceParameter =
+            std::any_of(references.begin(), references.end(), [&](int addr){
+                                                                  return addr == ret;
+                                                              });
         if (returnVariableIsReferenceParameter)
         {
             // Return a copy
@@ -489,7 +488,6 @@ int Compiler::constVal(int const num)
 int Compiler::declareVariable(std::string const &ident, TypeSystem::Type type)
 {
     compilerErrorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
-
     
     int const sz = type.size();
     compilerErrorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
@@ -536,7 +534,7 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
 void Compiler::constEvalSetToValue(int const addr, int const val)
 {
     d_memory.setSync(addr, false);
-    d_memory.value(addr) = val;
+    d_memory.value(addr) = val % MAX_INT;
 }
 
 void Compiler::runtimeSetToValue(int const addr, int const newVal)
@@ -555,7 +553,7 @@ void Compiler::runtimeSetToValue(int const addr, int const newVal)
             d_codeBuffer << d_bfGen.setToValue(addr, newVal);
     }
 
-    d_memory.value(addr) = newVal;
+    d_memory.value(addr) = newVal % MAX_INT;
     d_memory.setSync(addr, true);
 }
 
@@ -637,30 +635,10 @@ int Compiler::fetchField(std::vector<std::string> const &expr)
     int const addr = addressOf(expr[0]);
     compilerErrorIf(addr < 0, "Unknown variable \"", expr[0], "\".");
 
-    TypeSystem::Type type = d_memory.type(addr);
-    compilerErrorIf(!type.isStructType(), "Type \"", type.name(), "\" is not a structure.");
-
-    auto def = type.definition();
-    for (auto const &f: def.fields())
-    {
-        if (f.name == expr[1])
-        {
-            if (expr.size() == 2)
-            {
-                return (addr + f.offset);
-            }
-            else
-            {
-                return fetchNestedField(expr, addr + f.offset, 1);
-            }
-        }
-    }
-
-    compilerError("Structure \"", type.name(), "\" does not contain field \"", expr[1], "\".");
-    return -1;
+    return fetchFieldImpl(expr, addr, 0);
 }
 
-int Compiler::fetchNestedField(std::vector<std::string> const &expr, int const baseAddr, size_t const baseIdx)
+int Compiler::fetchFieldImpl(std::vector<std::string> const &expr, int const baseAddr, size_t const baseIdx)
 {
     TypeSystem::Type type = d_memory.type(baseAddr);
     compilerErrorIf(!type.isStructType(), "Type \"", type.name(), "\" is not a structure.");
@@ -671,13 +649,9 @@ int Compiler::fetchNestedField(std::vector<std::string> const &expr, int const b
         if (f.name == expr[baseIdx + 1])
         {
             if (baseIdx + 2 == expr.size())
-            {
                 return (baseAddr + f.offset);
-            }
             else
-            {
-                return fetchNestedField(expr, baseAddr + f.offset, baseIdx + 1);
-            }
+                return fetchFieldImpl(expr, baseAddr + f.offset, baseIdx + 1);
         }
     }
 

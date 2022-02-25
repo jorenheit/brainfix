@@ -1,4 +1,4 @@
-[ ] consteval should take into account the int-type
+[x] consteval should take into account the int-type
 [x] Bounds checking for known index --> warning or error?
 [x] implement while*
 [x] make constant evaluation a compiler option (maybe -O0, -O1?)
@@ -13,7 +13,6 @@
     - difference between O0 and O1
     - section "Numbers"
     - indexing: bounds check
-    - array-size specification --> if implemented, possible using 'normal' variables
     
     
 
