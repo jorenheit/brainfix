@@ -1,5 +1,4 @@
-include "io.bfx"
-include "math.bfx"
+include "std.bfx"
 
 const MAX_INT_SIZE = 255;
 const ARRAY_SIZE = 250;

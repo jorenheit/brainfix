@@ -1,4 +1,4 @@
-include "std/io.bfx"
+include "std.bfx"
 
 function main()
 {

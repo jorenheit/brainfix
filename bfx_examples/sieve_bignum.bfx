@@ -1,5 +1,4 @@
-include "std/io.bfx"
-include "std/math.bfx"
+include "std.bfx"
 
 const ARRAY_SIZE = 1000;
 
