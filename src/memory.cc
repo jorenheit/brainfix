@@ -168,8 +168,6 @@ int Memory::find(std::string const &ident, std::string const &scope, bool const 
     }
     else
     {
-        // TODO: make this prettier
-        
         int result = -1;
         int maxLength = -1;
         for (size_t idx = 0; idx != d_memory.size(); ++idx)
@@ -177,7 +175,7 @@ int Memory::find(std::string const &ident, std::string const &scope, bool const 
             Cell const &cell = d_memory[idx];
             if (cell.identifier == ident && scope.find(cell.scope) == 0)
             {
-                if ((int)cell.scope.size() > maxLength)
+                if (static_cast<int>(cell.scope.size()) > maxLength)
                 {
                     result = idx;
                     maxLength = cell.scope.size();

@@ -97,7 +97,6 @@ private:
     void runtimeAssign(int const lhs, int const rhs);
     
     static bool validateFunction(BFXFunction const &bfxFunc);
-    static bool validateInlineBF(std::string const &ident);
     static std::string cancelOppositeCommands(std::string const &bf);
     
     // Memory management uitilities

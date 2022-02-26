@@ -113,7 +113,7 @@ inline size_t Memory::size() const
 template <typename Predicate>
 void Memory::freeIf(Predicate&& pred)
 {
-    for (size_t idx = 0; idx != d_memory.size(); ++idx)
+    for (size_t idx = 0; idx < d_memory.size(); ++idx)
     {
         Cell &cell = d_memory[idx];
         if (pred(cell))
@@ -124,6 +124,7 @@ void Memory::freeIf(Predicate&& pred)
                 referenced.clear();
             }
             cell.clear();
+            idx += cell.size();
         }
     }
 

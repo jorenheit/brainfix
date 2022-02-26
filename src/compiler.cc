@@ -319,37 +319,6 @@ int Compiler::allocateTempBlock(int const sz)
     return d_memory.getTempBlock(d_scope.function(), sz);
 }
 
-bool Compiler::validateInlineBF(std::string const &code)
-{
-    std::stack<int> countStack;
-    int current = 0;
-    
-    for (char c: code)
-    {
-        switch (c)
-        {
-        case '>': ++current; break;
-        case '<': --current; break;
-        case '[':
-            {
-                countStack.push(current);
-                current = 0;
-                break;
-            }
-        case ']':
-            {
-                if (current != 0) return false;
-                current = countStack.top();
-                countStack.pop();
-                break;
-            }
-        default: break;
-        }
-    }
-
-    return (current == 0);
-}
-
 int Compiler::sizeOfOperator(std::string const &ident)
 {
     int const sz = d_memory.sizeOf(ident, d_scope.current());
