@@ -27,11 +27,15 @@ void Memory::Cell::restore()
 void Memory::Cell::clear()
 {
     assert(content != Content::PROTECTED && "tried to clear a protected cell");
-    
+
     identifier.clear();
     scope.clear();
     content = Content::EMPTY;
     type = TypeSystem::Type{};
+
+    if (synced || value == -1)
+        desyncedValue = value;
+    
     value = 0;
     synced = false;
 }
@@ -85,8 +89,8 @@ int Memory::getTempBlock(std::string const &scope, int const sz)
 int Memory::allocate(std::string const &ident, std::string const &scope, TypeSystem::Type type)
 {
     assert(type.defined() && "Trying to allocate undefined type");
-    
-    if (!ident.empty() && find(ident, scope) != -1)
+
+    if (!ident.empty() && find(ident, scope, false) != -1)
         return  -1;
 
     int const addr = findFree(type.size());
@@ -150,19 +154,38 @@ void Memory::place(TypeSystem::Type type, int const addr, bool const recursive)
     }
 }
 
-int Memory::find(std::string const &ident, std::string const &scope) const
+int Memory::find(std::string const &ident, std::string const &scope, bool const includeEnclosedScopes) const
 {
-    auto const it = std::find_if(d_memory.begin(), d_memory.end(),
+    if (!includeEnclosedScopes)
+    {
+        auto const it = std::find_if(d_memory.begin(), d_memory.end(),
                                  [&](Cell const &cell)
                                  {
-                                     return scope.find(cell.scope) == 0 &&
-                                         cell.identifier == ident;
+                                     return cell.identifier == ident && scope == cell.scope;
                                  });
-    
-    if (it != d_memory.end())
-        return it - d_memory.begin();
 
-    return -1;
+        return (it != d_memory.end()) ? (it - d_memory.begin()) : -1;
+    }
+    else
+    {
+        // TODO: make this prettier
+        
+        int result = -1;
+        int maxLength = -1;
+        for (size_t idx = 0; idx != d_memory.size(); ++idx)
+        {
+            Cell const &cell = d_memory[idx];
+            if (cell.identifier == ident && scope.find(cell.scope) == 0)
+            {
+                if ((int)cell.scope.size() > maxLength)
+                {
+                    result = idx;
+                    maxLength = cell.scope.size();
+                }
+            }
+        }
+        return result;
+    }    
 }
 
 void Memory::push(int const addr)
@@ -272,6 +295,14 @@ int &Memory::value(int const addr)
     return d_memory[addr].value;
 }
 
+int Memory::runtimeValue(int const addr) const
+{
+    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+
+    Cell const &cell = d_memory[addr];
+    return cell.synced ? cell.value : cell.desyncedValue;
+}
+
 bool Memory::valueUnknown(int const addr) const
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
@@ -288,7 +319,16 @@ void Memory::setValueUnknown(int const addr)
 void Memory::setSync(int const addr, bool sync)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    d_memory[addr].synced = sync;
+    //    d_memory[addr].synced = sync;
+
+    Cell &cell = d_memory[addr];
+    if (cell.synced && !sync)
+    {
+        // Make sure to only call setSync(..., false) BEFORE changing its value
+        cell.desyncedValue = cell.value;
+    }
+    
+    cell.synced = sync;
 }
 
 bool Memory::isSync(int const addr) const

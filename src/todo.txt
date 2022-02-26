@@ -15,6 +15,8 @@
     - indexing: bounds check
     - for* while*
 [x] Bug: runtime value 0 as index does not return first element    
-    
+[ ] for-loop init is now in calling scope -> move to for-scope
+[ ] Check: on disableConstEval, do we need to sync all cells in scope? Or can we skip temps?
+[ ] Check: in Memory::freeTemps() can we speed up by incrementing idx after array-free?
     
 

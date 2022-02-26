@@ -28,6 +28,7 @@ private:
         Content          content{Content::EMPTY};
         TypeSystem::Type type;
         int              value{0};
+        int              desyncedValue{0};
         bool             synced{false};
         
         void clear();
@@ -67,7 +68,7 @@ public:
     int getTemp(std::string const &scope, int const sz = 1);
     int getTempBlock(std::string const &scope, int const sz);
     int allocate(std::string const &ident, std::string const &scope, TypeSystem::Type type);
-    int find(std::string const &ident, std::string const &scope) const;
+    int find(std::string const &ident, std::string const &scope, bool const includeEnclosedScopes = true) const;
     int sizeOf(int const addr) const;
     int sizeOf(std::string const &ident, std::string const &scope) const;
     int pop();
@@ -79,6 +80,7 @@ public:
     bool isTemp(int const addr) const;
     int value(int const addr) const;
     int &value(int const addr);
+    int runtimeValue(int const addr) const;
     bool valueUnknown(int const addr) const;
     void setValueUnknown(int const addr);
     void setSync(int const addr, bool val);
@@ -119,9 +121,6 @@ void Memory::freeIf(Predicate&& pred)
             for (int offset = 1; offset < cell.size(); ++offset)
             {
                 Cell &referenced = d_memory[idx + offset];
-                // assert(referenced.content == Content::REFERENCED &&
-                //        "Trying to free a referenced cell that is not marked as referenced");
-                
                 referenced.clear();
             }
             cell.clear();

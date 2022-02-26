@@ -293,22 +293,24 @@ int Compiler::eval(BFGenFunc&& bfFunc, ConstFunc&& constFunc, int const resultAd
     bool const canBeConstEvaluated = (not d_memory.valueUnknown(args) && ...);
     if (canBeConstEvaluated && d_constEvalEnabled)
     {
-        // Evaluate using constfunc
-        constEvalSetToValue(resultAddr, constFunc(d_memory.value(args) ...));
-        
-        // Application of constFunc may have resulted in side-effects if it accepted
+        // Application of constFunc may resulted in side-effects if it accepted
         // reference-parameters. Check Mask for volatile values ->
         // for each changed value, set its sync-flag to false.
         
         for (int i = 0; i != N; ++i)
             if (isVolatile(i))
                 d_memory.setSync(arguments[i], false);
+        
+        // Evaluate using constfunc
+        constEvalSetToValue(resultAddr, constFunc(d_memory.value(args) ...));
     }
     else 
     {
         if (d_constEvalEnabled)
+        {
             for (int i = 0; i != N; ++i)
                 sync(arguments[i]);
+        }
         
         bfFunc();
 

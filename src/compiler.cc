@@ -124,16 +124,6 @@ void Compiler::pushStream(std::string const &file)
     compilerError("Could not find included file \"", file, "\".");
 }
 
-void Compiler::sync(int const addr)
-{
-    assert(d_constEvalEnabled && "Cannot sync when constant evaluation is disabled");
-
-    bool const valueKnown = not d_memory.valueUnknown(addr);
-    bool const synced     = d_memory.isSync(addr);
-    if (valueKnown && !synced)
-        runtimeSetToValue(addr, d_memory.value(addr));
-}
-
 bool Compiler::setConstEval(bool const enable)
 {
     static int count = 0;
@@ -152,9 +142,7 @@ bool Compiler::setConstEval(bool const enable)
         // Sync all variables that are currently in scope.
         std::vector<int> scopeCells = d_memory.cellsInScope(d_scope.current());
         for (int const addr: scopeCells)
-        {
             sync(addr);
-        }
 
         d_constEvalEnabled = false;
     }
@@ -510,7 +498,7 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
             "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
 
     if (!d_returnExistingAddressOnAlloc)
-        compilerErrorIf(d_memory.find(ident, d_scope.current()) != -1,
+        compilerErrorIf(d_memory.find(ident, d_scope.current(), false) != -1,
                 "Variable ", ident, " previously declared.");
     
     int rhsAddr = rhs();
@@ -531,29 +519,51 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
     return -1;
 }
 
+void Compiler::sync(int const addr)
+{
+    assert(d_constEvalEnabled && "Cannot sync when constant evaluation is disabled");
+
+    bool const valueKnown = not d_memory.valueUnknown(addr);
+    bool const synced     = d_memory.isSync(addr);
+    if (valueKnown && !synced)
+        runtimeSetToValue(addr, d_memory.value(addr));
+}
+
 void Compiler::constEvalSetToValue(int const addr, int const val)
 {
     d_memory.setSync(addr, false);
     d_memory.value(addr) = val % MAX_INT;
 }
 
-void Compiler::runtimeSetToValue(int const addr, int const newVal)
+void Compiler::runtimeSetToValue(int const addr, int const val)
 {
-    if (d_memory.valueUnknown(addr) || !d_memory.isSync(addr))
+    int const newVal = val % MAX_INT;
+    
+    if (!d_constEvalEnabled || d_memory.valueUnknown(addr))
     {
+        // Case 1: no consteval or unknown value -> cannot make assumptions
+        //         about current contents. Reset to newVal.
         d_codeBuffer << d_bfGen.setToValue(addr, newVal);
     }
-    else // known and sync'd
+    else
     {
-        int const oldVal = d_memory.value(addr);
-        int const diff = newVal - oldVal;
-        if (std::abs(diff) < newVal)
-            d_codeBuffer << d_bfGen.addConst(addr, newVal - oldVal);
-        else
+        // Case 2: consteval is enabled -> fetch current (runtime) value
+        int const oldVal = d_memory.runtimeValue(addr);
+        if (oldVal == -1)
+        {
             d_codeBuffer << d_bfGen.setToValue(addr, newVal);
+        }
+        else
+        {
+            int const diff = newVal - oldVal;
+            if (std::abs(diff) < (newVal + 3)) // take [-] into account
+                d_codeBuffer << d_bfGen.addConst(addr, newVal - oldVal);
+            else
+                d_codeBuffer << d_bfGen.setToValue(addr, newVal);
+        }
     }
 
-    d_memory.value(addr) = newVal % MAX_INT;
+    d_memory.value(addr) = newVal;
     d_memory.setSync(addr, true);
 }
 
@@ -817,7 +827,6 @@ int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstructio
 
         // Attention: can't return the address of the modified cell, so we return the
         // address of the known RHS-cell.
-        // TODO: check if returning -1 (void) works out
         return rhs;
     }
 }
@@ -1124,7 +1133,6 @@ int Compiler::modDiv(AddressOrInstruction const &lhs, AddressOrInstruction const
                 };
 
     return eval<0b10>(bf, func, div, lhs, rhs);
-    
 }
 
 void Compiler::divModPair(AddressOrInstruction const &num, AddressOrInstruction const &denom, int const divResult, int const modResult)
