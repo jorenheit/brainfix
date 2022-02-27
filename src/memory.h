@@ -28,7 +28,6 @@ private:
         Content          content{Content::EMPTY};
         TypeSystem::Type type;
         int              value{0};
-        int              desyncedValue{0};
         bool             synced{false};
         
         void clear();
@@ -80,7 +79,6 @@ public:
     bool isTemp(int const addr) const;
     int value(int const addr) const;
     int &value(int const addr);
-    int runtimeValue(int const addr) const;
     bool valueUnknown(int const addr) const;
     void setValueUnknown(int const addr);
     void setSync(int const addr, bool val);

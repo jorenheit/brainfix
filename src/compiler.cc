@@ -508,30 +508,7 @@ void Compiler::runtimeSetToValue(int const addr, int const val)
 {
     int const newVal = val % MAX_INT;
     
-    if (!d_constEvalEnabled || d_memory.valueUnknown(addr))
-    {
-        // Case 1: no consteval or unknown value -> cannot make assumptions
-        //         about current contents. Reset to newVal.
-        d_codeBuffer << d_bfGen.setToValue(addr, newVal);
-    }
-    else
-    {
-        // Case 2: consteval is enabled -> fetch current (runtime) value
-        int const oldVal = d_memory.runtimeValue(addr);
-        if (oldVal == -1)
-        {
-            d_codeBuffer << d_bfGen.setToValue(addr, newVal);
-        }
-        else
-        {
-            int const diff = newVal - oldVal;
-            if (std::abs(diff) < (newVal + 3)) // take [-] into account
-                d_codeBuffer << d_bfGen.addConst(addr, newVal - oldVal);
-            else
-                d_codeBuffer << d_bfGen.setToValue(addr, newVal);
-        }
-    }
-
+    d_codeBuffer << d_bfGen.setToValue(addr, newVal);
     d_memory.value(addr) = newVal;
     d_memory.setSync(addr, true);
 }
@@ -770,6 +747,7 @@ int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstructio
     else if (d_constEvalEnabled && !d_memory.valueUnknown(index))
     {
         // Case 2: only index known
+        sync(rhs);
         int const addr = arr + d_memory.value(index);
 
         d_codeBuffer << d_bfGen.assign(addr, rhs);

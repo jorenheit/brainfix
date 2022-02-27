@@ -32,10 +32,6 @@ void Memory::Cell::clear()
     scope.clear();
     content = Content::EMPTY;
     type = TypeSystem::Type{};
-
-    if (synced || value == -1)
-        desyncedValue = value;
-    
     value = 0;
     synced = false;
 }
@@ -293,14 +289,6 @@ int &Memory::value(int const addr)
     return d_memory[addr].value;
 }
 
-int Memory::runtimeValue(int const addr) const
-{
-    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-
-    Cell const &cell = d_memory[addr];
-    return cell.synced ? cell.value : cell.desyncedValue;
-}
-
 bool Memory::valueUnknown(int const addr) const
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
@@ -311,22 +299,13 @@ void Memory::setValueUnknown(int const addr)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     d_memory[addr].value = -1;
-    d_memory[addr].synced = false;
+    setSync(addr, false);
 }
 
 void Memory::setSync(int const addr, bool sync)
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    //    d_memory[addr].synced = sync;
-
-    Cell &cell = d_memory[addr];
-    if (cell.synced && !sync)
-    {
-        // Make sure to only call setSync(..., false) BEFORE changing its value
-        cell.desyncedValue = cell.value;
-    }
-    
-    cell.synced = sync;
+    d_memory[addr].synced = sync;
 }
 
 bool Memory::isSync(int const addr) const
