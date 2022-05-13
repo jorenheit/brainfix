@@ -10,7 +10,7 @@ struct Options
     Compiler::CellType        cellType{Compiler::CellType::INT8};
     std::vector<std::string>  includePaths;
     std::string               bfxFile;
-    std::ostream*             outStream{nullptr};
+    std::ostream*             outStream{&std::cout};
     bool                      constEval{true};
 };
 
@@ -24,8 +24,8 @@ void printHelp(std::string const &progName)
               << "-I [path to folder] Specify additional include-path.\n"
               << "                    This option may appear multiple times to specify multiple folders.\n"
               << "-O0                 Do NOT do any constant expression evaluation.\n"
-              << "-O1                 Do constant expression evaluation (default).\n "
-              << "-o [file, stdout]   Specify where the generate BF is output to.\n\n"
+              << "-O1                 Do constant expression evaluation (default).\n"
+              << "-o [file, stdout]   Specify the output stream/file (default stdout).\n\n"
               << "Example: " << progName << " -o program.bf -O1 -I ../std/ -t int16 program.bfx\n";
 }
 

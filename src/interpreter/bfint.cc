@@ -34,7 +34,7 @@ struct Options
     CellType     cellType{CellType::INT8};
     int          tapeLength{30000};
     std::string  bfFile;
-    std::ostream *outStream{nullptr};
+    std::ostream *outStream{&std::cout};
 };
 
 void printHelp(std::string const &progName)
@@ -45,7 +45,7 @@ void printHelp(std::string const &progName)
               << "-t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of\n"
                  "                    int8, int16 and int32 (int8 by default).\n"
               << "-n [N]              Specify the number of cells (30,000 by default).\n"
-              << "-o [file, stdout]   Specify where the generate BF is output to (defaults to stdout).\n\n"
+              << "-o [file, stdout]   Specify the output stream (defaults to stdout).\n\n"
               << "Example: " << progName << " -t int16 -o output.txt program.bf\n";
 }
 
@@ -162,10 +162,6 @@ Options parseCmdLine(std::vector<std::string> const &args)
         }
     }
 
-    if (!opt.outStream)
-    {
-        opt.outStream = &std::cout;
-    }
 
     if (idx > (args.size() - 1))
     {
