@@ -471,6 +471,8 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
                 "Variable ", ident, " previously declared.");
     
     int rhsAddr = rhs();
+    compilerErrorIf(rhsAddr < 0, "Use of void expression in assignment.");
+    
     TypeSystem::Type rhsType = d_memory.type(rhsAddr);
     
     if (d_memory.isTemp(rhsAddr) && (sz == -1 || type == rhsType))
@@ -501,12 +503,12 @@ void Compiler::sync(int const addr)
 void Compiler::constEvalSetToValue(int const addr, int const val)
 {
     d_memory.setSync(addr, false);
-    d_memory.value(addr) = val % MAX_INT;
+    d_memory.value(addr) = (val <= MAX_INT) ? val : (val % (MAX_INT + 1));
 }
 
 void Compiler::runtimeSetToValue(int const addr, int const val)
 {
-    int const newVal = val % MAX_INT;
+    int const newVal = (val <= MAX_INT) ? val : (val % (MAX_INT + 1));
     
     d_codeBuffer << d_bfGen.setToValue(addr, newVal);
     d_memory.value(addr) = newVal;
@@ -1100,6 +1102,7 @@ int Compiler::equal(AddressOrInstruction const &lhs, AddressOrInstruction const 
                };
 
     auto func = [](int x, int y){
+                    std::cerr <<  x << ", " << y << ", " << (x == y) << '\n';
                     return x == y;
                 };
 

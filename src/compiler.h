@@ -279,8 +279,6 @@ int Compiler::eval(BFGenFunc&& bfFunc, ConstFunc&& constFunc, int const resultAd
     static_assert((std::is_convertible_v<int, Args> && ...),
                   "Operands to constEval must be (convertible) to int (addresses).");
 
-    // TODO: handle different cell-sizes (int8, 16 etc)
-
     static constexpr int N = (sizeof ... (Args));
     int const arguments[N] = {args ...};
     constexpr auto isVolatile = [](int const argIdx)

@@ -1,0 +1,33 @@
+function arr = to_binary_array(x)
+{
+    let [] powers = #{128, 64, 32, 16, 8, 4, 2, 1};
+    let [8] arr = 0;
+    for(let i = 0; i < sizeof(powers); ++i)
+    {
+        let p = powers[i];
+        if (x >= p)
+        {
+            arr[i] = 1;
+            x -= p;
+        }
+    }
+}
+
+function x = from_binary_array(arr)
+{
+    let [] powers = #{128, 64, 32, 16, 8, 4, 2, 1};
+    let x = 0;
+    for(let i = 0; i < sizeof(powers); ++i)
+    {
+        if (arr[i])
+            x += powers[i];
+    }
+}
+
+
+function rng8(x)
+{
+    let [] arr = to_binary_array(x);
+    let y = from_binary_array(arr);
+    printd(x); endl();
+}

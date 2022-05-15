@@ -59,3 +59,127 @@ function m = max(&x, &y)
         m = y;
 }
 
+function arr = to_binary_array(x)
+{
+    let [] powers = #{128, 64, 32, 16, 8, 4, 2, 1};
+    let [8] arr = 0;
+    for(let i = 0; i < sizeof(powers); ++i)
+    {
+        let p = powers[i];
+        if (x >= p)
+        {
+            arr[i] = 1;
+            x -= p;
+        }
+    }
+}
+
+function x = from_binary_array(&arr)
+{
+    let [] powers = #{128, 64, 32, 16, 8, 4, 2, 1};
+    let x = 0;
+    for(let i = 0; i < sizeof(powers); ++i)
+    {
+        if (arr[i])
+            x += powers[i];
+    }
+}
+
+function x = bit8_or(x, &y)
+{
+    let [8] xbits = to_binary_array(x);
+    let [8] ybits = to_binary_array(y);
+    
+    for (let i = 0; i != sizeof(xbits); ++i)
+    {
+        xbits[i] = xbits[i] || ybits[i];
+    }
+
+    x = from_binary_array(xbits);
+}
+
+function x = bit8_and(x, &y)
+{
+    let [8] xbits = to_binary_array(x);
+    let [8] ybits = to_binary_array(y);
+    
+    for (let i = 0; i != sizeof(xbits); ++i)
+    {
+        xbits[i] = xbits[i] && ybits[i];
+    }
+
+    x = from_binary_array(xbits);
+}
+
+function x = bit8_xor(x, &y)
+{
+    let [8] xbits = to_binary_array(x);
+    let [8] ybits = to_binary_array(y);
+    
+    for (let i = 0; i != sizeof(xbits); ++i)
+    {
+        xbits[i] = xbits[i] != ybits[i];
+    }
+
+    x = from_binary_array(xbits);
+}
+
+function y = bit8_shift_left(&x, &n)
+{
+    let [8] xbits = to_binary_array(x);
+    let [8] ybits = 0;
+    
+    for (let i = 0; i != sizeof(xbits) - n; ++i)
+    {
+        ybits[i] = xbits[i + n];
+    }
+
+    let y = from_binary_array(ybits);
+}
+
+function y = bit8_shift_right(&x, &n)
+{
+    let [8] xbits = to_binary_array(x);
+    let [8] ybits = 0;
+    
+    for (let i = 0; i != sizeof(xbits) - n; ++i)
+    {
+        ybits[i + n] = xbits[i];
+    }
+
+    let y = from_binary_array(ybits);
+}
+
+
+global __RAND_S1, __RAND_S2;
+function initRng(&s1, &s2)
+{
+    /* 
+       https://codebase64.org/doku.php?id=base:small_fast_8-bit_prng
+    */ 
+    
+    __RAND_S1 = s1;
+    __RAND_S2 = #{29, 43, 45, 77, 95, 99, 101, 105,
+                  113, 135, 141, 169, 195, 207, 231, 245}[s2 % 16];
+}
+
+function result = rand()
+{
+    /* 
+       https://codebase64.org/doku.php?id=base:small_fast_8-bit_prng
+    */ 
+    
+    let [8] bits = to_binary_array(__RAND_S1);
+    let [8] shifted = 0;
+    
+    for (let i = 0; i != sizeof(bits) - 1; ++i)
+        shifted[i] = bits[i + 1];
+
+    let result = from_binary_array(shifted);
+    if (!bits[0])
+    {
+        result = bit8_xor(result, __RAND_S2);
+    }
+
+    __RAND_S1 = result;
+}

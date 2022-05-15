@@ -20,6 +20,7 @@
     --> YES, WE DO
 [x] Check: in Memory::freeTemps() can we speed up by incrementing idx after array-free?
 [x] Check: stdlib, scand and scand_4 should use to_int
-
+[x] Crash when return value not specified in function header?!
+[x] for (let i = 0; i != 255; ++i) doesn't run
     
 

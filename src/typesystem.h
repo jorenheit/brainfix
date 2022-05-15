@@ -24,7 +24,6 @@ public:
 
         int d_size{-1};
         std::string d_name{""};
-        //        std::variant<int, std::string> d_var;
         Kind d_kind{Kind::NULLTYPE};
         
     public:

@@ -371,6 +371,40 @@ function main()
 }
 ```
 
+#### Global Variables
+It's also possible to define runtime variables at global scope, using the `global` keyword. A global variable cannot be initialized in this declaration, so it's common to define an initializing function that's called from `main`. 
+
+```javascript
+include "std.bfx"
+
+global x, y;      // single global variables
+global [5]vec;    // global array of 5 cells
+
+struct S
+{
+    x, y;
+};
+
+global [struct S] s;
+
+function init()
+{
+    x = 42;
+    y = 69;
+    s = S{10, 20};
+}
+
+function main()
+{
+    init();
+    
+    printd(x);   endl();
+    printd(y);   endl();
+    printd(s.x); endl();
+    printd(s.y); endl();
+}
+```
+
 ### Operators
 The following operators are supported by BrainFix:
 
@@ -542,7 +576,50 @@ All functions below are defined in `std/math.bfx`:
 |   `factorial(n)` | Calculate n! (overflows for n > 5) |
 |   `min(x,y)`     | Returns the minimum of x and y |
 |   `max(x,y)`     | Returns the maximum of x and y |
+|   `to_binary_array(x)` | Returns 8-bit binary representation of x as array of 0's and 1's |
+|   `from_binary_array(x)` | Takes a binary array and converts it back to 8-bit integer |
+|   `bit8_or(x, y)` | Returns bitwise OR of `x` and `y` (8-bit) |
+|   `bit8_and(x, y)` | Returns bitwise AND of `x` and `y` (8-bit) |
+|   `bit8_xor(x, y)` | Returns bitwise XOR of `x` and `y` (8-bit) |
+|   `bit8_shift_left(x, n) | Shift the binary representation of x by n bits to the left. |
+|   `bit8_shift_right(x, n) | Shift the binary representation of x by n bits to the right. |
+|   `initRng(s1, s2) | Initialize the RNG (see below). |
+|   `rand() | Generate random number (see below). |
+
+#### Pseudorandom Numbers
+A very simple 8-bit RNG that returns values in the range 0-255 has been implemented in the Standard Library to be used in situations where the statistical properties of the distribution are not very important. Let's face it: you're using BrainFix, so they're probably not. The RNG has to be initialized by calling `initRng(s1, s2)`, where `s1` and `s2` are two seeding values: `s1` should be in the range of 0-255 and `s2` should be in the range of 0-15 (larger values will wrap around, e.g. `s2 = 17` will yield the same sequence of numbers as `s2 = 1`). After initializing the RNG, the `rand()` function may be called repeatedly to generate a sequence of numbers that will visit every number in the range 0-255. A total number of 256 * 16 = 4096 unique sequences can therefore be generated.
+
+It is common to use the system clock to obtain appropriate seed-values. This is of course not possible in BrainFix, because Brainf*ck doesn't allow us to communicate with the system kernel. You should just ask the end-user to input two numbers; every unique combination of numbers will then result in a unique 'experience', if you will.
+
+N.B. Algorithm borrowed from [White Flame](https://codebase64.org/doku.php?id=base:small_fast_8-bit_prng).
 
 
+```javascript
+include "std.bfx"
+
+function main()
+{
+    println("Enter two numbers (0-255): ");
+    let s1 = scand();
+    let s2 = scand();
+
+    
+    initRng(s1, s2);
+    let x = rand() % 10;
+    let y = 255;
+    let count = 0;
+    
+    while (x != y)
+    {
+        println("Enter your guess (0-9): ");
+        let y = scand();
+        ++count;
+    }
+
+    prints("You won!! You only needed ");
+    printd(count);
+    println(" guesses :)");
+}
+```
 
 
