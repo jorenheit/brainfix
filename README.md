@@ -581,10 +581,10 @@ All functions below are defined in `std/math.bfx`:
 |   `bit8_or(x, y)` | Returns bitwise OR of `x` and `y` (8-bit) |
 |   `bit8_and(x, y)` | Returns bitwise AND of `x` and `y` (8-bit) |
 |   `bit8_xor(x, y)` | Returns bitwise XOR of `x` and `y` (8-bit) |
-|   `bit8_shift_left(x, n) | Shift the binary representation of x by n bits to the left. |
-|   `bit8_shift_right(x, n) | Shift the binary representation of x by n bits to the right. |
-|   `initRng(s1, s2) | Initialize the RNG (see below). |
-|   `rand() | Generate random number (see below). |
+|   `bit8_shift_left(x, n)` | Shift the binary representation of `x` by `n` bits to the left. |
+|   `bit8_shift_right(x, n)` | Shift the binary representation of `x` by `n` bits to the right. |
+|   `initRng(s1, s2)` | Initialize the RNG (see below). |
+|   `rand()` | Generate random number (see below). |
 
 #### Pseudorandom Numbers
 A very simple 8-bit RNG that returns values in the range 0-255 has been implemented in the Standard Library to be used in situations where the statistical properties of the distribution are not very important. Let's face it: you're using BrainFix, so they're probably not. The RNG has to be initialized by calling `initRng(s1, s2)`, where `s1` and `s2` are two seeding values: `s1` should be in the range of 0-255 and `s2` should be in the range of 0-15 (larger values will wrap around, e.g. `s2 = 17` will yield the same sequence of numbers as `s2 = 1`). After initializing the RNG, the `rand()` function may be called repeatedly to generate a sequence of numbers that will visit every number in the range 0-255. A total number of 256 * 16 = 4096 unique sequences can therefore be generated.
