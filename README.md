@@ -589,6 +589,9 @@ All functions below are defined in `std/math.bfx`:
 |   `bit8_shift_right(x, n)` | Shift the binary representation of `x` by `n` bits to the right. |
 |   `rand()` | Generate random number (see below). |
 
+Each of the functions above returns the resulting value: their arguments are never modified, even if they are taken by reference (for optimization purposes).
+
+
 #### Pseudorandom Numbers
 To generate random numbers, BrainFix makes use of the [Random Brainfix extension](https://esolangs.org/wiki/Random_Brainfuck), where a `?` symbol tells the interpreter to generate a random number. The way this random number is generated is therefore fully up to the interpreter itself and cannot even be seeded from within BrainFix. If the `rand()`-function is used in a program that is compiled without the `--random` option, a warning will be issued and compilation will proceed as normal. The included interpreter supports this extension (if the `--random` flag is passed in to `bfint`) and will generate a random number uniformly in the range of possible cell-values (0-255 in the single byte case). It is up to the programmer to manipulate the result of `rand()` into the desired range. A common way to do this is by using the modulo-operator as in the example below.
 
