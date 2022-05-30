@@ -38,15 +38,16 @@ Building the project results will produce the compiler executable `bfx`. The syn
 
 ```
 $ bfx -h
-Usage: bfx [options] <target(.bfx)>
 Options:
 -h                  Display this text.
 -t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of
                     int8, int16 and int32 (int8 by default).
 -I [path to folder] Specify additional include-path.
-                    This option may appear multiple times to specify multiple folders.
+                      This option may appear multiple times to specify multiple folders.
 -O0                 Do NOT do any constant expression evaluation.
 -O1                 Do constant expression evaluation (default).
+--random            Enable random number generation (generates the ?-symbol).
+                      Your interpreter must support this extension!
 -o [file, stdout]   Specify the output stream/file (default stdout).
 
 Example: bfx -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx
@@ -65,7 +66,8 @@ Options:
 -n [N]              Specify the number of cells (30,000 by default).
 -o [file, stdout]   Specify the output stream (defaults to stdout).
 
-Example: bfint -t int16 -o output.txt program.bf
+--random            Enable Random Brainf*ck extension (support ?-symbol)
+Example: bfint --random -t int16 -o output.txt program.bf
 ```
 
 ### The type of a BrainF\*ck cell
@@ -116,7 +118,7 @@ Hello, World!
 ```
 
 ## Target Architecture
-The compiler targets the canonical BrainF*ck machine, where cells are unsigned integers of the type specified as the argument to the `-t` flag. At the start of the program, it is assumed that all cells are zero-initialized and the pointer is pointing at cell 0. Furthermore, it is assumed that the tape-size is, for all intents and purposes, infinitely long. The produced BF consists of only the 8 classic BF-commands (no [extensions](https://esolangs.org/wiki/Extended_Brainfuck)):
+The compiler targets the canonical BrainF*ck machine, where cells are unsigned integers of the type specified as the argument to the `-t` flag. At the start of the program, it is assumed that all cells are zero-initialized and the pointer is pointing at cell 0. Furthermore, it is assumed that the tape-size is, for all intents and purposes, infinitely long. The produced BF consists of only the 8 classic BF-commands and an optional RNG command, as per the [Random Brainfix extension](https://esolangs.org/wiki/Random_Brainfuck) (to allow for simple games).
 
 | Command | Effect |
 | --- | --- |
@@ -128,6 +130,7 @@ The compiler targets the canonical BrainF*ck machine, where cells are unsigned i
 | `]` | If current value is zero, continue. Otherwise, go back to matching `[` |
 | `.` | Output current byte to stdout |
 | `,` | Read byte from stdin and store it in the current cell |
+| `?` | Spawn a random number in the current cell (non-standard!) |
 
 
 ## Language
