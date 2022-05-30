@@ -38,7 +38,7 @@ Building the project results will produce the compiler executable `bfx`. The syn
 
 ```
 $ bfx -h
-Usage: ./bfx [options] [target(.bfx)]
+Usage: bfx [options] [target(.bfx)]
 Options:
 -h                  Display this text.
 -t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of
@@ -47,9 +47,9 @@ Options:
                     This option may appear multiple times to specify multiple folders.
 -O0                 Do NOT do any constant expression evaluation.
 -O1                 Do constant expression evaluation (default).
- -o [file, stdout]   Specify where the generate BF is output to.
+-o [file, stdout]   Specify the output stream/file (default stdout).
 
-Example: ./bfx -o program.bf -O1 -I ../std/ -t int16 program.bfx
+Example: bfx -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx
 ```
 
 ### Using the `bfint` executable
@@ -63,10 +63,11 @@ Options:
 -t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of
                     int8, int16 and int32 (int8 by default).
 -n [N]              Specify the number of cells (30,000 by default).
--o [file, stdout]   Specify where the generate BF is output to (defaults to stdout).
+-o [file, stdout]   Specify the output stream (defaults to stdout).
 
-Example: bfint -t int16 -o stdout program.bf
+Example: bfint -t int16 -o output.txt program.bf
 ```
+
 ### The type of a BrainF\*ck cell
 The type of the BF cell that is assumed during compilation with `bfx` can be specified using the `-t` option and will specify the size of the integers on the BF tape. By default, this is a single byte (8-bits). Other options are `int16` and `int32`. All generated BF-algorithms work with any of these architectures, so changing the type will not result in different BF-code. It will, however, allow the compiler to issue a warning if numbers are used throughout the program that exceed the maximum value of a cell. The same flag can be specified to `bfint`. This will change the size of the integers that the interpreter is operating on. For example, executing the `+` operation on a cell with value 255 will result in overflow (and wrap around to 0) when the interpreter is invoked with `-t int8` but not when it's invoked with `-t int16`. 
 

@@ -1,0 +1,16 @@
+CC=g++
+CFLAGS=-c -Wall --std=c++2a -fmax-errors=2 #-Wfatal-errors
+SOURCES=interpreter/bfint.cc
+
+OBJECTS=$(SOURCES:.cc=.o)
+EXECUTABLE=bfint
+
+all:	$(SOURCES) $(EXECUTABLE) 
+
+$(EXECUTABLE):$(OBJECTS)
+	$(CC) $(OBJECTS) -o $@
+
+.cc.o:
+	$(CC) $(CFLAGS) $< -o $@
+
+
