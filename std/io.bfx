@@ -180,7 +180,7 @@ function result = scand_4()
     }
 }
 
-function scans(&buf)
+function scans_old(&buf)
 {
     let i = 0;
     let done = 0;
@@ -189,8 +189,26 @@ function scans(&buf)
         let c = scanc();
         if (c != '\n')
         {
-            buf[i] = c;
-            ++i;
+            buf[i++] = c; // TODO: i++ should work. Old bug patch?
+        }
+        else
+        {
+            buf[i] = 0;
+            done = 1;
+        }
+    }
+}
+
+function scans(&buf)
+{
+    let i = 0;
+    let done = 0;
+    while (!done)
+    {
+        let c = scanc();
+        if (c != '\n')
+        {
+            buf[i++] = c;
         }
         else
         {
