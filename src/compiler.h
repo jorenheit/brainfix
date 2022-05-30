@@ -45,6 +45,7 @@ class Compiler: public CompilerBase
     std::string d_instructionFilename;
     int         d_instructionLineNr;
     bool        d_constEvalEnabled{true};
+    bool const  d_randomExtensionEnabled{false};
     bool        d_returnExistingAddressOnAlloc{false};
     bool        d_boundsCheckingEnabled{true};
 
@@ -67,7 +68,8 @@ public:
          INT32
         };
 
-    Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths, bool constEval);
+    Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths,
+             bool constEval, bool randomEnabled);
     int compile();
     void write(std::ostream &out);
 
@@ -151,6 +153,7 @@ private:
     int fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index);
     int assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs);
     int scanCell(std::string const &ident);
+    int randomCell(std::string const &ident);
     int printCell(AddressOrInstruction const &target);
     int preIncrement(AddressOrInstruction const &addr);
     int preDecrement(AddressOrInstruction const &addr);

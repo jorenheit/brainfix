@@ -20,7 +20,7 @@
                 BFX_FUNCTION:           BFXFunction;
 
 // Keywords
-%token LET FUNCTION GLOBAL INCLUDE SCAN PRINT
+%token LET FUNCTION GLOBAL INCLUDE SCAN PRINT RAND
 %token SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT STRUCT
 
 %nonassoc then
@@ -550,6 +550,11 @@ builtin_function:
     SCAN '(' IDENT ')'
     {
         $$ = instruction<&Compiler::scanCell>($3);
+    }
+|
+    RAND '(' IDENT ')'
+    {
+        $$ = instruction<&Compiler::randomCell>($3);
     }
 ;
 

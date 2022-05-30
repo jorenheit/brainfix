@@ -150,36 +150,9 @@ function y = bit8_shift_right(&x, &n)
     let y = from_binary_array(ybits);
 }
 
-
-global __RAND_S1, __RAND_S2;
-function initRng(&s1, &s2)
+function x = rand()
 {
-    /* 
-       https://codebase64.org/doku.php?id=base:small_fast_8-bit_prng
-    */ 
-    
-    __RAND_S1 = s1;
-    __RAND_S2 = #{29, 43, 45, 77, 95, 99, 101, 105,
-                  113, 135, 141, 169, 195, 207, 231, 245}[s2 % 16];
+    let x;
+    __rand(x);
 }
 
-function result = rand()
-{
-    /* 
-       https://codebase64.org/doku.php?id=base:small_fast_8-bit_prng
-    */ 
-    
-    let [8] bits = to_binary_array(__RAND_S1);
-    let [8] shifted = 0;
-    
-    for (let i = 0; i != sizeof(bits) - 1; ++i)
-        shifted[i] = bits[i + 1];
-
-    let result = from_binary_array(shifted);
-    if (!bits[0])
-    {
-        result = bit8_xor(result, __RAND_S2);
-    }
-
-    __RAND_S1 = result;
-}

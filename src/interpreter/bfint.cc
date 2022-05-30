@@ -35,6 +35,7 @@ struct Options
     int          tapeLength{30000};
     std::string  bfFile;
     std::ostream *outStream{&std::cout};
+    bool         random{false};
 };
 
 void printHelp(std::string const &progName)
@@ -46,7 +47,8 @@ void printHelp(std::string const &progName)
                  "                    int8, int16 and int32 (int8 by default).\n"
               << "-n [N]              Specify the number of cells (30,000 by default).\n"
               << "-o [file, stdout]   Specify the output stream (defaults to stdout).\n\n"
-              << "Example: " << progName << " -t int16 -o output.txt program.bf\n";
+              << "--random            Enable Random Brainf*ck extension (support ?-symbol)\n"
+              << "Example: " << progName << " --random -t int16 -o output.txt program.bf\n";
 }
 
 Options parseCmdLine(std::vector<std::string> const &args)
@@ -148,7 +150,11 @@ Options parseCmdLine(std::vector<std::string> const &args)
                 idx += 2;
             }
         }
-    
+        else if (args[idx] == "--random")
+        {
+            opt.random = true;
+            ++idx;
+        }
         else if (idx == args.size() - 1)
         {
             opt.bfFile = args.back();
@@ -189,7 +195,7 @@ try
     buffer << file.rdbuf();
 
     auto ptr = getInterpreter(opt.cellType, opt.tapeLength, buffer.str());
-    ptr->run(std::cin, *opt.outStream);
+    ptr->run(std::cin, *opt.outStream, opt.random);
 }
  catch (std::string const &msg)
 {

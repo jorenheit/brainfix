@@ -4,9 +4,12 @@
 #include <vector>
 #include <stack>
 #include <cassert>
+#include <random>
+#include <chrono>
 
 class BFInterpreterBase
 {
+    
 protected:
     std::vector<int> d_array;
     std::string d_code;
@@ -17,12 +20,15 @@ public:
         d_code(code)
     {}
     
-    virtual void run(std::istream &in = std::cin, std::ostream &out = std::cout) = 0;
+    virtual void run(std::istream &in = std::cin, std::ostream &out = std::cout, bool randEnabled = false) = 0;
 };
 
 template <typename CellType>
 class BFInterpreter: public BFInterpreterBase
 {
+    using RngType = std::mt19937;
+    std::uniform_int_distribution<RngType::result_type> d_uniformDist;
+    RngType d_rng;
 
     size_t d_arrayPointer{0};
     size_t d_codePointer{0};
@@ -38,12 +44,21 @@ class BFInterpreter: public BFInterpreterBase
          END_LOOP = ']',
          PRINT = '.',
          READ = ',',
+         RAND = '?',
         };
 
 public:
-    using BFInterpreterBase::BFInterpreterBase;
+    template <typename ... Args>
+    BFInterpreter(Args&& ... args):
+        BFInterpreterBase(std::forward<Args>(args)...),
+        d_uniformDist(0, std::numeric_limits<CellType>::max())
+    {
+        auto t0 = std::chrono::system_clock::now().time_since_epoch();
+        auto ms = duration_cast<std::chrono::milliseconds>(t0).count();
+        d_rng.seed(ms);
+    }
     
-    virtual void run(std::istream &in = std::cin, std::ostream &out = std::cout) override
+    virtual void run(std::istream &in = std::cin, std::ostream &out = std::cout, bool const randEnabled = false) override
     {
         while (true)
         {
@@ -58,6 +73,12 @@ public:
             case READ: read(in); break;
             case START_LOOP: startLoop(); break;
             case END_LOOP: endLoop(); break;
+            case RAND:
+                {
+                    if (randEnabled)
+                        random();
+                    break;
+                }
             default: break;
             }
 
@@ -151,6 +172,12 @@ private:
         char c;
         in.get(c);
         d_array[d_arrayPointer] = c;
+    }
+
+    void random()
+    {
+        auto val = d_uniformDist(d_rng);
+        d_array[d_arrayPointer] = val;
     }
 
     void printState()

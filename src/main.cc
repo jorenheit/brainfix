@@ -12,6 +12,7 @@ struct Options
     std::string               bfxFile;
     std::ostream*             outStream{&std::cout};
     bool                      constEval{true};
+    bool                      randomExtension{false};
 };
 
 void printHelp(std::string const &progName)
@@ -22,9 +23,11 @@ void printHelp(std::string const &progName)
               << "-t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of\n"
                  "                    int8, int16 and int32 (int8 by default).\n"
               << "-I [path to folder] Specify additional include-path.\n"
-              << "                    This option may appear multiple times to specify multiple folders.\n"
+              << "                      This option may appear multiple times to specify multiple folders.\n"
               << "-O0                 Do NOT do any constant expression evaluation.\n"
               << "-O1                 Do constant expression evaluation (default).\n"
+              << "--random            Enable random number generation (generates the ?-symbol).\n"
+              << "                      Your interpreter must support this extension!\n"
               << "-o [file, stdout]   Specify the output stream/file (default stdout).\n\n"
               << "Example: " << progName << " -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx\n";
 }
@@ -127,6 +130,11 @@ Options parseCmdLine(std::vector<std::string> const &args)
         {
             ++idx;
         }
+        else if (args[idx] == "--random")
+        {
+            opt.randomExtension = true;
+            ++idx;
+        }
         else if (idx == args.size() - 1)
         {
             opt.bfxFile = args.back();
@@ -167,7 +175,7 @@ int main(int argc, char **argv) try
         return 1;
     }
     
-    Compiler c(opt.bfxFile, opt.cellType, opt.includePaths, opt.constEval);
+    Compiler c(opt.bfxFile, opt.cellType, opt.includePaths, opt.constEval, opt.randomExtension);
     int err = c.compile();
 
     if (err) return err;

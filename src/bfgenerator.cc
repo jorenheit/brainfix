@@ -63,6 +63,15 @@ std::string BFGenerator::print(int const addr)
     return ops.str();
 }
 
+std::string BFGenerator::random(int const addr)
+{
+    std::ostringstream ops;
+    ops << movePtr(addr)
+        << '?';
+
+    return ops.str();
+}
+
 std::string BFGenerator::assign(int const lhs, int const rhs)
 {
     validateAddr(lhs, rhs);

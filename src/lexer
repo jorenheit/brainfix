@@ -44,6 +44,7 @@ blanks [[:blank:]\n]
 "||"                        return CompilerBase::OR;
 "__scan"                    return CompilerBase::SCAN;
 "__print"                   return CompilerBase::PRINT;
+"__rand"                    return CompilerBase::RAND;
 "sizeof"                    return CompilerBase::SIZEOF;
 
 

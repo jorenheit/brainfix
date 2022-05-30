@@ -57,7 +57,7 @@ To run the resulting BF, call the included interpreter or any other utility that
 
 ```
 $ bfint -h
-Usage: bfint [options] [target(.bf)]
+Usage: bfint [options] <target(.bf)>
 Options:
 -h                  Display this text.
 -t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of
@@ -584,15 +584,10 @@ All functions below are defined in `std/math.bfx`:
 |   `bit8_xor(x, y)` | Returns bitwise XOR of `x` and `y` (8-bit) |
 |   `bit8_shift_left(x, n)` | Shift the binary representation of `x` by `n` bits to the left. |
 |   `bit8_shift_right(x, n)` | Shift the binary representation of `x` by `n` bits to the right. |
-|   `initRng(s1, s2)` | Initialize the RNG (see below). |
 |   `rand()` | Generate random number (see below). |
 
 #### Pseudorandom Numbers
-A very simple 8-bit RNG that returns values in the range 0-255 has been implemented in the Standard Library to be used in situations where the statistical properties of the distribution are not very important. Let's face it: you're using BrainFix, so they're probably not. The RNG has to be initialized by calling `initRng(s1, s2)`, where `s1` and `s2` are two seeding values: `s1` should be in the range of 0-255 and `s2` should be in the range of 0-15 (larger values will wrap around, e.g. `s2 = 17` will yield the same sequence of numbers as `s2 = 1`). After initializing the RNG, the `rand()` function may be called repeatedly to generate a sequence of numbers that will visit every number in the range 0-255. A total number of 256 * 16 = 4096 unique sequences can therefore be generated.
-
-It is common to use the system clock to obtain appropriate seed-values. This is of course not possible in BrainFix, because Brainf*ck doesn't allow us to communicate with the system kernel. You should just ask the end-user to input two numbers; every unique combination of numbers will then result in a unique 'experience', if you will.
-
-N.B. Algorithm borrowed from [White Flame](https://codebase64.org/doku.php?id=base:small_fast_8-bit_prng).
+To generate random numbers, BrainFix makes use of the [Random Brainfix extension](https://esolangs.org/wiki/Random_Brainfuck), where a `?` symbol tells the interpreter to generate a random number. The way this random number is generated is therefore fully up to the interpreter itself and cannot even be seeded from within BrainFix. If the `rand()`-function is used in a program that is compiled without the `--random` option, a warning will be issued and compilation will proceed as normal. The included interpreter supports this extension (if the `--random` flag is passed in to `bfint`) and will generate a random number uniformly in the range of possible cell-values (0-255 in the single byte case). It is up to the programmer to manipulate the result of `rand()` into the desired range. A common way to do this is by using the modulo-operator as in the example below.
 
 
 ```javascript
@@ -600,27 +595,17 @@ include "std.bfx"
 
 function main()
 {
-    println("Enter two numbers (0-255): ");
-    let s1 = scand();
-    let s2 = scand();
-
-    
-    initRng(s1, s2);
-    let x = rand() % 10;
-    let y = 255;
-    let count = 0;
-    
-    while (x != y)
+    for*(let i = 0; i != 20; ++i)
     {
-        println("Enter your guess (0-9): ");
-        let y = scand();
-        ++count;
+        switch(rand() % 3)
+        {
+            case 0: println("ROCK!");
+            case 1: println("PAPER!");
+            case 2: println("SCISSORS!");
+        }
     }
-
-    prints("You won!! You only needed ");
-    printd(count);
-    println(" guesses :)");
 }
+
 ```
 
 
