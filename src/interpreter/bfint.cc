@@ -39,7 +39,7 @@ struct Options
 
 void printHelp(std::string const &progName)
 {
-    std::cout << "Usage: " << progName << " [options] [target(.bf)]\n"
+    std::cout << "Usage: " << progName << " [options] <target(.bf)>\n"
               << "Options:\n"
               << "-h                  Display this text.\n"
               << "-t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of\n"

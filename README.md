@@ -38,7 +38,7 @@ Building the project results will produce the compiler executable `bfx`. The syn
 
 ```
 $ bfx -h
-Usage: bfx [options] [target(.bfx)]
+Usage: bfx [options] <target(.bfx)>
 Options:
 -h                  Display this text.
 -t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of
