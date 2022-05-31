@@ -805,9 +805,6 @@ int Compiler::applyBinaryFunctionToElement(AddressOrInstruction const &arr,
 
 int Compiler::scanCell()
 {
-    // TODO: change behavior --> return a temp. Let the stdlib assign it to a variable.
-    
-    //    int const addr = addressOf(ident);
     int const addr = allocateTemp();
     d_codeBuffer << d_bfGen.scan(addr);
     d_memory.setValueUnknown(addr);
@@ -825,9 +822,13 @@ int Compiler::printCell(AddressOrInstruction const &target)
 
 int Compiler::randomCell()
 {
-    compilerWarningIf(!d_randomExtensionEnabled, "Random number generation is implemented using the non-standard \'Random Brainf*ck' extension (https://esolangs.org/wiki/Random_Brainfuck). Your interpreter must support the \'?\'-symbol. This warning can be supressed with the --random flag.");
+    static bool warned = false;
+    if (!d_randomExtensionEnabled && !warned)
+    {
+        compilerWarning("Random number generation is implemented using the non-standard 'Random Brainf*ck' extension (https://esolangs.org/wiki/Random_Brainfuck). Your interpreter must support the '?'-symbol.\nThis warning can be supressed with the --random flag.");
+        warned = true;
+    }
     
-    //    int const addr = addressOf(ident);
     int const addr = allocateTemp();
     d_codeBuffer << d_bfGen.random(addr);
     d_memory.setValueUnknown(addr);
