@@ -152,8 +152,8 @@ private:
     
     int fetchElement(AddressOrInstruction const &arr, AddressOrInstruction const &index);
     int assignElement(AddressOrInstruction const &arr, AddressOrInstruction const &index, AddressOrInstruction const &rhs);
-    int scanCell(std::string const &ident);
-    int randomCell(std::string const &ident);
+    int scanCell();
+    int randomCell();
     int printCell(AddressOrInstruction const &target);
     int preIncrement(AddressOrInstruction const &addr);
     int preDecrement(AddressOrInstruction const &addr);

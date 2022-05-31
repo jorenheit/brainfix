@@ -476,7 +476,7 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
     
     TypeSystem::Type rhsType = d_memory.type(rhsAddr);
     
-    if (d_memory.isTemp(rhsAddr) && (sz == -1 || type == rhsType))
+    if (d_memory.isTemp(rhsAddr) && (sz == -1 || type == rhsType) && !d_returnExistingAddressOnAlloc)
     {
         d_memory.rename(rhsAddr, ident, d_scope.current());
         return rhsAddr;
@@ -803,11 +803,12 @@ int Compiler::applyBinaryFunctionToElement(AddressOrInstruction const &arr,
     return returnAddr;
 }
 
-int Compiler::scanCell(std::string const &ident)
+int Compiler::scanCell()
 {
     // TODO: change behavior --> return a temp. Let the stdlib assign it to a variable.
     
-    int const addr = addressOf(ident);
+    //    int const addr = addressOf(ident);
+    int const addr = allocateTemp();
     d_codeBuffer << d_bfGen.scan(addr);
     d_memory.setValueUnknown(addr);
     return addr;
@@ -822,11 +823,12 @@ int Compiler::printCell(AddressOrInstruction const &target)
     return target;
 }
 
-int Compiler::randomCell(std::string const &ident)
+int Compiler::randomCell()
 {
     compilerWarningIf(!d_randomExtensionEnabled, "Random number generation is implemented using the non-standard \'Random Brainf*ck' extension (https://esolangs.org/wiki/Random_Brainfuck). Your interpreter must support the \'?\'-symbol. This warning can be supressed with the --random flag.");
     
-    int const addr = addressOf(ident);
+    //    int const addr = addressOf(ident);
+    int const addr = allocateTemp();
     d_codeBuffer << d_bfGen.random(addr);
     d_memory.setValueUnknown(addr);
     return addr;
@@ -1115,7 +1117,6 @@ int Compiler::equal(AddressOrInstruction const &lhs, AddressOrInstruction const 
                };
 
     auto func = [](int x, int y){
-                    std::cerr <<  x << ", " << y << ", " << (x == y) << '\n';
                     return x == y;
                 };
 

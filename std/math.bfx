@@ -152,7 +152,6 @@ function y = bit8_shift_right(&x, &n)
 
 function x = rand()
 {
-    let x;
-    __rand(x);
+    let x = __rand();
 }
 

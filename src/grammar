@@ -547,14 +547,14 @@ builtin_function:
         $$ = instruction<&Compiler::printCell>($3);
     }
 |
-    SCAN '(' IDENT ')'
+    SCAN '(' ')'
     {
-        $$ = instruction<&Compiler::scanCell>($3);
+        $$ = instruction<&Compiler::scanCell>();
     }
 |
-    RAND '(' IDENT ')'
+    RAND '(' ')'
     {
-        $$ = instruction<&Compiler::randomCell>($3);
+        $$ = instruction<&Compiler::randomCell>();
     }
 ;
 

@@ -139,11 +139,7 @@ function endl()
 
 function c = scanc()
 {
-    /* The argument to __movePtr() is not evaluated,
-    so the return value has to be instantiated explicitly. */
-
-   let c;
-   __scan(c);
+   let c = __scan();
 }
 
 function result = scand()
