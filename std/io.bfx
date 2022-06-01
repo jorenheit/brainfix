@@ -139,7 +139,7 @@ function endl()
 
 function c = scanc()
 {
-   let c = __scan();
+    let c = __scan();
 }
 
 function result = scand()
