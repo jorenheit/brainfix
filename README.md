@@ -569,7 +569,7 @@ switch (x)
 #### Preventing Loop Unrolling with `for*` and `while*`
 Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll loops by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds 50, it will fall back on generating code for executing the loop at runtime. 
 
-However, loop-unrolling can take a long time, resulting in long compilation times for loops with large bodies or many iterations. Especially in the latter case, it can take some time before the compiler realizes it shouldn't unroll the loop at all (since it has to evaluate the body 50 times before coming to this conclusion). To indicate to the compiler that it shouldn't attempt to unroll the loop, we can use `for*` and `while*` instead. Range-based for-loops can always be unrolled because the number of iterations is fixed, so using `for*` in its range-based form has no effect on the output, although the syntax is supported for symmetry.
+However, loop-unrolling can take a long time, resulting in long compilation times for loops with large bodies or many iterations. Especially in the latter case, it can take some time before the compiler realizes it shouldn't unroll the loop at all (since it has to evaluate the body 50 times before coming to this conclusion). To indicate to the compiler that it shouldn't attempt to unroll the loop, we can use `for*` and `while*` instead. For range-based for-loops, the compiler can predetermine the number of iterations; this cannot be changed in the body of the loop. Therefore, it can decide beforehand whether or not to unroll the loop without any compilation time-penalty. Using `for*` will overrule the decision of the compiler and will force it to not unroll, but this will not result in faster compilation times.
 
 ```javascript
 function main()
@@ -590,9 +590,9 @@ function main()
         endl();
     }
 
-    // Range-based for* syntax is supported, but won't produce different code
+    // Will not compile any faster, but won't unroll 
     let [] arr = #{1, 2, 3, 4};
-    for *(let i: arr)
+    for* (let i: arr)
     {
         printd(i)
         endl();

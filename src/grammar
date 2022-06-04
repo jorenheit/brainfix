@@ -700,7 +700,7 @@ for_statement:
 |
     FOR '*' '(' LET IDENT ':' expression ')' statement
     {
-        $$ = instruction<&Compiler::forRangeStatement>($5, $7, $9);
+        $$ = instruction<&Compiler::forRangeStatementRuntime>($5, $7, $9);
     }
 ;
 
