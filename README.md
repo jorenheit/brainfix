@@ -429,6 +429,7 @@ The following operators are supported by BrainFix:
 | `%=`   |  assigns the remainder of lhs / rhs and assigns it to lhs |
 | `/=%`  |  divides lhs by rhs, returns the remainder |
 | `%=/`  |  assigns the remainder to lhs, returns the result of the division |
+| `^=`   |  raises lhs to power rhs, returns the result |
 | `&&`   |  logical AND |
 | `\|\|` |  logical OR |
 | `!`    |  (unary) logical NOT |
