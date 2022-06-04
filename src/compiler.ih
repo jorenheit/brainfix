@@ -4,6 +4,7 @@
 
 // $insert class.h
 #include <set>
+#include <cmath>
 #include "compiler.h"
 
 inline void Compiler::print()

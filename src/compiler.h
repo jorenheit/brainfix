@@ -165,6 +165,7 @@ private:
     int subtract(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int multiplyBy(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int multiply(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
+    int power(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int equal(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int notEqual(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int less(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);

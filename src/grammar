@@ -34,6 +34,7 @@
 %left '<' '>' LE GE
 %left '+' '-'
 %left '*' '/' '%'
+%left '^'
 %right INC DEC  '!' unaryMinus
 %left '['
 %left '.'
@@ -488,6 +489,11 @@ expression:
                 $3,
                 Compiler::BinaryFunction(&Compiler::modDiv)
             );
+    }
+|
+    expression '^' expression
+    {
+        $$ = instruction<&Compiler::power>($1, $3);
     }
 |
     expression '%' expression

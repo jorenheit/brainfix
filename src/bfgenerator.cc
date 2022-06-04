@@ -190,6 +190,24 @@ std::string BFGenerator::multiply(int const lhs, int const rhs, int const result
     return ops.str();
 }
 
+std::string BFGenerator::power(int const base, int const pow, int const result)
+{
+    validateAddr(base, pow, result);
+
+    int const tmp = f_getTemp();
+    
+    std::ostringstream ops;
+    ops << setToValue(result, 1)
+        << assign(tmp, pow)
+        << "["
+        <<     multiplyBy(result, base)
+        <<     decr(tmp)
+        << "]"
+        << movePtr(result);
+
+    return ops.str();
+}
+
 std::string BFGenerator::multiplyBy(int const target, int const factor)
 {
     validateAddr(target, factor);

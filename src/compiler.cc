@@ -986,6 +986,22 @@ int Compiler::multiply(AddressOrInstruction const &lhs, AddressOrInstruction con
     
 }
 
+int Compiler::power(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
+{
+    compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
+
+    int const ret = allocateTemp();
+    auto bf = [&, this](){
+                  d_codeBuffer << d_bfGen.power(lhs, rhs, ret);
+              };
+
+    auto func = [](int x, int y){
+                    return std::pow(x, y);
+                };
+
+    return eval<0b00>(bf, func, ret, lhs, rhs);
+}
+
 int Compiler::divide(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs)
 {
     compilerErrorIf(lhs < 0 || rhs < 0, "Use of void-expression in division.");
