@@ -27,7 +27,7 @@
 %nonassoc ELSE
 
 // Operators
-%right '=' ADD SUB MUL MOD DIV DIVMOD MODDIV
+%right '=' ADD SUB MUL MOD DIV DIVMOD MODDIV POW
 %left OR
 %left AND
 %left EQ NE
@@ -494,6 +494,21 @@ expression:
     expression '^' expression
     {
         $$ = instruction<&Compiler::power>($1, $3);
+    }
+|
+    variable POW expression
+    {
+        $$ = instruction<&Compiler::powerBy>($1, $3);
+    }
+|
+    array_element POW expression
+    {
+        $$  = instruction<&Compiler::applyBinaryFunctionToElement>(
+                ($1).first,
+                ($1).second,
+                $3,
+                Compiler::BinaryFunction(&Compiler::powerBy)
+            ); 
     }
 |
     expression '%' expression

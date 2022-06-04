@@ -34,6 +34,7 @@ blanks [[:blank:]\n]
 "*="                        return CompilerBase::MUL;
 "/="                        return CompilerBase::DIV;
 "%="                        return CompilerBase::MOD;
+"^="                        return CompilerBase::POW;
 "/=%"                       return CompilerBase::DIVMOD;
 "%=/"                       return CompilerBase::MODDIV;
 "<="                        return CompilerBase::LE;

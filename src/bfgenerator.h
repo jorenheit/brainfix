@@ -55,6 +55,7 @@ public:
     std::string multiply(int const lhs, int const rhs, int const result);
     std::string multiplyBy(int const target, int const rhs);
     std::string power(int const lhs, int const rhs, int const result);
+    std::string powerBy(int const lhs, int const rhs);
     std::string divmod(int const num, int const denom, int const divResult, int const modResult);
     std::string equal(int const lhs, int const rhs, int const result);
     std::string notEqual(int const lhs, int const rhs, int const result);

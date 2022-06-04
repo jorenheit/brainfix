@@ -190,24 +190,6 @@ std::string BFGenerator::multiply(int const lhs, int const rhs, int const result
     return ops.str();
 }
 
-std::string BFGenerator::power(int const base, int const pow, int const result)
-{
-    validateAddr(base, pow, result);
-
-    int const tmp = f_getTemp();
-    
-    std::ostringstream ops;
-    ops << setToValue(result, 1)
-        << assign(tmp, pow)
-        << "["
-        <<     multiplyBy(result, base)
-        <<     decr(tmp)
-        << "]"
-        << movePtr(result);
-
-    return ops.str();
-}
-
 std::string BFGenerator::multiplyBy(int const target, int const factor)
 {
     validateAddr(target, factor);
@@ -228,6 +210,40 @@ std::string BFGenerator::multiplyBy(int const target, int const factor)
     
     return ops.str();
 }
+
+std::string BFGenerator::power(int const lhs, int const rhs, int const result)
+{
+    validateAddr(lhs, rhs, result);
+
+    std::ostringstream ops;
+    ops << assign(result, lhs)
+        << powerBy(result, rhs);
+
+    return ops.str();
+}
+
+std::string BFGenerator::powerBy(int const base, int const pow)
+{
+    validateAddr(base, pow);
+    
+    int const tmp = f_getTempBlock(2);
+    int const baseCopy = tmp + 0;
+    int const powCopy = tmp + 1;
+    
+    std::ostringstream ops;
+    ops << assign(baseCopy, base)
+        << setToValue(base, 1)
+        << assign(powCopy, pow)
+        << "["
+        <<     multiplyBy(base, baseCopy)
+        <<     decr(powCopy)
+        << "]"
+        << movePtr(base);
+
+    return ops.str();
+}
+
+
 
 std::string BFGenerator::logicalNot(int const addr, int const result)
 {
