@@ -1,17 +1,5 @@
 // STD MATH
 
-function y = pow(&x, &p)
-{
-    let y = 1;
-    for (let i = 0; i != p; ++i)
-        y *= x;
-}
-
-function y = square(&x)
-{
-    let y = x * x;
-}
-
 function s = sqrt(&x)
 {
     let s = 0;

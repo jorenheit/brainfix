@@ -421,6 +421,7 @@ The following operators are supported by BrainFix:
 | `*`    |  multiply |
 | `/`    |  divide |
 | `%`    |  modulo |
+| '^'    |  power |
 | `+=`   |  add to left-hand-side (lhs), returns lhs |
 | `-=`   |  subtract from lhs, returns lhs |
 | `*=`   |  multiply lhs by rhs, returns lhs |
@@ -574,8 +575,6 @@ All functions below are defined in `std/math.bfx`:
 
 |     function     | description  |
 | ---------------- | ------------ |
-|   `pow(x,y)`	   | Calculate x raised to the power y |
-|   `square(x)`    | Calculate the square of x |
 |   `sqrt(x)`	   | Calculate the square root of x, rounded down |
 |   `factorial(n)` | Calculate n! (overflows for n > 5) |
 |   `min(x,y)`     | Returns the minimum of x and y |
