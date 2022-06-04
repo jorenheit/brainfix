@@ -485,6 +485,7 @@ for (let i = 0; i != 10; ++i)
     printd(j);
     endl();
 }
+```
 
 #### Range-based for-loops
 It is common to iterate over the elements of an array. In some cases, where you don't need the index of the elements as an accessible variable, you can specify the array you need to iterate over without using an index:
@@ -528,7 +529,7 @@ else
 ```
 
 #### Switch Statements
-In BrainFix, a `switch` statement is simply a syntactic alternative to an `if-else` ladder. Most compiled languages like C and C++ will generate code that jumps to the appropriate case-label (which therefore has to be constant expression), which in many cases is faster than the equivalent `if-else` ladder. In BrainF*ck, this is difficult to implement due to the lack of jump-instructions. For the same reason, a `break` statement is not required in the body of a case and it's therefore not possible to 'fall through' cases: only one case will ever be executed.
+In BrainFix, a `switch` statement is simply a syntactic alternative to an `if-else` ladder. Most compiled languages like C and C++ will generate code that jumps to the appropriate case-label (which therefore has to be constant expression), which in many cases is faster than the equivalent `if-else` ladder. In BrainF*ck, this is difficult to implement due to the lack of jump-instructions. For the same reason, a `break` statement is not required in the body of a case and it's therefore not possible to 'fall through' cases: only one case will ever be executed. 
 
 ```javascript
 let done = false;
@@ -552,10 +553,23 @@ while (!done)
 }
 ```
 
-#### Preventing Loop Unrolling with `for*` and `while*`
-Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll each loop (C-sytle `for` and `while`; range-based for-loops can always be unrolled because the number of iterations is fixed) by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds 50, it will fall back on generating code for executing the loop at runtime.
+Unlike in C, case labels in Brainfix do not have to be constant expressions, which allows us to write code like this (although it might not be recommended):
 
-However, loop-unrolling can take a long time, resulting in long compilation times for loops with large bodies or many iterations. Especially in the latter case, it can take some time before the compiler realizes it shouldn't unroll the loop at all (since it has to evaluate the body 50 times before coming to this conclusion). To indicate to the compiler that it shouldn't attempt to unroll the loop, we can use `for*` and `while*` instead.
+```javascript
+let x = scand();
+let y = scand();
+
+switch (x)
+{
+    case y: println("Same");
+    default: println("Different");
+}
+```    
+
+#### Preventing Loop Unrolling with `for*` and `while*`
+Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll loops by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds 50, it will fall back on generating code for executing the loop at runtime. 
+
+However, loop-unrolling can take a long time, resulting in long compilation times for loops with large bodies or many iterations. Especially in the latter case, it can take some time before the compiler realizes it shouldn't unroll the loop at all (since it has to evaluate the body 50 times before coming to this conclusion). To indicate to the compiler that it shouldn't attempt to unroll the loop, we can use `for*` and `while*` instead. Range-based for-loops can always be unrolled because the number of iterations is fixed, so using `for*` in its range-based form has no effect on the output, although the syntax is supported for symmetry.
 
 ```javascript
 function main()
