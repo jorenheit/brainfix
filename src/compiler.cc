@@ -1429,6 +1429,67 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
     return -1;
 }
 
+int Compiler::forRangeStatement(std::string const &ident, Instruction const &array, Instruction const &body)
+{
+    State state = save();
+    int const arrayAddr = array();
+    int const nIter = d_memory.sizeOf(arrayAddr);
+    if (nIter > MAX_LOOP_UNROLL_ITERATIONS)
+    {
+        restore(std::move(state));
+        return forRangeStatementRuntime(ident, array, body);
+    }
+
+    d_scope.push();
+    int const elementAddr = declareVariable(ident, TypeSystem::Type(1));
+    for (int i = 0; i != nIter; ++i)
+    {
+        assign(elementAddr, arrayAddr + i);
+        body();
+        d_returnExistingAddressOnAlloc = true;
+    }    
+
+    d_returnExistingAddressOnAlloc = false;
+    std::string outOfScope = d_scope.pop();
+    d_memory.freeLocals(outOfScope);
+
+    return -1;
+
+}
+
+int Compiler::forRangeStatementRuntime(std::string const &ident, Instruction const &array, Instruction const &body)
+{
+    int const tmp = allocateTempBlock(3);
+    int const iterator = tmp + 0;
+    int const flag = tmp + 1;
+    int const finalIdx = tmp + 2;
+    
+    disableConstEval();
+    int const arrayAddr = array();
+    int const nIter = d_memory.sizeOf(arrayAddr);
+    d_scope.push();
+    int const elementAddr = declareVariable(ident, TypeSystem::Type(1));
+    compilerErrorIf(elementAddr < 0 || arrayAddr < 0, "Use of void-expression in for-initialization.");
+
+    d_codeBuffer << d_bfGen.setToValue(iterator, 0)
+                 << d_bfGen.setToValue(finalIdx, nIter)
+                 << d_bfGen.setToValue(flag, 1)
+                 << "["
+                 <<    d_bfGen.fetchElement(arrayAddr, nIter, iterator, elementAddr);
+
+    body();
+
+    d_codeBuffer <<    d_bfGen.incr(iterator)
+                 <<    d_bfGen.assign(flag, notEqual(iterator, finalIdx))
+                 << "]";
+
+    std::string outOfScope = d_scope.pop();
+    d_memory.freeLocals(outOfScope);
+
+    enableConstEval();
+    return -1;
+}
+
 int Compiler::whileStatement(Instruction const &condition, Instruction const &body)
 {
     if (!d_constEvalEnabled)

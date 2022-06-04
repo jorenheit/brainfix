@@ -692,6 +692,16 @@ for_statement:
     {
         $$ = instruction<&Compiler::forStatementRuntime>($4, $6, $8, $10);
     }
+|
+    FOR '(' LET IDENT ':' expression ')' statement
+    {
+        $$ = instruction<&Compiler::forRangeStatement>($4, $6, $8);
+    }
+|
+    FOR '*' '(' LET IDENT ':' expression ')' statement
+    {
+        $$ = instruction<&Compiler::forRangeStatement>($5, $7, $9);
+    }
 ;
 
 if_statement:

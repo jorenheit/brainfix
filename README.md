@@ -468,47 +468,92 @@ function modDivExample()
 ```
 
 ### Flow
-There are 4 ways to control flow in a BrainFix-program: `if` (-`else`), `switch`, `for` and `while`. Each of these uses similar syntax as to what we're familiar with from other C-like programming languages. Each of the flow-control mechanisms is illustrated in the example below:
+There are 4 ways to control flow in a BrainFix-program: `if` (-`else`), `switch`, `for` and `while`. Each of these uses similar syntax as to what we're familiar with from other C-like programming languages. Below we will see an example for each of these statements.
+
+#### C-style for-loops
+The first kind of `for`-loop has the classic C-syntax we all know and love. You specify the initialization-expression (cannot currently be an empty expression), the loop-condition and the increment-statement:
 
 ```javascript
-include "std.bfx"
+// Single statement, no curly braces necessary
+for (let i = 0; i != 10; ++i)
+    printd(i);
 
-function main()
+// Compound statement
+for (let i = 0; i != 10; ++i)
 {
-    let n = scand();
-	
-    // Print 'xoxoxo...' using a for-loop
-    for (let i = 0; i < n; ++i)
-    {
-        if (i % 2 == 0)
-            printc('x');  // defined in the std/io library
-        else
-            printc('o');
-    }
-    endl();               // newline (also from std/io)
+    let j = i + 10;
+    printd(j);
+    endl();
+}
 
-    // Let n go to zero
-    while (n > 0)
+#### Range-based for-loops
+It is common to iterate over the elements of an array. In some cases, where you don't need the index of the elements as an accessible variable, you can specify the array you need to iterate over without using an index:
+
+```javascript
+let [] array = #{1, 2, 3, 4, 5};
+
+for (let x: array)
+{
+    printd(x);
+    endl();
+}
+```
+
+#### While-loops
+The while-loop also has syntax familiar from other C-style languages. It needs no further introduction:
+
+```javascript
+let [] str = "Hello World";
+let i = 0;
+while (str[i] != 'W')
+{
+    printc(str[i++]);
+}
+endl();
+```
+
+#### If-statements
+The if-syntax is again identical to that of C. It supports arbitrarily long if-else ladders:
+
+```javascript
+let x = scand();
+if (x < 10)
+    println("Small");
+else if (x < 20)
+    println("Medium");
+else
+{
+    println("Large!")
+}
+```
+
+#### Switch Statements
+In BrainFix, a `switch` statement is simply a syntactic alternative to an `if-else` ladder. Most compiled languages like C and C++ will generate code that jumps to the appropriate case-label (which therefore has to be constant expression), which in many cases is faster than the equivalent `if-else` ladder. In BrainF*ck, this is difficult to implement due to the lack of jump-instructions. For the same reason, a `break` statement is not required in the body of a case and it's therefore not possible to 'fall through' cases: only one case will ever be executed.
+
+```javascript
+let done = false;
+while (!done)
+{
+    prints("Enter a number 0-3, or 9 to quit: ");
+    let x = scand();
+    switch (x)
     {
-        switch (--n)
+        case 0: println("Zero");
+        case 1: println("One");
+        case 2: println("Two");
+        case 3: println("Three");
+        case 9:
         {
-            case 0:
-                 println("Done!");
-            case 1:
-                 println("Almost done!");
-            default:
-            {
-                prints("Working on it: ");
-                printd(n);
-                endl();
-            }
+            println("Quitting ...");
+            done = true;
         }
+        default: println("Not sure ...");
     }
 }
 ```
 
 #### Preventing Loop Unrolling with `for*` and `while*`
-Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll each loop (both `for` and `while`) by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds 50, it will fall back on generating code for executing the loop at runtime.
+Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll each loop (C-sytle `for` and `while`; range-based for-loops can always be unrolled because the number of iterations is fixed) by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds 50, it will fall back on generating code for executing the loop at runtime.
 
 However, loop-unrolling can take a long time, resulting in long compilation times for loops with large bodies or many iterations. Especially in the latter case, it can take some time before the compiler realizes it shouldn't unroll the loop at all (since it has to evaluate the body 50 times before coming to this conclusion). To indicate to the compiler that it shouldn't attempt to unroll the loop, we can use `for*` and `while*` instead.
 
@@ -530,11 +575,17 @@ function main()
         printd(i);
         endl();
     }
+
+    // Range-based for* syntax is supported, but won't produce different code
+    let [] arr = #{1, 2, 3, 4};
+    for *(let i: arr)
+    {
+        printd(i)
+        endl();
+    }
 }
 ```
 
-#### Switch Statements
-In BrainFix, a `switch` statement is simply a syntactic alternative to an `if-else` ladder. Most compiled languages like C and C++ will generate code that jumps to the appropriate case-label (which therefore has to be constant expression), which in many cases is faster than the equivalent `if-else` ladder. In BrainF*ck, this is difficult to implement due to the lack of jump-instructions. For the same reason, a `break` statement is not required in the body of a case and it's therefore not possible to 'fall through' cases: only one case will ever be executed.
 
 #### No return, break or continue?
 BrainF*ck does not contain an opcode that let's us jump to arbitrary places in the code, which makes it very hard to implement `goto`-like features like `return`, `break` and `continue`. Instead, it is up to the programmer to implement conditional blocks using `if`, `if`-`else` or `switch` to emulate these jumps.

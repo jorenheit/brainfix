@@ -36,9 +36,8 @@ function printc(&c)
 
 function prints(&str)
 {
-    let i = 0;
-    while (i < sizeof(str) && str[i] != 0)
-        printc(str[i++]);
+    for (let c: str)
+        printc(c);
 }
 
 function println(&x)
@@ -50,19 +49,17 @@ function println(&x)
 function printd(&x)
 {
     let [3] str = to_string(x);
-    for(let i = 0; i != 3; ++i)
-        if (str[i])
-            printc(str[i]);
+    for (let d: str)
+        if (d) printc(d);
 }
-
 
 function printd_4(&x)
 {
     let [4] str = to_string_4(x);
-    for(let i = 0; i != 4; ++i)
-        if (str[i])
-            printc(str[i]);
+    for (let d: str)
+        if (d) printc(d);
 }
+
 
 function str = to_string(x)
 {
