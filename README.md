@@ -291,7 +291,7 @@ function main()
 Only positive integers are supported; the compiler will throw an error on the use of the unary minus sign. A warning is issued when the program contains numbers that exceed the range of the specified type (e.g. 255 for the default `int8` type).
 
 #### Indexing
-Once an variable is declared (as an array), it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator. When the index to the array can be resolved at compile-time, the compiler will check if it is withing bounds. Otherwise, it's up to the programmer to make sure the index is within the size of the indexed variable.
+Once a variable is declared (as an array), it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator. When the index to the array can be resolved at compile-time, the compiler will check if it is within bounds. Otherwise, it's up to the programmer to make sure the index is within the size of the indexed variable.
 
 ```javascript
 function main()
@@ -421,7 +421,7 @@ The following operators are supported by BrainFix:
 | `*`    |  multiply |
 | `/`    |  divide |
 | `%`    |  modulo |
-| '^'    |  power |
+| `^`    |  power |
 | `+=`   |  add to left-hand-side (lhs), returns lhs |
 | `-=`   |  subtract from lhs, returns lhs |
 | `*=`   |  multiply lhs by rhs, returns lhs |
