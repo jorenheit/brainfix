@@ -10,6 +10,8 @@
 // $insert classHead
 class Scanner: public ScannerBase
 {
+    int d_nestedCommentLevel;
+    
 public:
     Scanner(std::string const &infile, std::string const &outfile);
     using ScannerBase::pushStream;

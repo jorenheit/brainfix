@@ -71,6 +71,7 @@ blanks [[:blank:]\n]
                             }
 
 "/*"                        {
+                                ++d_nestedCommentLevel;
                                 more();
                                 begin(StartCondition_::ccomment);
                             }
@@ -94,10 +95,15 @@ blanks [[:blank:]\n]
 
 <eolcomment>{
 \n|\r                       begin(StartCondition_::INITIAL);
-.                           more();
+.                           
 }
                 
 <ccomment>{
-"*/"                        begin(StartCondition_::INITIAL);
-.|\n|\r                     more();
+"/*"                        ++d_nestedCommentLevel;
+"*/"                        {
+                                if (--d_nestedCommentLevel == 0)
+                                   begin(StartCondition_::INITIAL);
+                                   
+                            }
+.|\n|\r                     
 }
