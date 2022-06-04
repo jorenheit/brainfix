@@ -36,8 +36,9 @@ function printc(&c)
 
 function prints(&str)
 {
-    for (let c: str)
-        printc(c);
+    let i = 0;
+    while (i < sizeof(str) && str[i] != 0)
+        printc(str[i++]);    
 }
 
 function println(&x)
