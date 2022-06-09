@@ -100,11 +100,12 @@ blanks [[:blank:]\n]
 }
                 
 <ccomment>{
-"/*"                        ++d_nestedCommentLevel;
+"/*"                        {
+                                 ++d_nestedCommentLevel;
+                            }
 "*/"                        {
-                                if (--d_nestedCommentLevel == 0)
+                                if (d_nestedCommentLevel == 0)
                                    begin(StartCondition_::INITIAL);
-                                   
                             }
 .|\n|\r                     
 }
