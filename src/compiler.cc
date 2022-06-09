@@ -385,9 +385,9 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     }
 
     // Execute body of the function
-    d_scope.pushFunction(func.name());
+    enterScope(func.name());
     func.body()();
-    d_scope.popFunction();
+    exitScope(func.name());
     
 
     // Move return variable to local scope before cleaning up (if non-void)
@@ -1312,10 +1312,9 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
 
     if (d_constEvalEnabled && !d_memory.valueUnknown(conditionAddr))
     {
-        d_scope.push();
+        enterScope();
         (d_memory.value(conditionAddr) > 0 ? ifBody : elseBody)();
-        std::string const outOfScope = d_scope.pop();
-        d_memory.freeLocals(outOfScope);
+        exitScope();
         return -1;
     }
 
@@ -1330,7 +1329,7 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
                  << "[";
 
     {
-        d_scope.push();
+        enterScope();
         ifBody();
         std::string const outOfScope = d_scope.pop();
         d_memory.freeLocals(outOfScope);
@@ -1342,7 +1341,7 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
                  << "[";
 
     {
-        d_scope.push();
+        enterScope();
         elseBody();
         std::string const outOfScope = d_scope.pop();
         d_memory.freeLocals(outOfScope);
@@ -1364,6 +1363,25 @@ int Compiler::mergeInstructions(Instruction const &instr1, Instruction const &in
     return -1;
 }
 
+void Compiler::enterScope(std::string const &name)
+{
+    d_scope.push(name);
+}
+
+void Compiler::exitScope(std::string const &name)
+{
+    if (name.empty())
+    {
+        std::string const outOfScope = d_scope.pop();
+        d_memory.freeLocals(outOfScope);
+    }
+    else
+    {
+        d_scope.popFunction(name);
+        // memory cleanup performed by ::call()
+    }
+}
+
 int Compiler::forStatement(Instruction const &init, Instruction const &condition,
                            Instruction const &increment, Instruction const &body)
 {
@@ -1371,8 +1389,8 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
         return forStatementRuntime(init, condition, increment, body);
 
     State state = save();
-    
-    d_scope.push();
+
+    enterScope();
     init();
     int conditionAddr = condition();
     if (d_memory.valueUnknown(conditionAddr))
@@ -1397,9 +1415,8 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
     }    
 
     d_returnExistingAddressOnAlloc = false;
-    std::string outOfScope = d_scope.pop();
-    d_memory.freeLocals(outOfScope);
-
+    exitScope();
+    
     return -1;
 }
 
@@ -1407,7 +1424,7 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
                                   Instruction const &increment, Instruction const &body)
 {
     int const flag = allocateTemp();
-    d_scope.push();
+    enterScope();
     disableConstEval();
 
     init();
@@ -1422,9 +1439,7 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
     d_codeBuffer << d_bfGen.assign(flag, condition())
                  << "]";
 
-    std::string outOfScope = d_scope.pop();
-    d_memory.freeLocals(outOfScope);
-
+    exitScope();
     enableConstEval();
     return -1;
 }
@@ -1440,7 +1455,7 @@ int Compiler::forRangeStatement(std::string const &ident, Instruction const &arr
         return forRangeStatementRuntime(ident, array, body);
     }
 
-    d_scope.push();
+    enterScope();
     int const elementAddr = declareVariable(ident, TypeSystem::Type(1));
     for (int i = 0; i != nIter; ++i)
     {
@@ -1450,9 +1465,8 @@ int Compiler::forRangeStatement(std::string const &ident, Instruction const &arr
     }    
 
     d_returnExistingAddressOnAlloc = false;
-    std::string outOfScope = d_scope.pop();
-    d_memory.freeLocals(outOfScope);
-
+    exitScope();
+    
     return -1;
 
 }
@@ -1467,7 +1481,7 @@ int Compiler::forRangeStatementRuntime(std::string const &ident, Instruction con
     disableConstEval();
     int const arrayAddr = array();
     int const nIter = d_memory.sizeOf(arrayAddr);
-    d_scope.push();
+    enterScope();
     int const elementAddr = declareVariable(ident, TypeSystem::Type(1));
     compilerErrorIf(elementAddr < 0 || arrayAddr < 0, "Use of void-expression in for-initialization.");
 
@@ -1483,9 +1497,7 @@ int Compiler::forRangeStatementRuntime(std::string const &ident, Instruction con
                  <<    d_bfGen.assign(flag, notEqual(iterator, finalIdx))
                  << "]";
 
-    std::string outOfScope = d_scope.pop();
-    d_memory.freeLocals(outOfScope);
-
+    exitScope();
     enableConstEval();
     return -1;
 }
@@ -1496,8 +1508,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
         return whileStatementRuntime(condition, body);
 
     State state = save();
-    
-    d_scope.push();
+    enterScope();
     
     int conditionAddr = condition();
     if (d_memory.valueUnknown(conditionAddr))
@@ -1521,9 +1532,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     }
     
     d_returnExistingAddressOnAlloc = false;
-    std::string outOfScope = d_scope.pop();
-    d_memory.freeLocals(outOfScope);
-
+    exitScope();
     return -1;    
 }
 
@@ -1532,7 +1541,7 @@ int Compiler::whileStatementRuntime(Instruction const &condition, Instruction co
     int const conditionAddr = condition();
     compilerErrorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
 
-    d_scope.push();
+    enterScope();
     disableConstEval();
     d_codeBuffer << d_bfGen.movePtr(conditionAddr)
                  << "[";
@@ -1541,8 +1550,7 @@ int Compiler::whileStatementRuntime(Instruction const &condition, Instruction co
     d_codeBuffer << d_bfGen.assign(conditionAddr, condition())
                  << "]";
 
-    std::string outOfScope = d_scope.pop();
-    d_memory.freeLocals(outOfScope);
+    exitScope();
     enableConstEval();
     return -1;
 }
@@ -1569,10 +1577,9 @@ int Compiler::switchStatement(Instruction const &compareExpr,
             if (d_memory.value(caseAddr) == compareVal)
             {
                 // Case match! execute case body
-                d_scope.push();
+                enterScope();
                 cases[i].second();
-                std::string const outOfScope = d_scope.pop();
-                d_memory.freeLocals(outOfScope);
+                exitScope();
                 return -1;
             }
         }
@@ -1580,10 +1587,9 @@ int Compiler::switchStatement(Instruction const &compareExpr,
         if (runtimeCases.size() == 0)
         {
             // all cases handled, no match -> handle default case
-            d_scope.push();
+            enterScope();
             defaultCase();
-            std::string const outOfScope = d_scope.pop();
-            d_memory.freeLocals(outOfScope);
+            exitScope();
             return -1;
         }
     }
@@ -1609,11 +1615,10 @@ int Compiler::switchStatement(Instruction const &compareExpr,
                      << "["
                      <<     d_bfGen.setToValue(goToDefault, 0);
 
-        d_scope.push();
+        enterScope();
         cases[caseIdx].second();
-        std::string const outOfScope = d_scope.pop();
-        d_memory.freeLocals(outOfScope);
-
+        exitScope();
+        
         d_codeBuffer << d_bfGen.setToValue(flag, 0)
                      << "]";
 
@@ -1622,11 +1627,10 @@ int Compiler::switchStatement(Instruction const &compareExpr,
     d_codeBuffer << d_bfGen.movePtr(goToDefault)
                  << "[";
 
-    d_scope.push();
+    enterScope();
     defaultCase();
-    std::string const outOfScope = d_scope.pop();
-    d_memory.freeLocals(outOfScope);
-
+    exitScope();
+    
     d_codeBuffer << d_bfGen.setToValue(goToDefault, 0)
                  << "]";
 

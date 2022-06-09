@@ -87,6 +87,8 @@ private:
 
     State save();
     void restore(State &&state);
+    void enterScope(std::string const &name = "");
+    void exitScope(std::string const &name = "");
 
     bool setConstEval(bool const val);
     bool enableConstEval();

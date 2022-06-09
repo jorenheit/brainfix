@@ -90,9 +90,8 @@ public:
     std::string function() const;
     std::string current() const;
     bool containsFunction(std::string const &name) const;
-    void pushFunction(std::string const &name);
-    void push();
-    std::string popFunction();
+    void push(std::string const &name = "");
+    std::string popFunction(std::string const &name);
     std::string pop();
 };
     

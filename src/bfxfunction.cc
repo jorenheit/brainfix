@@ -33,24 +33,29 @@ bool Scope::containsFunction(std::string const &name) const
     return it != d_stack.end();
 }
 
-void Scope::pushFunction(std::string const &name)
+std::string Scope::popFunction(std::string const &name)
 {
-    d_stack.push_back(std::pair<std::string, StackType<int>>(name, StackType<int>{}));
-}
-
-std::string Scope::popFunction()
-{
+    assert(name == function() && "trying to exit function-scope other than current function");
+    
     std::string top = current();
     d_stack.pop_back();
     return top;
 }
 
-void Scope::push()
+void Scope::push(std::string const &name)
 {
-    static int counter = 0;
-    
-    auto &subScopeStack = d_stack.back().second;
-    subScopeStack.push_back(++counter);
+    if (name.empty())
+    {
+        static int counter = 0;
+        auto &subScopeStack = d_stack.back().second;
+        subScopeStack.push_back(++counter);
+    }
+    else
+    {
+        d_stack.push_back(std::pair<std::string, StackType<int>>(name, StackType<int>{}));
+        //        d_stack.emplace_back(name, StackType<int>{});
+        // TODO: check
+    }
 }
 
 std::string Scope::pop()
