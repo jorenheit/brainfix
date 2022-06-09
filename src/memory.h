@@ -99,8 +99,8 @@ private:
     int findFree(int sz = 1);
     void place(TypeSystem::Type type, int const addr, bool const recursive = false);
 
-    template <typename Predicate>
-    void freeIf(Predicate &&pred);
+    template <typename Predicate, typename Debug>
+    void freeIf(Predicate &&pred, Debug &&debug);
 };
 
 inline size_t Memory::size() const
@@ -108,14 +108,15 @@ inline size_t Memory::size() const
     return d_memory.size();
 }
 
-template <typename Predicate>
-void Memory::freeIf(Predicate&& pred)
+template <typename Predicate, typename Debug>
+void Memory::freeIf(Predicate&& pred, Debug&& debug)
 {
     for (size_t idx = 0; idx < d_memory.size(); ++idx)
     {
         Cell &cell = d_memory[idx];
         if (pred(cell))
         {
+            debug(idx);
             for (int offset = 1; offset < cell.size(); ++offset)
             {
                 Cell &referenced = d_memory[idx + offset];

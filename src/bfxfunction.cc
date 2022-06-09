@@ -22,6 +22,12 @@ std::string Scope::current() const
     return result;
 }
 
+std::string Scope::enclosing() const
+{
+    std::string const curr = current();
+    return d_stack.back().second.empty() ? "" : curr.substr(0, curr.find_last_of("::") - 1);
+}
+
 bool Scope::containsFunction(std::string const &name) const
 {
     auto const it = std::find_if(d_stack.begin(), d_stack.end(),

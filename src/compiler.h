@@ -30,6 +30,7 @@ class Compiler: public CompilerBase
 
     std::map<std::string, BFXFunction>  d_functionMap;
     std::map<std::string, int>          d_constMap;
+    std::map<std::string, int>          d_continueFlagMap;
     std::vector<std::string>            d_includePaths;
     std::ostringstream                  d_codeBuffer;
     
@@ -87,8 +88,11 @@ private:
 
     State save();
     void restore(State &&state);
-    void enterScope(std::string const &name = "");
+    void enterScope(bool const allocContinueAddr = true);
+    void enterScope(std::string const &name);
     void exitScope(std::string const &name = "");
+    void allocateContinueAddress(bool const alloc);
+    int getCurrentContinueFlag() const;
 
     bool setConstEval(bool const val);
     bool enableConstEval();
@@ -187,7 +191,7 @@ private:
     void divModPair(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs,
                int const divResult, int const modResult);
 
-    int ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody);  
+    int ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody, bool const scoped = true);  
     int forStatement(Instruction const &init, Instruction const &condition,
                      Instruction const &increment, Instruction const &body);
     int forStatementRuntime(Instruction const &init, Instruction const &condition,

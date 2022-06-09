@@ -330,7 +330,16 @@ int Compiler::sizeOfOperator(std::string const &ident)
 
 int Compiler::statement(Instruction const &instr)
 {
-    instr();
+    int const continueFlag = getCurrentContinueFlag();
+
+    std::cerr << "Statement in " << d_scope.current() << "; continueFlag at " << continueFlag << ", value "
+              << (d_memory.valueUnknown(continueFlag) ? -1 : d_memory.value(continueFlag)) << '\n';
+    
+    
+    Instruction const condition = [=](){ return continueFlag; };
+    Instruction const elseBody = [](){ return -1; };
+    ifStatement(condition, instr, elseBody, false);
+    
     d_memory.freeTemps(d_scope.current());
     return -1;
 }
@@ -1305,16 +1314,21 @@ int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction co
     return result;
 }
 
-int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody)
+int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody, bool const scoped)
 {
     int const conditionAddr = condition();
     compilerErrorIf(conditionAddr < 0, "Use of void-expression in if-condition.");
 
     if (d_constEvalEnabled && !d_memory.valueUnknown(conditionAddr))
     {
-        enterScope();
+        if (scoped)
+            enterScope(false);
+        
         (d_memory.value(conditionAddr) > 0 ? ifBody : elseBody)();
-        exitScope();
+        
+        if (scoped)
+            exitScope();
+        
         return -1;
     }
 
@@ -1329,10 +1343,13 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
                  << "[";
 
     {
-        enterScope();
+        if (scoped)
+            enterScope(false);
+
         ifBody();
-        std::string const outOfScope = d_scope.pop();
-        d_memory.freeLocals(outOfScope);
+
+        if (scoped)
+            exitScope();
     }
     
     d_codeBuffer << d_bfGen.setToValue(ifFlag, 0)
@@ -1341,10 +1358,13 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
                  << "[";
 
     {
-        enterScope();
+        if (scoped)
+            enterScope(false);
+        
         elseBody();
-        std::string const outOfScope = d_scope.pop();
-        d_memory.freeLocals(outOfScope);
+        
+        if (scoped)
+            exitScope();
     }
     
     d_codeBuffer << d_bfGen.setToValue(elseFlag, 0)
@@ -1363,9 +1383,16 @@ int Compiler::mergeInstructions(Instruction const &instr1, Instruction const &in
     return -1;
 }
 
+void Compiler::enterScope(bool const alloc)
+{
+    d_scope.push();
+    allocateContinueAddress(alloc);
+}
+
 void Compiler::enterScope(std::string const &name)
 {
     d_scope.push(name);
+    allocateContinueAddress(true);
 }
 
 void Compiler::exitScope(std::string const &name)
@@ -1374,12 +1401,56 @@ void Compiler::exitScope(std::string const &name)
     {
         std::string const outOfScope = d_scope.pop();
         d_memory.freeLocals(outOfScope);
+        auto const it = d_continueFlagMap.find(outOfScope);
+        assert(it != d_continueFlagMap.end() && "Flag not found for this scope");
+        d_continueFlagMap.erase(it);
     }
     else
     {
         d_scope.popFunction(name);
         // memory cleanup performed by ::call()
+        auto const it = d_continueFlagMap.find(name);
+        assert(it != d_continueFlagMap.end() && "Flag not found for this scope");
+        d_continueFlagMap.erase(it);
     }
+}
+
+void Compiler::allocateContinueAddress(bool const alloc)
+{
+    int cntAddr = -1;
+    if (alloc)
+    {
+        cntAddr = allocate("__continue_flag", TypeSystem::Type(1));
+        if (d_constEvalEnabled)
+            constEvalSetToValue(cntAddr, 1);
+        else
+            runtimeSetToValue(cntAddr, 1);
+    }
+    else
+    {
+        std::string const &enclosingScope = d_scope.enclosing();
+        assert(!enclosingScope.empty() && "calling allocContinueAddress(false) without being in a subscope");
+
+        
+        auto const it = d_continueFlagMap.find(enclosingScope);
+        assert(it != d_continueFlagMap.end() && "enclosing scope not present in continueflag-map");
+
+        cntAddr = it->second;
+    }
+    assert(cntAddr != -1 && "cntAddr not assigned");
+    
+    
+    std::cerr << "Continue flag for scope " << d_scope.current() << " at " << cntAddr << '\n';
+    auto const result = d_continueFlagMap.insert({d_scope.current(), cntAddr});
+    assert(result.second && "continue-flag already present for this scope");
+}
+
+int Compiler::getCurrentContinueFlag() const
+{
+    auto const it = d_continueFlagMap.find(d_scope.current());
+    assert(it != d_continueFlagMap.end() && "current scope not present in map");
+
+    return it->second;
 }
 
 int Compiler::forStatement(Instruction const &init, Instruction const &condition,

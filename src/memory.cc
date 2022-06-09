@@ -202,14 +202,20 @@ void Memory::freeTemps(std::string const &scope)
     freeIf([&](Cell const &cell){
                return cell.content == Content::TEMP &&
                    cell.scope == scope;
-           });
+           }, [](int){});
 }
 
 void Memory::freeLocals(std::string const &scope)
 {
-    freeIf([&](Cell const &cell){
+    freeIf(
+           [&](Cell const &cell){
                return cell.scope == scope;
-           });
+           },
+           [&](int const addr)
+           {
+               std::cerr << "Freeing " << addr << ": " << d_memory[addr].identifier << " at " << scope << '\n';
+           }
+        );
 }
 
 int Memory::sizeOf(int const addr) const

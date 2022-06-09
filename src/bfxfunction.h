@@ -89,6 +89,7 @@ public:
     bool empty() const;
     std::string function() const;
     std::string current() const;
+    std::string enclosing() const;
     bool containsFunction(std::string const &name) const;
     void push(std::string const &name = "");
     std::string popFunction(std::string const &name);

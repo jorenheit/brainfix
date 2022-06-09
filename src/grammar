@@ -707,12 +707,12 @@ for_statement:
 if_statement:
     IF '(' expression ')' statement
     {
-        $$ = instruction<&Compiler::ifStatement>($3, $5, Instruction([](){ return -1; }));
+        $$ = instruction<&Compiler::ifStatement>($3, $5, Instruction([](){ return -1; }), true);
     }
 |
     IF '(' expression ')' statement ELSE statement %prec then
     {
-        $$ = instruction<&Compiler::ifStatement>($3, $5, $7);    
+        $$ = instruction<&Compiler::ifStatement>($3, $5, $7, true);    
     }
 ;
 
