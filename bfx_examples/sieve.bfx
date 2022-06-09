@@ -25,7 +25,7 @@ function main()
     let prime = 2;
     while (prime <= s)
     {
-        for (let i = square(prime); i < n; incr(i, prime, n)) // protect against overflow
+        for (let i = prime^2; i < n; incr(i, prime, n)) // protect against overflow
             arr[i] = 0;
 
         ++prime;
