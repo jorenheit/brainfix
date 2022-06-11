@@ -177,8 +177,7 @@ function result = scand_4()
 function scans(&buf)
 {
     let i = 0;
-    let done = 0;
-    while (!done)
+    while (true)
     {
         let c = scanc();
         if (c != '\n')
@@ -189,10 +188,11 @@ function scans(&buf)
         else
         {
             buf[i] = 0;
-            done = 1;
+            break;
         }
     }
 }
+
 
 function result = to_int(&str)
 {
@@ -203,7 +203,7 @@ function result = to_int(&str)
     let [3] powers = #{1, 10, 100};
     let result = 0;
     let j = 0;
-    for(let i = 0; i != nDigits; ++i)
+    for (let i = 0; i != nDigits; ++i)
     {
         let x = str[nDigits - 1 - i];
         if (x != 0)

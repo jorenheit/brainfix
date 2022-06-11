@@ -27,6 +27,9 @@ blanks [[:blank:]\n]
 "switch"                    return CompilerBase::SWITCH;
 "case"                      return CompilerBase::CASE;
 "default"                   return CompilerBase::DEFAULT;
+"break"                     return CompilerBase::BREAK;
+"continue"                  return CompilerBase::CONTINUE;
+"return"                    return CompilerBase::RETURN;
 "++"                        return CompilerBase::INC;
 "--"                        return CompilerBase::DEC;
 "+="                        return CompilerBase::ADD;

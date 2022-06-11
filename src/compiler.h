@@ -28,11 +28,13 @@ class Compiler: public CompilerBase
     Scope       d_scope;
     BFGenerator d_bfGen;
 
-    std::map<std::string, BFXFunction>  d_functionMap;
-    std::map<std::string, int>          d_constMap;
-    std::map<std::string, int>          d_continueFlagMap;
-    std::vector<std::string>            d_includePaths;
-    std::ostringstream                  d_codeBuffer;
+    std::map<std::string, BFXFunction>         d_functionMap;
+    std::map<std::string, int>                 d_constMap;
+    std::vector<std::string>                   d_includePaths;
+    std::ostringstream                         d_codeBuffer;
+
+    using BcrMapType = std::map<std::string, std::pair<int, int>>;
+    BcrMapType d_bcrMap;
     
     enum class Stage
         {
@@ -59,8 +61,18 @@ class Compiler: public CompilerBase
         bool constEval;
         bool returnExisting;
         bool boundsChecking;
+        BcrMapType bcrMap;
     };
 
+    enum class SubScopeType
+        {
+         FOR,
+         WHILE,
+         SWITCH,
+         IF,
+         ANONYMOUS
+        };
+    
 public:
     enum class CellType
         {
@@ -88,11 +100,14 @@ private:
 
     State save();
     void restore(State &&state);
-    void enterScope(bool const allocContinueAddr = true);
+    void enterScope(Scope::Type const type);
     void enterScope(std::string const &name);
     void exitScope(std::string const &name = "");
-    void allocateContinueAddress(bool const alloc);
+    void allocateBCRFlags(bool const alloc);
     int getCurrentContinueFlag() const;
+    int getCurrentBreakFlag() const;
+    void resetContinueFlag();
+    
 
     bool setConstEval(bool const val);
     bool enableConstEval();
@@ -205,6 +220,9 @@ private:
     int switchStatement(Instruction const &compareExpr,
                         std::vector<std::pair<Instruction, Instruction>> const &cases,
                         Instruction const &defaultCase);
+    int breakStatement();
+    int continueStatement();
+    int returnStatement();
 
 
     // Constant evaluation

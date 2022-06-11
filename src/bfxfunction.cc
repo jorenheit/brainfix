@@ -16,10 +16,20 @@ std::string Scope::current() const
     if (d_stack.size() == 0)
         return result;
     
-    for (int scopeId: d_stack.back().second)
-        result += std::string("::") + std::to_string(scopeId);
+    for (SubScope const &sub: d_stack.back().second)
+    {
+        result += std::string("::") + std::to_string(sub.id);
+    }
 
     return result;
+}
+
+Scope::Type Scope::currentType() const
+{
+    if (d_stack.back().second.empty())
+        return Type::Function;
+    else
+        return d_stack.back().second.back().type;
 }
 
 std::string Scope::enclosing() const
@@ -31,7 +41,7 @@ std::string Scope::enclosing() const
 bool Scope::containsFunction(std::string const &name) const
 {
     auto const it = std::find_if(d_stack.begin(), d_stack.end(),
-                                 [&](std::pair<std::string, StackType<int>> const &item) 
+                                 [&](auto const &item) 
                                  {   
                                      return item.first == name;
                                  });
@@ -48,27 +58,30 @@ std::string Scope::popFunction(std::string const &name)
     return top;
 }
 
-void Scope::push(std::string const &name)
+void Scope::push(Type type)
 {
-    if (name.empty())
-    {
-        static int counter = 0;
-        auto &subScopeStack = d_stack.back().second;
-        subScopeStack.push_back(++counter);
-    }
-    else
-    {
-        d_stack.push_back(std::pair<std::string, StackType<int>>(name, StackType<int>{}));
-        //        d_stack.emplace_back(name, StackType<int>{});
-        // TODO: check
-    }
+    static int counter = 0;
+    d_stack.back().second.push_back({
+                             .type = type,
+                             .id   = ++counter
+        });
 }
 
-std::string Scope::pop()
+void Scope::push(std::string const &name)
+{    
+    d_stack.push_back({name, {}});
+    //        d_stack.emplace_back(name, StackType<int>{});
+    // TODO: check
+}
+
+std::pair<std::string, Scope::Type> Scope::pop()
 {
+    std::string const previousScopeString = current();
+
     auto &subScopeStack = d_stack.back().second;
-    std::string top = current();
+    Type const previousScopeType = subScopeStack.back().type;
     subScopeStack.pop_back();
-    return top;
+
+    return {previousScopeString, previousScopeType};
 }
 

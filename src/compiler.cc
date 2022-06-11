@@ -53,6 +53,7 @@ Compiler::State Compiler::save()
             .constEval      = d_constEvalEnabled,
             .returnExisting = d_returnExistingAddressOnAlloc,
             .boundsChecking = d_boundsCheckingEnabled,
+            .bcrMap         = d_bcrMap,
     };
 }
 
@@ -61,6 +62,7 @@ void Compiler::restore(State &&state)
     d_memory                       = std::move(state.memory);
     d_scope                        = std::move(state.scope);
     d_bfGen                        = std::move(state.bfGen);
+    d_bcrMap                       = std::move(state.bcrMap);
     d_constEvalEnabled             = state.constEval;
     d_returnExistingAddressOnAlloc = state.returnExisting;
     d_boundsCheckingEnabled        = state.boundsChecking;
@@ -331,12 +333,9 @@ int Compiler::sizeOfOperator(std::string const &ident)
 int Compiler::statement(Instruction const &instr)
 {
     int const continueFlag = getCurrentContinueFlag();
+    int const breakFlag = getCurrentBreakFlag();
 
-    std::cerr << "Statement in " << d_scope.current() << "; continueFlag at " << continueFlag << ", value "
-              << (d_memory.valueUnknown(continueFlag) ? -1 : d_memory.value(continueFlag)) << '\n';
-    
-    
-    Instruction const condition = [=](){ return continueFlag; };
+    Instruction const condition = [&, this](){ return logicalAnd(continueFlag, breakFlag); };
     Instruction const elseBody = [](){ return -1; };
     ifStatement(condition, instr, elseBody, false);
     
@@ -1314,6 +1313,107 @@ int Compiler::logicalOr(AddressOrInstruction const &lhs, AddressOrInstruction co
     return result;
 }
 
+
+int Compiler::mergeInstructions(Instruction const &instr1, Instruction const &instr2)
+{
+    instr1();
+    instr2();
+
+    return -1;
+}
+
+void Compiler::enterScope(Scope::Type const type)
+{
+    d_scope.push(type);
+    allocateBCRFlags(type != Scope::Type::If);
+}
+
+void Compiler::enterScope(std::string const &name)
+{
+    d_scope.push(name);
+    allocateBCRFlags(true);
+}
+
+void Compiler::exitScope(std::string const &name)
+{
+    if (name.empty())
+    {
+        auto const outOfScope = d_scope.pop();
+        std::string const &outOfScopeString = outOfScope.first;
+        //        Scope::Type outOfScopeType = outOfScope.second; 
+        
+        d_memory.freeLocals(outOfScopeString);
+        auto const it = d_bcrMap.find(outOfScopeString);
+        assert(it != d_bcrMap.end() && "Flag not found for this scope");
+        d_bcrMap.erase(it);
+    }
+    else
+    {
+        d_scope.popFunction(name);
+        // memory cleanup performed by ::call()
+        auto const it = d_bcrMap.find(name);
+        assert(it != d_bcrMap.end() && "Flag not found for this scope");
+        d_bcrMap.erase(it);
+    }
+}
+
+void Compiler::allocateBCRFlags(bool const alloc)
+{
+    int breakFlag = -1;
+    int continueFlag = -1;
+
+    if (alloc)
+    {
+        breakFlag = allocate("__break_flag", TypeSystem::Type(1));
+        continueFlag = allocate("__continue_flag", TypeSystem::Type(1));
+        
+        if (d_constEvalEnabled)
+        {
+            constEvalSetToValue(breakFlag, 1);
+            constEvalSetToValue(continueFlag, 1);
+        }
+        else
+        {
+            runtimeSetToValue(breakFlag, 1);
+            runtimeSetToValue(continueFlag, 1);
+        }
+    }
+    else
+    {
+        std::string const &enclosingScope = d_scope.enclosing();
+        assert(!enclosingScope.empty() && "calling allocateBCRFlags(false) without being in a subscope");
+
+        
+        auto const it = d_bcrMap.find(enclosingScope);
+        assert(it != d_bcrMap.end() && "enclosing scope not present in bcr-map");
+
+        breakFlag = it->second.first;
+        continueFlag = it->second.second;
+    }
+
+    assert(breakFlag != -1 && "break-flag-address not assigned");
+    assert(continueFlag != -1 && "continue-flag-address not assigned");
+    
+    auto const result = d_bcrMap.insert({d_scope.current(), {breakFlag, continueFlag}});
+    assert(result.second && "flags already present for this scope");
+}
+
+int Compiler::getCurrentBreakFlag() const
+{
+    auto const it = d_bcrMap.find(d_scope.current());
+    assert(it != d_bcrMap.end() && "current scope not present in bcr-map");
+
+    return it->second.first;
+}
+
+int Compiler::getCurrentContinueFlag() const
+{
+    auto const it = d_bcrMap.find(d_scope.current());
+    assert(it != d_bcrMap.end() && "current scope not present in bcr-map");
+
+    return it->second.second;
+}
+
 int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBody, Instruction const &elseBody, bool const scoped)
 {
     int const conditionAddr = condition();
@@ -1322,7 +1422,7 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     if (d_constEvalEnabled && !d_memory.valueUnknown(conditionAddr))
     {
         if (scoped)
-            enterScope(false);
+            enterScope(Scope::Type::If);
         
         (d_memory.value(conditionAddr) > 0 ? ifBody : elseBody)();
         
@@ -1332,6 +1432,8 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
         return -1;
     }
 
+    // Runtime evaluation
+    std::cerr << "Runtime if: " << d_scope.current() << '\n';
     disableConstEval();
     
     int const ifFlag = allocateTemp();
@@ -1344,7 +1446,7 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
 
     {
         if (scoped)
-            enterScope(false);
+            enterScope(Scope::Type::If);
 
         ifBody();
 
@@ -1359,7 +1461,7 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
 
     {
         if (scoped)
-            enterScope(false);
+            enterScope(Scope::Type::If);
         
         elseBody();
         
@@ -1370,87 +1472,12 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     d_codeBuffer << d_bfGen.setToValue(elseFlag, 0)
                  << "]";
 
+    d_memory.setValueUnknown(getCurrentBreakFlag());
+    d_memory.setValueUnknown(getCurrentContinueFlag());
+    
     enableConstEval();
     
     return -1;
-}
-
-int Compiler::mergeInstructions(Instruction const &instr1, Instruction const &instr2)
-{
-    instr1();
-    instr2();
-
-    return -1;
-}
-
-void Compiler::enterScope(bool const alloc)
-{
-    d_scope.push();
-    allocateContinueAddress(alloc);
-}
-
-void Compiler::enterScope(std::string const &name)
-{
-    d_scope.push(name);
-    allocateContinueAddress(true);
-}
-
-void Compiler::exitScope(std::string const &name)
-{
-    if (name.empty())
-    {
-        std::string const outOfScope = d_scope.pop();
-        d_memory.freeLocals(outOfScope);
-        auto const it = d_continueFlagMap.find(outOfScope);
-        assert(it != d_continueFlagMap.end() && "Flag not found for this scope");
-        d_continueFlagMap.erase(it);
-    }
-    else
-    {
-        d_scope.popFunction(name);
-        // memory cleanup performed by ::call()
-        auto const it = d_continueFlagMap.find(name);
-        assert(it != d_continueFlagMap.end() && "Flag not found for this scope");
-        d_continueFlagMap.erase(it);
-    }
-}
-
-void Compiler::allocateContinueAddress(bool const alloc)
-{
-    int cntAddr = -1;
-    if (alloc)
-    {
-        cntAddr = allocate("__continue_flag", TypeSystem::Type(1));
-        if (d_constEvalEnabled)
-            constEvalSetToValue(cntAddr, 1);
-        else
-            runtimeSetToValue(cntAddr, 1);
-    }
-    else
-    {
-        std::string const &enclosingScope = d_scope.enclosing();
-        assert(!enclosingScope.empty() && "calling allocContinueAddress(false) without being in a subscope");
-
-        
-        auto const it = d_continueFlagMap.find(enclosingScope);
-        assert(it != d_continueFlagMap.end() && "enclosing scope not present in continueflag-map");
-
-        cntAddr = it->second;
-    }
-    assert(cntAddr != -1 && "cntAddr not assigned");
-    
-    
-    std::cerr << "Continue flag for scope " << d_scope.current() << " at " << cntAddr << '\n';
-    auto const result = d_continueFlagMap.insert({d_scope.current(), cntAddr});
-    assert(result.second && "continue-flag already present for this scope");
-}
-
-int Compiler::getCurrentContinueFlag() const
-{
-    auto const it = d_continueFlagMap.find(d_scope.current());
-    assert(it != d_continueFlagMap.end() && "current scope not present in map");
-
-    return it->second;
 }
 
 int Compiler::forStatement(Instruction const &init, Instruction const &condition,
@@ -1461,19 +1488,23 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 
     State state = save();
 
-    enterScope();
+    enterScope(Scope::Type::For);
     init();
     int conditionAddr = condition();
+    
     if (d_memory.valueUnknown(conditionAddr))
     {
         restore(std::move(state));
         return forStatementRuntime(init, condition, increment, body);
     }
 
+    //    int const continueFlag = getCurrentContinueFlag();
+    //    int const breakFlag = getCurrentBreakFlag();
     int count = 0;
     while (d_memory.value(conditionAddr))
     {
         body();
+        resetContinueFlag();
         increment();
         conditionAddr = condition();
         d_returnExistingAddressOnAlloc = true;
@@ -1483,6 +1514,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
             restore(std::move(state));
             return forStatementRuntime(init, condition, increment, body);
         }
+
     }    
 
     d_returnExistingAddressOnAlloc = false;
@@ -1495,7 +1527,7 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
                                   Instruction const &increment, Instruction const &body)
 {
     int const flag = allocateTemp();
-    enterScope();
+    enterScope(Scope::Type::For);
     disableConstEval();
 
     init();
@@ -1506,7 +1538,9 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
     d_codeBuffer << "[";
 
     body();
+    resetContinueFlag();
     increment();
+    
     d_codeBuffer << d_bfGen.assign(flag, condition())
                  << "]";
 
@@ -1526,12 +1560,13 @@ int Compiler::forRangeStatement(std::string const &ident, Instruction const &arr
         return forRangeStatementRuntime(ident, array, body);
     }
 
-    enterScope();
+    enterScope(Scope::Type::For);
     int const elementAddr = declareVariable(ident, TypeSystem::Type(1));
     for (int i = 0; i != nIter; ++i)
     {
         assign(elementAddr, arrayAddr + i);
         body();
+        resetContinueFlag();
         d_returnExistingAddressOnAlloc = true;
     }    
 
@@ -1552,7 +1587,7 @@ int Compiler::forRangeStatementRuntime(std::string const &ident, Instruction con
     disableConstEval();
     int const arrayAddr = array();
     int const nIter = d_memory.sizeOf(arrayAddr);
-    enterScope();
+    enterScope(Scope::Type::For);
     int const elementAddr = declareVariable(ident, TypeSystem::Type(1));
     compilerErrorIf(elementAddr < 0 || arrayAddr < 0, "Use of void-expression in for-initialization.");
 
@@ -1563,11 +1598,12 @@ int Compiler::forRangeStatementRuntime(std::string const &ident, Instruction con
                  <<    d_bfGen.fetchElement(arrayAddr, nIter, iterator, elementAddr);
 
     body();
+    resetContinueFlag();
 
     d_codeBuffer <<    d_bfGen.incr(iterator)
                  <<    d_bfGen.assign(flag, notEqual(iterator, finalIdx))
                  << "]";
-
+    
     exitScope();
     enableConstEval();
     return -1;
@@ -1579,7 +1615,8 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
         return whileStatementRuntime(condition, body);
 
     State state = save();
-    enterScope();
+    enterScope(Scope::Type::While);
+    int const breakFlag = getCurrentBreakFlag();
     
     int conditionAddr = condition();
     if (d_memory.valueUnknown(conditionAddr))
@@ -1588,15 +1625,21 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
         return whileStatementRuntime(condition, body);
     }
 
+    std::cerr << "Unrolling\n";
     int count = 0;
     while (d_memory.value(conditionAddr))
     {
         body();
-        conditionAddr = condition();
+        resetContinueFlag();
+
+        std::cerr << breakFlag << ", " << d_memory.valueUnknown(breakFlag) << ", " << d_memory.value(breakFlag) <<  '\n';
+        conditionAddr = logicalAnd(condition, breakFlag);
+        
         d_returnExistingAddressOnAlloc = true;
         
         if (d_memory.valueUnknown(conditionAddr) || (count++ > MAX_LOOP_UNROLL_ITERATIONS))
         {
+            std::cerr << "Switching to runtime eval\n";
             restore(std::move(state));
             return whileStatementRuntime(condition, body);
         }
@@ -1612,13 +1655,16 @@ int Compiler::whileStatementRuntime(Instruction const &condition, Instruction co
     int const conditionAddr = condition();
     compilerErrorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
 
-    enterScope();
+    enterScope(Scope::Type::While);
+    int const breakFlag = getCurrentBreakFlag();
     disableConstEval();
+    
     d_codeBuffer << d_bfGen.movePtr(conditionAddr)
                  << "[";
     body();
-
-    d_codeBuffer << d_bfGen.assign(conditionAddr, condition())
+    resetContinueFlag();
+    
+    d_codeBuffer << d_bfGen.assign(conditionAddr, logicalAnd(condition, breakFlag))
                  << "]";
 
     exitScope();
@@ -1648,7 +1694,7 @@ int Compiler::switchStatement(Instruction const &compareExpr,
             if (d_memory.value(caseAddr) == compareVal)
             {
                 // Case match! execute case body
-                enterScope();
+                enterScope(Scope::Type::Switch);
                 cases[i].second();
                 exitScope();
                 return -1;
@@ -1658,7 +1704,7 @@ int Compiler::switchStatement(Instruction const &compareExpr,
         if (runtimeCases.size() == 0)
         {
             // all cases handled, no match -> handle default case
-            enterScope();
+            enterScope(Scope::Type::Switch);
             defaultCase();
             exitScope();
             return -1;
@@ -1686,7 +1732,7 @@ int Compiler::switchStatement(Instruction const &compareExpr,
                      << "["
                      <<     d_bfGen.setToValue(goToDefault, 0);
 
-        enterScope();
+        enterScope(Scope::Type::Switch);
         cases[caseIdx].second();
         exitScope();
         
@@ -1698,7 +1744,7 @@ int Compiler::switchStatement(Instruction const &compareExpr,
     d_codeBuffer << d_bfGen.movePtr(goToDefault)
                  << "[";
 
-    enterScope();
+    enterScope(Scope::Type::Switch);
     defaultCase();
     exitScope();
     
@@ -1709,6 +1755,62 @@ int Compiler::switchStatement(Instruction const &compareExpr,
     return -1;
 }
 
+int Compiler::breakStatement()
+{
+    int const flag = getCurrentBreakFlag();
+    if (d_constEvalEnabled)
+    {
+        std::cerr << "compiletime break\n";
+        
+        constEvalSetToValue(flag, 0);
+    }
+    else
+    {
+        std::cerr << "Runtime break\n";
+        runtimeSetToValue(flag, 0);
+        std::cerr << "Flag " << flag << ", " << d_memory.valueUnknown(flag) << '\n';
+    }
+    
+    return -1;
+}
+
+int Compiler::continueStatement()
+{
+    int const flag = getCurrentContinueFlag();
+    if (d_constEvalEnabled)
+        constEvalSetToValue(flag, 0);
+    else
+        runtimeSetToValue(flag, 0);
+    
+    return -1;
+}
+
+void Compiler::resetContinueFlag()
+{
+    int const flag = getCurrentContinueFlag();
+    if (d_constEvalEnabled)
+        constEvalSetToValue(flag, 1);
+    else
+        runtimeSetToValue(flag, 1);
+}
+
+int Compiler::returnStatement()
+{
+    std::string const func = d_scope.function();
+    for (auto const &pr: d_bcrMap)
+    {
+        if (pr.first.find(func) == 0)
+        {
+            int const breakFlag = pr.second.first;
+            if (d_constEvalEnabled)
+                constEvalSetToValue(breakFlag, 0);
+            else
+                runtimeSetToValue(breakFlag, 0);
+        }
+    }
+
+    return -1;
+}
 
 std::string Compiler::cancelOppositeCommands(std::string const &bf)
 {

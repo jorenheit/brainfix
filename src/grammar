@@ -21,7 +21,7 @@
 
 // Keywords
 %token LET FUNCTION GLOBAL INCLUDE SCAN PRINT RAND
-%token SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT STRUCT
+%token SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT STRUCT BREAK CONTINUE RETURN
 
 %nonassoc then
 %nonassoc ELSE
@@ -241,6 +241,12 @@ statement:
     while_statement
 |
     switch_statement
+|
+    break_statement
+|
+    continue_statement
+|
+    return_statement
 ;
 
 expression:
@@ -681,6 +687,28 @@ function_call:
        $$ = instruction<&Compiler::call>($1, $3);
     }
 ;
+
+break_statement:
+    BREAK ';'
+    {
+        $$ = instruction<&Compiler::breakStatement>();
+    }
+;
+
+continue_statement:
+    CONTINUE ';'
+    {
+        $$ = instruction<&Compiler::continueStatement>();
+    }
+;
+
+return_statement:
+    RETURN ';'
+    {
+        $$ = instruction<&Compiler::returnStatement>();
+    }
+;
+
 
 for_statement:
     FOR '(' expression ';' expression ';' expression ')' statement
