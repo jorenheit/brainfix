@@ -1433,7 +1433,6 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     }
 
     // Runtime evaluation
-    std::cerr << "Runtime if: " << d_scope.current() << '\n';
     disableConstEval();
     
     int const ifFlag = allocateTemp();
@@ -1472,9 +1471,18 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     d_codeBuffer << d_bfGen.setToValue(elseFlag, 0)
                  << "]";
 
-    d_memory.setValueUnknown(getCurrentBreakFlag());
+
+    // If/else might have changed bcr-flags --> mark values unknown
     d_memory.setValueUnknown(getCurrentContinueFlag());
-    
+    for (auto const &pr: d_bcrMap)
+    {
+        if (pr.first.find(d_scope.function()) == 0)
+        {
+            int const breakFlag = pr.second.first;
+            d_memory.setValueUnknown(breakFlag);
+        }
+    }
+
     enableConstEval();
     
     return -1;
@@ -1487,7 +1495,6 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
         return forStatementRuntime(init, condition, increment, body);
 
     State state = save();
-
     enterScope(Scope::Type::For);
     init();
     int conditionAddr = condition();
@@ -1498,15 +1505,13 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
         return forStatementRuntime(init, condition, increment, body);
     }
 
-    //    int const continueFlag = getCurrentContinueFlag();
-    //    int const breakFlag = getCurrentBreakFlag();
     int count = 0;
     while (d_memory.value(conditionAddr))
     {
         body();
         resetContinueFlag();
         increment();
-        conditionAddr = condition();
+        conditionAddr = logicalAnd(condition, getCurrentBreakFlag());
         d_returnExistingAddressOnAlloc = true;
 
         if (d_memory.valueUnknown(conditionAddr) || count++ > MAX_LOOP_UNROLL_ITERATIONS)
@@ -1541,7 +1546,7 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
     resetContinueFlag();
     increment();
     
-    d_codeBuffer << d_bfGen.assign(flag, condition())
+    d_codeBuffer << d_bfGen.assign(flag, logicalAnd(condition, getCurrentBreakFlag()))
                  << "]";
 
     exitScope();
@@ -1601,7 +1606,7 @@ int Compiler::forRangeStatementRuntime(std::string const &ident, Instruction con
     resetContinueFlag();
 
     d_codeBuffer <<    d_bfGen.incr(iterator)
-                 <<    d_bfGen.assign(flag, notEqual(iterator, finalIdx))
+                 <<    d_bfGen.assign(flag, logicalAnd(notEqual(iterator, finalIdx), getCurrentBreakFlag()))
                  << "]";
     
     exitScope();
@@ -1625,21 +1630,16 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
         return whileStatementRuntime(condition, body);
     }
 
-    std::cerr << "Unrolling\n";
     int count = 0;
     while (d_memory.value(conditionAddr))
     {
         body();
         resetContinueFlag();
-
-        std::cerr << breakFlag << ", " << d_memory.valueUnknown(breakFlag) << ", " << d_memory.value(breakFlag) <<  '\n';
         conditionAddr = logicalAnd(condition, breakFlag);
-        
         d_returnExistingAddressOnAlloc = true;
         
         if (d_memory.valueUnknown(conditionAddr) || (count++ > MAX_LOOP_UNROLL_ITERATIONS))
         {
-            std::cerr << "Switching to runtime eval\n";
             restore(std::move(state));
             return whileStatementRuntime(condition, body);
         }
@@ -1760,15 +1760,11 @@ int Compiler::breakStatement()
     int const flag = getCurrentBreakFlag();
     if (d_constEvalEnabled)
     {
-        std::cerr << "compiletime break\n";
-        
         constEvalSetToValue(flag, 0);
     }
     else
     {
-        std::cerr << "Runtime break\n";
         runtimeSetToValue(flag, 0);
-        std::cerr << "Flag " << flag << ", " << d_memory.valueUnknown(flag) << '\n';
     }
     
     return -1;
