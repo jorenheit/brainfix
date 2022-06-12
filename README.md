@@ -19,17 +19,16 @@ cd src
 make
 ```
 
-To let bisonc++ and flexc++ regenerate the sourcecode for the scanner and parser, run
-
-```
-make regenerate
-make
-```
-
 To copy the resulting binaries to `/usr/local/bin`, run as root:
 
 ```
 make install
+```
+
+If for some reason you want to change the grammar specification, you can let bisonc++ and flexc++ regenerate the sourcecode for the scanner (file: lexer) and parser (file: parser) by running
+
+```
+make regenerate
 ```
 
 ## Usage
@@ -102,7 +101,7 @@ function main()
 ```
 #### Comments
 The program starts with an end-of-line comment (C-comment blocks between `/*` and `*/` are also allowed) and then
-includes the IO-library which is included with this project. This exposes some basic IO-facilities the sourcefile.
+includes the standard-library which is included with this project. This exposes (among other things, see below) some basic IO-facilities the sourcefile.
 
 #### `main`
 Next, the main-function is defined. Every valid BFX-program should contain a `main` function which takes no arguments and does not return anything. The order in which the functions are defined in a BFX-file does not matter; the compiler will always try to find main and use this as the entrypoint.
@@ -292,7 +291,7 @@ function main()
 Only positive integers are supported; the compiler will throw an error on the use of the unary minus sign. A warning is issued when the program contains numbers that exceed the range of the specified type (e.g. 255 for the default `int8` type).
 
 #### Indexing
-Once a variable is declared (as an array), it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator. When the index to the array can be resolved at compile-time, the compiler will check if it is within bounds. Otherwise, it's up to the programmer to make sure the index is within the size of the indexed variable.
+Once a variable is declared as an array, it can be indexed using the familiar index-operator `[]`. Elements can be both accessed and changed using this operator. When the index to the array can be resolved at compile-time, the compiler will check if it is within bounds. Otherwise, it's up to the programmer to make sure the index is within the size of the indexed variable.
 
 ```javascript
 function main()
@@ -427,10 +426,10 @@ The following operators are supported by BrainFix:
 | `-=`   |  subtract from lhs, returns lhs |
 | `*=`   |  multiply lhs by rhs, returns lhs |
 | `/=`   |  divide lhs by rhs, returns lhs |
-| `%=`   |  assigns the remainder of lhs / rhs and assigns it to lhs |
-| `/=%`  |  divides lhs by rhs, returns the remainder |
-| `%=/`  |  assigns the remainder to lhs, returns the result of the division |
-| `^=`   |  raises lhs to power rhs, returns the result |
+| `%=`   |  calculate the remainder of (lhs / rhs) and assign it to lhs |
+| `/=%`  |  divide lhs by rhs; returns the remainder |
+| `%=/`  |  assign the remainder to lhs; returns the result of the division |
+| `^=`   |  raises lhs to power rhs; returns the result |
 | `&&`   |  logical AND |
 | `\|\|` |  logical OR |
 | `!`    |  (unary) logical NOT |
@@ -548,7 +547,7 @@ while (true)
         case 9:
         {
             println("Quitting ...");
-            break; // will break out of the for!
+            break; // will break out of the while!
         }
         default: println("Not sure ...");
     }
@@ -569,9 +568,9 @@ switch (x)
 ```    
 
 #### Preventing Loop Unrolling with `for*` and `while*`
-Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll loops by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds 50, it will fall back on generating code for executing the loop at runtime. 
+Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll loops by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds 20, it will fall back on generating code for executing the loop at runtime. 
 
-However, loop-unrolling can take a long time, resulting in long compilation times for loops with large bodies or many iterations. Especially in the latter case, it can take some time before the compiler realizes it shouldn't unroll the loop at all (since it has to evaluate the body 50 times before coming to this conclusion). To indicate to the compiler that it shouldn't attempt to unroll the loop, we can use `for*` and `while*` instead. For range-based for-loops, the compiler can predetermine the number of iterations; this cannot be changed in the body of the loop. Therefore, it can decide beforehand whether or not to unroll the loop without any compilation time-penalty. Using `for*` will overrule the decision of the compiler and will force it to not unroll, but this will not result in faster compilation times.
+However, loop-unrolling can take a long time, resulting in long compilation times for loops with large bodies or many iterations. Especially in the latter case, it can take some time before the compiler realizes it shouldn't unroll the loop at all (since it has to evaluate the body 20 times before coming to this conclusion). To indicate to the compiler that it shouldn't attempt to unroll the loop, we can use `for*` and `while*` instead. For range-based for-loops, the compiler can predetermine the number of iterations; this cannot be changed in the body of the loop. Therefore, it can decide beforehand whether or not to unroll the loop without any compilation time-penalty. Using `for*` will overrule the decision of the compiler and will force it to not unroll, but this will not result in faster compilation times.
 
 ```javascript
 function main()
@@ -652,7 +651,7 @@ function x = get()
 }
 ```
 ##### Compiler option: `--no-bcr`
-Because BF does not support arbitrary jumps in code, the break, continue and return directives (bcr) have been implemented through a pair of flags that need to be checked continuously in order to determine whether a statement needs to be executed. Effectively, this means that every line of code will be wrapped in an if-statement. Especially when compiling without constant-evaluation (`-O0`) or when constant evaluation is not possible due to user-input dependencies, this will lead to a lot of code-bloat and therefore very large BF-output. The compiler-flag `--no-bcr` will disable support for `break`, `continue` and `return`; using these directives will in that case produce a compiler error.
+Because BF does not support arbitrary jumps in code, the break, continue and return directives (bcr) have been implemented through a pair of flags that need to be checked continuously in order to determine whether a statement needs to be executed. Effectively, this means that every line of code will be wrapped in an if-statement. Especially when compiling without constant-evaluation (`-O0`) or when constant evaluation is not possible due to user-input dependencies, this will lead to a lot of code-bloat and therefore very large BF-output. The compiler-flag `--no-bcr` will disable support for break, continue and return; using these directives will in that case produce a compiler error.
 
 ### File Inclusion
 The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one. Currently, circular inclusions are not detected, and will simply crash the compiler.

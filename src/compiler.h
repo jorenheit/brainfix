@@ -21,7 +21,7 @@ class Compiler: public CompilerBase
     static constexpr int TAPE_SIZE_INITIAL = 30000;
     long const MAX_INT;
     long const MAX_ARRAY_SIZE;
-    int  const MAX_LOOP_UNROLL_ITERATIONS = 50;
+    int  const MAX_LOOP_UNROLL_ITERATIONS = 20;
     
     Scanner     d_scanner;
     Memory      d_memory;
