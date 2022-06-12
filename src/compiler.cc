@@ -1704,83 +1704,24 @@ int Compiler::switchStatement(Instruction const &compareExpr,
                               std::vector<std::pair<Instruction, Instruction>> const &cases,
                               Instruction const &defaultCase)
 {
-    std::vector<std::pair<int, int>> runtimeCases; // {index, caseAddr}
-    
-    int const compareAddr = compareExpr();
-    if (d_constEvalEnabled && !d_memory.valueUnknown(compareAddr))
-    {
-        int const compareVal = d_memory.value(compareAddr);
-        for (size_t i = 0; i != cases.size(); ++i)
+    std::function<Instruction(size_t const)> ifElseLadder;
+
+    ifElseLadder =
+        [&, this](size_t const idx) -> Instruction
         {
-            int const caseAddr = cases[i].first();
-            if (d_memory.valueUnknown(caseAddr))
+            if (idx == cases.size() - 1)
             {
-                runtimeCases.push_back({i, caseAddr});
-                continue;
+                return instruction<&Compiler::ifStatement>
+                    (instruction<&Compiler::equal>(compareExpr, cases[idx].first),
+                     cases[idx].second, defaultCase, true);
             }
-            
-            if (d_memory.value(caseAddr) == compareVal)
-            {
-                // Case match! execute case body
-                enterScope(Scope::Type::Switch);
-                cases[i].second();
-                exitScope();
-                return -1;
-            }
-        }
-
-        if (runtimeCases.size() == 0)
-        {
-            // all cases handled, no match -> handle default case
-            enterScope(Scope::Type::Switch);
-            defaultCase();
-            exitScope();
-            return -1;
-        }
-    }
-    else
-    {
-        // All cases are runtime-cases
-        for (size_t i = 0; i != cases.size(); ++i)
-            runtimeCases.push_back({i, cases[i].first()});
-    }
-
-    // No match found during compiletime --> handle runtime cases
-    disableConstEval();
-    int const goToDefault = allocateTemp();
-    int const flag = allocateTemp();
-
-    d_codeBuffer << d_bfGen.setToValue(goToDefault, 1);
-    for (auto const &pr: runtimeCases)
-    {
-        int const caseIdx  = pr.first;
-        int const caseAddr = pr.second;
-        
-        d_codeBuffer << d_bfGen.equal(compareAddr, caseAddr, flag)
-                     << "["
-                     <<     d_bfGen.setToValue(goToDefault, 0);
-
-        enterScope(Scope::Type::Switch);
-        cases[caseIdx].second();
-        exitScope();
-        
-        d_codeBuffer << d_bfGen.setToValue(flag, 0)
-                     << "]";
-
-    }
-
-    d_codeBuffer << d_bfGen.movePtr(goToDefault)
-                 << "[";
-
-    enterScope(Scope::Type::Switch);
-    defaultCase();
-    exitScope();
+                
+            return instruction<&Compiler::ifStatement>
+                (instruction<&Compiler::equal>(compareExpr, cases[idx].first),
+                 cases[idx].second, ifElseLadder(idx + 1), true);
+        };
     
-    d_codeBuffer << d_bfGen.setToValue(goToDefault, 0)
-                 << "]";
-
-    enableConstEval();
-    return -1;
+    return ifElseLadder(0)();
 }
 
 int Compiler::breakStatement()

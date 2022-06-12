@@ -532,11 +532,10 @@ else
 #### Switch Statements
 In BrainFix, a `switch` statement is simply a syntactic alternative to an `if-else` ladder. Most compiled languages like C and C++ will generate code that jumps to the appropriate case-label (which therefore has to be constant expression), which in many cases is faster than the equivalent `if-else` ladder. In BrainF*ck, this is difficult to implement due to the lack of jump-instructions.
 
-Each label has to be followed by either a single or compound statement. A `break` statement is not required in the body of a case; it's therefore not possible to 'fall through' cases: only one case will ever be executed. 
+Each label has to be followed by either a single or compound statement, of which only the body of the first match will be executed (it's not possible to 'fall through' cases). The `break` and `continue` control statements will be seen as local to the enclosing scope around the switch (like any old `if`-statement). A `break` statement is therefore not required in the body of a case and in fact will probably have different semantics compared to what you're used to. Beware! If you need to skip part of the switch-body, consider using `continue` instead. For more information on `break`, `continue` and `return`, see below.
 
 ```javascript
-let done = false;
-while (!done)
+while (true)
 {
     prints("Enter a number 0-3, or 9 to quit: ");
     let x = scand();
@@ -549,7 +548,7 @@ while (!done)
         case 9:
         {
             println("Quitting ...");
-            done = true;
+            break; // will break out of the for!
         }
         default: println("Not sure ...");
     }
