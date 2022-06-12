@@ -1,5 +1,4 @@
 // Note: compile and run with --random!
-
 include "std.bfx"
 
 global [9] WIN_ARRAY;
@@ -34,14 +33,11 @@ function w = winner(&p1, &p2)
 
 function printScore(&s)
 {
-    prints("score: ");
+    prints("Score: ");
     printd(s[0]);
     prints(" - ");
     printd(s[1]);
 }
-
-
-                  
 
 function main()
 {
@@ -93,13 +89,18 @@ function main()
         scans(input);
         switch (input)
         {
-            case 'n': return;
+            case 'n': break;
             case 'y': endl();
             default:
             {
                 println("Invalid input; quitting.");
-                break;
+                return;
             }
         }
     }
+
+    endl();
+    println("Thanks for playing! ");
+    printScore(score);
+    endl();
 }

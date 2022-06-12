@@ -25,7 +25,7 @@ To copy the resulting binaries to `/usr/local/bin`, run as root:
 make install
 ```
 
-If for some reason you want to change the grammar specification, you can let bisonc++ and flexc++ regenerate the sourcecode for the scanner (file: lexer) and parser (file: parser) by running
+If for some reason you want to change the grammar specification, you can let bisonc++ and flexc++ regenerate the sourcecode for the scanner (file: lexer) and parser (file: grammar) by running
 
 ```
 make regenerate
