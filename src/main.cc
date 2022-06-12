@@ -29,7 +29,7 @@ void printHelp(std::string const &progName)
               << "-O1                 Do constant expression evaluation (default).\n"
               << "--random            Enable random number generation (generates the ?-symbol).\n"
               << "                      Your interpreter must support this extension!\n"
-              << "--no-brc            Disable break/continue/return statements for more compact output.\n"
+              << "--no-bcr            Disable break/continue/return statements for more compact output.\n"
               << "-o [file, stdout]   Specify the output stream/file (default stdout).\n\n"
               << "Example: " << progName << " -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx\n";
 }
