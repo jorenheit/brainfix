@@ -32,11 +32,23 @@ function w = winner(&p1, &p2)
     let w = WIN_ARRAY[3 * toIndex(p1) + toIndex(p2)];
 }
 
+function printScore(&s)
+{
+    prints("score: ");
+    printd(s[0]);
+    prints(" - ");
+    printd(s[1]);
+}
+
+
+                  
+
 function main()
 {
     init();
     let input;
-
+    let [2] score = 0;
+    
     while (true)
     {
         // Get user input
@@ -61,10 +73,20 @@ function main()
         // Determine winner
         switch (winner(input, computer))
         {
-            case 0: println("It's a tie!");
-            case 1: println("You win!");
-            case 2: println("Computer wins!");
+            case 0: prints("It's a tie! ");
+            case 1:
+            {
+                prints("You win! ");
+                ++score[0];
+            }
+            case 2:
+            {
+                prints("Computer wins! ");
+                ++score[1];
+            }
         }
+        printScore(score);
+        endl();
 
         // Again?
         prints("Play again? (y/n) ");
@@ -72,7 +94,7 @@ function main()
         switch (input)
         {
             case 'n': return;
-            case 'y': continue;
+            case 'y': endl();
             default:
             {
                 println("Invalid input; quitting.");
