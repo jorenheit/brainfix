@@ -48,7 +48,7 @@ Options:
 -O1                 Do constant expression evaluation (default).
 --random            Enable random number generation (generates the ?-symbol).
                       Your interpreter must support this extension!
---no-brc            Disable break/continue/return statements for more compact output.
+--no-bcr            Disable break/continue/return statements for more compact output.
 -o [file, stdout]   Specify the output stream/file (default stdout).
 
 Example: bfx -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx
