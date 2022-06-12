@@ -624,6 +624,7 @@ for (let i = 0; i != 10; ++i)
 ##### `continue`
 Like `break`, a `continue` statement will skip all statements until the closing brace. However, at this point flow will restore and (if issued in a loop-context) the next iteration will be executed as normal. Again, if `continue` is used at function-scope-level, it will simply return from the function.
 
+```javascript
 for (let i = 0; i != 10; ++i)
 {
     printd(i);
@@ -633,6 +634,7 @@ for (let i = 0; i != 10; ++i)
     printd(i);
 }
 // Prints "0011223344556789"
+```
 
 ##### `return`
 At any scope-level, return will immediately return from the enclosing function-scope. If the function returns a value, it needs to be declared (and initialized, probably) before this point. Beware that even though the return-value might have been declared at the scope of the return-statement, a return-value *must* be declared at function-scope.
