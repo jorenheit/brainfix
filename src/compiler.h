@@ -51,6 +51,7 @@ class Compiler: public CompilerBase
     bool const  d_randomExtensionEnabled{false};
     bool        d_returnExistingAddressOnAlloc{false};
     bool        d_boundsCheckingEnabled{true};
+    bool const  d_bcrEnabled{true};
 
     struct State
     {
@@ -82,7 +83,7 @@ public:
         };
 
     Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths,
-             bool constEval, bool randomEnabled);
+             bool constEval, bool randomEnabled, bool bcrEnabled);
     int compile();
     void write(std::ostream &out);
 

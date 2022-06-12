@@ -24,5 +24,6 @@
 [x] for (let i = 0; i != 255; ++i) doesn't run
 [x] Why does the memory start allocating at cell 2?    
 [ ] Implement pointers
-[ ] merge for/while condition with breakflag
+[x] merge for/while condition with breakflag
 [ ] migrate loops to bfgen
+[x] --no-bcr

@@ -177,7 +177,8 @@ function result = scand_4()
 function scans(&buf)
 {
     let i = 0;
-    while (true)
+    let done = 0;
+    while (!done)
     {
         let c = scanc();
         if (c != '\n')
@@ -188,11 +189,10 @@ function scans(&buf)
         else
         {
             buf[i] = 0;
-            break;
+            done = 1;
         }
     }
 }
-
 
 function result = to_int(&str)
 {

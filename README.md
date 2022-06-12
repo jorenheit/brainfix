@@ -48,6 +48,7 @@ Options:
 -O1                 Do constant expression evaluation (default).
 --random            Enable random number generation (generates the ?-symbol).
                       Your interpreter must support this extension!
+--no-brc            Disable break/continue/return statements for more compact output.
 -o [file, stdout]   Specify the output stream/file (default stdout).
 
 Example: bfx -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx
@@ -529,7 +530,9 @@ else
 ```
 
 #### Switch Statements
-In BrainFix, a `switch` statement is simply a syntactic alternative to an `if-else` ladder. Most compiled languages like C and C++ will generate code that jumps to the appropriate case-label (which therefore has to be constant expression), which in many cases is faster than the equivalent `if-else` ladder. In BrainF*ck, this is difficult to implement due to the lack of jump-instructions. For the same reason, a `break` statement is not required in the body of a case and it's therefore not possible to 'fall through' cases: only one case will ever be executed. 
+In BrainFix, a `switch` statement is simply a syntactic alternative to an `if-else` ladder. Most compiled languages like C and C++ will generate code that jumps to the appropriate case-label (which therefore has to be constant expression), which in many cases is faster than the equivalent `if-else` ladder. In BrainF*ck, this is difficult to implement due to the lack of jump-instructions.
+
+Each label has to be followed by either a single or compound statement. A `break` statement is not required in the body of a case; it's therefore not possible to 'fall through' cases: only one case will ever be executed. 
 
 ```javascript
 let done = false;
@@ -601,8 +604,54 @@ function main()
 ```
 
 
-#### No return, break or continue?
-BrainF*ck does not contain an opcode that let's us jump to arbitrary places in the code, which makes it very hard to implement `goto`-like features like `return`, `break` and `continue`. Instead, it is up to the programmer to implement conditional blocks using `if`, `if`-`else` or `switch` to emulate these jumps.
+#### Break, Continue and Return
+By default, the familiar `break`, `continue` and `return` statements are supported to control the flow of your program. In contrast to many other languages, these statements are supported in *any* context; not necessarily in loops.
+
+##### `break`
+Will force flow to break out of the enclosing scope (skipping all statements until the closing brace). When issued at function-scope-level, it will return from the function.
+
+```javascript
+for (let i = 0; i != 10; ++i)
+{
+    if (i == 5)
+        break;
+
+    printd(i);
+}
+// Prints "01234"
+```
+
+##### `continue`
+Like `break`, a `continue` statement will skip all statements until the closing brace. However, at this point flow will restore and (if issued in a loop-context) the next iteration will be executed as normal. Again, if `continue` is used at function-scope-level, it will simply return from the function.
+
+for (let i = 0; i != 10; ++i)
+{
+    printd(i);
+    if (i > 5)
+        continue;
+
+    printd(i);
+}
+// Prints "0011223344556789"
+
+##### `return`
+At any scope-level, return will immediately return from the enclosing function-scope. If the function returns a value, it needs to be declared (and initialized, probably) before this point. Beware that even though the return-value might have been declared at the scope of the return-statement, a return-value *must* be declared at function-scope.
+
+```javascript
+function x = get()
+{
+    let x;
+    while (true)
+    {
+        // let x = scand(); --> x not declared at function-scope
+        x = scand();
+        if (x > 10)
+            return;
+    }
+}
+```
+##### Compiler option: `--no-bcr`
+Because BF does not support arbitrary jumps in code, the break, continue and return directives (bcr) have been implemented through a pair of flags that need to be checked continuously in order to determine whether a statement needs to be executed. Effectively, this means that every line of code will be wrapped in an if-statement. Especially when compiling without constant-evaluation (`-O0`) or when constant evaluation is not possible due to user-input dependencies, this will lead to a lot of code-bloat and therefore very large BF-output. The compiler-flag `--no-bcr` will disable support for `break`, `continue` and `return`; using these directives will in that case produce a compiler error.
 
 ### File Inclusion
 The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one. Currently, circular inclusions are not detected, and will simply crash the compiler.

@@ -21,14 +21,15 @@ namespace _MaxInt
 }
 
 Compiler::Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths,
-                   bool const constEval, bool const randomEnabled):
+                   bool const constEval, bool const randomEnabled, bool const bcrEnabled):
     MAX_INT(_MaxInt::get(type)),
     MAX_ARRAY_SIZE(MAX_INT - 5),
     d_scanner(file, ""),
     d_memory(TAPE_SIZE_INITIAL),
     d_includePaths(paths),
     d_constEvalEnabled(constEval),
-    d_randomExtensionEnabled(randomEnabled)
+    d_randomExtensionEnabled(randomEnabled),
+    d_bcrEnabled(bcrEnabled)
 {
     d_bfGen.setTempRequestFn([this](){
                                  return allocateTemp();
@@ -332,12 +333,19 @@ int Compiler::sizeOfOperator(std::string const &ident)
 
 int Compiler::statement(Instruction const &instr)
 {
-    int const continueFlag = getCurrentContinueFlag();
-    int const breakFlag = getCurrentBreakFlag();
+    if (d_bcrEnabled)
+    {
+        int const continueFlag = getCurrentContinueFlag();
+        int const breakFlag = getCurrentBreakFlag();
 
-    Instruction const condition = [&, this](){ return logicalAnd(continueFlag, breakFlag); };
-    Instruction const elseBody = [](){ return -1; };
-    ifStatement(condition, instr, elseBody, false);
+        Instruction const condition = [&, this](){ return logicalAnd(continueFlag, breakFlag); };
+        Instruction const elseBody = [](){ return -1; };
+        ifStatement(condition, instr, elseBody, false);
+    }
+    else
+    {
+        instr();
+    }
     
     d_memory.freeTemps(d_scope.current());
     return -1;
@@ -1343,22 +1351,33 @@ void Compiler::exitScope(std::string const &name)
         //        Scope::Type outOfScopeType = outOfScope.second; 
         
         d_memory.freeLocals(outOfScopeString);
-        auto const it = d_bcrMap.find(outOfScopeString);
-        assert(it != d_bcrMap.end() && "Flag not found for this scope");
-        d_bcrMap.erase(it);
+
+        if (d_bcrEnabled)
+        {
+            auto const it = d_bcrMap.find(outOfScopeString);
+            assert(it != d_bcrMap.end() && "Flag not found for this scope");
+            d_bcrMap.erase(it);
+        }
     }
     else
     {
         d_scope.popFunction(name);
         // memory cleanup performed by ::call()
-        auto const it = d_bcrMap.find(name);
-        assert(it != d_bcrMap.end() && "Flag not found for this scope");
-        d_bcrMap.erase(it);
+
+        if (d_bcrEnabled)
+        {
+            auto const it = d_bcrMap.find(name);
+            assert(it != d_bcrMap.end() && "Flag not found for this scope");
+            d_bcrMap.erase(it);
+        }
     }
 }
 
 void Compiler::allocateBCRFlags(bool const alloc)
 {
+    if (!d_bcrEnabled)
+        return;
+    
     int breakFlag = -1;
     int continueFlag = -1;
 
@@ -1400,6 +1419,8 @@ void Compiler::allocateBCRFlags(bool const alloc)
 
 int Compiler::getCurrentBreakFlag() const
 {
+    assert(d_bcrEnabled && "calling getCurrentBreakFlag() with --no-bcr");
+    
     auto const it = d_bcrMap.find(d_scope.current());
     assert(it != d_bcrMap.end() && "current scope not present in bcr-map");
 
@@ -1408,6 +1429,8 @@ int Compiler::getCurrentBreakFlag() const
 
 int Compiler::getCurrentContinueFlag() const
 {
+    assert(d_bcrEnabled && "calling getCurrentContinueFlag() with --no-bcr");
+    
     auto const it = d_bcrMap.find(d_scope.current());
     assert(it != d_bcrMap.end() && "current scope not present in bcr-map");
 
@@ -1472,14 +1495,17 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
                  << "]";
 
 
-    // If/else might have changed bcr-flags --> mark values unknown
-    d_memory.setValueUnknown(getCurrentContinueFlag());
-    for (auto const &pr: d_bcrMap)
+    if (d_bcrEnabled)
     {
-        if (pr.first.find(d_scope.function()) == 0)
+        // If/else might have changed bcr-flags --> mark values unknown
+        d_memory.setValueUnknown(getCurrentContinueFlag());
+        for (auto const &pr: d_bcrMap)
         {
-            int const breakFlag = pr.second.first;
-            d_memory.setValueUnknown(breakFlag);
+            if (pr.first.find(d_scope.function()) == 0)
+            {
+                int const breakFlag = pr.second.first;
+                d_memory.setValueUnknown(breakFlag);
+            }
         }
     }
 
@@ -1511,7 +1537,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
         body();
         resetContinueFlag();
         increment();
-        conditionAddr = logicalAnd(condition, getCurrentBreakFlag());
+        conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
         d_returnExistingAddressOnAlloc = true;
 
         if (d_memory.valueUnknown(conditionAddr) || count++ > MAX_LOOP_UNROLL_ITERATIONS)
@@ -1536,7 +1562,7 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
     disableConstEval();
 
     init();
-    int const conditionAddr = condition();
+    int conditionAddr = condition();
     compilerErrorIf(conditionAddr < 0, "Use of void-expression in for-condition.");
 
     d_codeBuffer << d_bfGen.assign(flag, conditionAddr);
@@ -1545,8 +1571,9 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
     body();
     resetContinueFlag();
     increment();
-    
-    d_codeBuffer << d_bfGen.assign(flag, logicalAnd(condition, getCurrentBreakFlag()))
+    conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
+                               
+    d_codeBuffer << d_bfGen.assign(flag, conditionAddr)
                  << "]";
 
     exitScope();
@@ -1604,9 +1631,11 @@ int Compiler::forRangeStatementRuntime(std::string const &ident, Instruction con
 
     body();
     resetContinueFlag();
-
+    int finalElementCheck = notEqual(iterator, finalIdx);
+    int conditionAddr = d_bcrEnabled ? logicalAnd(finalElementCheck, getCurrentBreakFlag()) : finalElementCheck;
+    
     d_codeBuffer <<    d_bfGen.incr(iterator)
-                 <<    d_bfGen.assign(flag, logicalAnd(notEqual(iterator, finalIdx), getCurrentBreakFlag()))
+                 <<    d_bfGen.assign(flag, conditionAddr)
                  << "]";
     
     exitScope();
@@ -1621,7 +1650,6 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
 
     State state = save();
     enterScope(Scope::Type::While);
-    int const breakFlag = getCurrentBreakFlag();
     
     int conditionAddr = condition();
     if (d_memory.valueUnknown(conditionAddr))
@@ -1635,7 +1663,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     {
         body();
         resetContinueFlag();
-        conditionAddr = logicalAnd(condition, breakFlag);
+        conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
         d_returnExistingAddressOnAlloc = true;
         
         if (d_memory.valueUnknown(conditionAddr) || (count++ > MAX_LOOP_UNROLL_ITERATIONS))
@@ -1652,19 +1680,19 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
 
 int Compiler::whileStatementRuntime(Instruction const &condition, Instruction const &body)
 {
-    int const conditionAddr = condition();
-    compilerErrorIf(conditionAddr < 0, "Use of void-expression in while-condition.");
+    int const flag = condition();
+    compilerErrorIf(flag < 0, "Use of void-expression in while-condition.");
 
     enterScope(Scope::Type::While);
-    int const breakFlag = getCurrentBreakFlag();
     disableConstEval();
     
-    d_codeBuffer << d_bfGen.movePtr(conditionAddr)
+    d_codeBuffer << d_bfGen.movePtr(flag)
                  << "[";
     body();
     resetContinueFlag();
+    int conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
     
-    d_codeBuffer << d_bfGen.assign(conditionAddr, logicalAnd(condition, breakFlag))
+    d_codeBuffer << d_bfGen.assign(flag, conditionAddr)
                  << "]";
 
     exitScope();
@@ -1757,6 +1785,8 @@ int Compiler::switchStatement(Instruction const &compareExpr,
 
 int Compiler::breakStatement()
 {
+    compilerErrorIf(!d_bcrEnabled, "break-statement not supported when compiling with --no-bcr");
+    
     int const flag = getCurrentBreakFlag();
     if (d_constEvalEnabled)
     {
@@ -1772,6 +1802,8 @@ int Compiler::breakStatement()
 
 int Compiler::continueStatement()
 {
+    compilerErrorIf(!d_bcrEnabled, "continue-statement not supported when compiling with --no-bcr");
+    
     int const flag = getCurrentContinueFlag();
     if (d_constEvalEnabled)
         constEvalSetToValue(flag, 0);
@@ -1783,6 +1815,9 @@ int Compiler::continueStatement()
 
 void Compiler::resetContinueFlag()
 {
+    if (!d_bcrEnabled)
+        return;
+    
     int const flag = getCurrentContinueFlag();
     if (d_constEvalEnabled)
         constEvalSetToValue(flag, 1);
@@ -1792,6 +1827,8 @@ void Compiler::resetContinueFlag()
 
 int Compiler::returnStatement()
 {
+    compilerErrorIf(!d_bcrEnabled, "return-statement not supported when compiling with --no-bcr");
+    
     std::string const func = d_scope.function();
     for (auto const &pr: d_bcrMap)
     {
