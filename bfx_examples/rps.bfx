@@ -1,0 +1,83 @@
+// Note: compile and run with --random!
+
+include "std.bfx"
+
+global [9] WIN_ARRAY;
+
+function init()
+{
+    WIN_ARRAY = #{0, 2, 1,
+                  1, 0, 2,
+                  2, 1, 0};
+}
+
+function x = validate(&c)
+{
+    let x = (c == 'R' || c == 'P' || c == 'S');
+}
+
+function i = toIndex(&c)
+{
+    let i;
+    switch (c)
+    {
+        case 'R': i = 0;
+        case 'P': i = 1;
+        case 'S': i = 2;
+    }
+}
+
+function w = winner(&p1, &p2)
+{
+    let w = WIN_ARRAY[3 * toIndex(p1) + toIndex(p2)];
+}
+
+function main()
+{
+    init();
+    let input;
+
+    while (true)
+    {
+        // Get user input
+        prints("Choose: Rock (R), Paper (P) or Scissors (S): ");
+        scans(input);
+        if (!validate(input))
+        {
+            println("Invalid response. Enter R, P or S.");
+            continue;
+        }
+
+        // Generate computer move
+        let computer = "RPS"[rand() % 3];
+        prints("Computer chose: ");
+        switch (computer)
+        {
+            case 'R': println("Rock!");
+            case 'P': println("Paper!");
+            case 'S': println("Scissors!");
+        }
+
+        // Determine winner
+        switch (winner(input, computer))
+        {
+            case 0: println("It's a tie!");
+            case 1: println("You win!");
+            case 2: println("Computer wins!");
+        }
+
+        // Again?
+        prints("Play again? (y/n) ");
+        scans(input);
+        switch (input)
+        {
+            case 'n': return;
+            case 'y': continue;
+            default:
+            {
+                println("Invalid input; quitting.");
+                break;
+            }
+        }
+    }
+}
