@@ -513,6 +513,15 @@ for (let x: array)
 }
 ```
 
+```javascript
+let [] array = #{1, 2, 3, 4, 5};
+
+for (let &x: array)
+    ++x;  // increment all elements in-place
+```
+
+The loop-variable can also be declared as a reference to modify the array-elements in-place. This only works for loops that will be unrolled (e.g. for arrays of size 20 or less).  
+
 #### While-loops
 The while-loop also has syntax familiar from other C-style languages. It needs no further introduction:
 
@@ -590,7 +599,6 @@ function main()
 {
     // The compiler will try to unroll this, even though we can see
     // that it will take 100 iterations (> 50).
-    
     for (let i = 0; i != 100; ++i)
     {
         printd(i);
@@ -604,13 +612,17 @@ function main()
         endl();
     }
 
-    // Will not compile any faster, but won't unroll 
+    // Will not compile any faster, but won't unroll:
     let [] arr = #{1, 2, 3, 4};
-    for* (let i: arr)
+    for* (let x: arr)
     {
-        printd(i)
+        printd(x)
         endl();
     }
+
+    // Will produce a warning: runtime-loops cannot be iterated by reference:
+    for* (let &x: arr)
+        ++x;
 }
 ```
 
