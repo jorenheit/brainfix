@@ -54,6 +54,7 @@ class Compiler: public CompilerBase
     bool        d_returnExistingAddressOnAlloc{false};
     bool        d_boundsCheckingEnabled{true};
     bool const  d_bcrEnabled{true};
+    bool const  d_includeWarningEnabled{true};
 
     struct State
     {
@@ -85,13 +86,14 @@ public:
         };
 
     Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths,
-             bool constEval, bool randomEnabled, bool bcrEnabled);
+             bool constEval, bool randomEnabled, bool bcrEnabled, bool includeWarningEnabled);
     int compile();
     void write(std::ostream &out);
 
 private:
     int parse();
     void pushStream(std::string const &file);
+    std::string fileWithoutPath(std::string const &file);
     void addFunction(BFXFunction const &bfxFunc);
     void addGlobals(std::vector<std::pair<std::string, TypeSystem::Type>> const &declarations);
     void addConstant(std::string const &ident, int const num);

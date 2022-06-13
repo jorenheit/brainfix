@@ -14,6 +14,7 @@ struct Options
     bool                      constEval{true};
     bool                      randomExtension{false};
     bool                      bcrEnabled{true};
+    bool                      includeWarningEnabled{true};
 };
 
 void printHelp(std::string const &progName)
@@ -30,6 +31,9 @@ void printHelp(std::string const &progName)
               << "--random            Enable random number generation (generates the ?-symbol).\n"
               << "                      Your interpreter must support this extension!\n"
               << "--no-bcr            Disable break/continue/return statements for more compact output.\n"
+              << "--no-multiple-inclusion-warning\n"
+              << "                    Do not warn when a file is included more than once, or when files \n"
+              << "                      with duplicate names are included.\n"
               << "-o [file, stdout]   Specify the output stream/file (default stdout).\n\n"
               << "Example: " << progName << " -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx\n";
 }
@@ -142,6 +146,11 @@ Options parseCmdLine(std::vector<std::string> const &args)
             opt.bcrEnabled = false;
             ++idx;
         }
+        else if (args[idx] == "--no-multiple-inclusion-warning")
+        {
+            opt.includeWarningEnabled = false;
+            ++idx;
+        }
         else if (idx == args.size() - 1)
         {
             opt.bfxFile = args.back();
@@ -183,7 +192,8 @@ int main(int argc, char **argv) try
     }
     
     Compiler c(opt.bfxFile, opt.cellType, opt.includePaths,
-               opt.constEval, opt.randomExtension, opt.bcrEnabled);
+               opt.constEval, opt.randomExtension, opt.bcrEnabled,
+               opt.includeWarningEnabled);
     int err = c.compile();
 
     if (err) return err;

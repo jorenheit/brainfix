@@ -28,3 +28,4 @@
 [ ] Better include: detect (and ignore) circular inclusion, use PATH, slash at the end.
 [ ] In int16 mode, possible to have control characters that move cursor to prev line?
 [ ] Add cursor movement to library
+[ ] Better solution to pass compiler options

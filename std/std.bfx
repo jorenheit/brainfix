@@ -1,4 +1,4 @@
-include "io.bfx"
-include "math.bfx"
-include "bool.bfx"
+include "stdio.bfx"
+include "stdmath.bfx"
+include "stdbool.bfx"
 

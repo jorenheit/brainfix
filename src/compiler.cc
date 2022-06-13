@@ -1,6 +1,6 @@
 #include "compiler.ih"
 
-std::string const Compiler::DEFAULT_INCLUDE_PATH = "/usr/include/bfx/";
+std::string const Compiler::DEFAULT_INCLUDE_PATH = BFX_DEFAULT_INCLUDE_PATH_STRING;
 
 namespace _MaxInt
 {
@@ -23,7 +23,8 @@ namespace _MaxInt
 }
 
 Compiler::Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths,
-                   bool const constEval, bool const randomEnabled, bool const bcrEnabled):
+                   bool const constEval, bool const randomEnabled, bool const bcrEnabled,
+                   bool const includeWarningEnabled):
     MAX_INT(_MaxInt::get(type)),
     MAX_ARRAY_SIZE(MAX_INT - 5),
     d_scanner(file, ""),
@@ -31,9 +32,11 @@ Compiler::Compiler(std::string const &file, CellType type, std::vector<std::stri
     d_includePaths(paths),
     d_constEvalEnabled(constEval),
     d_randomExtensionEnabled(randomEnabled),
-    d_bcrEnabled(bcrEnabled)
+    d_bcrEnabled(bcrEnabled),
+    d_includeWarningEnabled(includeWarningEnabled)
 {
     d_includePaths.push_back(DEFAULT_INCLUDE_PATH);
+    d_included.push_back(fileWithoutPath(file));
     
     d_bfGen.setTempRequestFn([this](){
                                  return allocateTemp();
@@ -115,18 +118,32 @@ int Compiler::lex()
     return token;
 }
 
+std::string Compiler::fileWithoutPath(std::string const &file)
+{
+    size_t const pos = file.find_last_of("/\\");
+    std::string result = (pos == std::string::npos) ? file : file.substr(pos + 1);
+    return result;
+}
 
 void Compiler::pushStream(std::string const &file)
 {
-    if (std::find(d_included.begin(), d_included.end(), file) != d_included.end())
+    std::string const shortFile = fileWithoutPath(file);
+    if (std::find(d_included.begin(), d_included.end(), shortFile) != d_included.end())
+    {
+        compilerWarningIf(d_includeWarningEnabled,
+                          "Multiple inclusion of file ", shortFile, ". Duplicate filenames "
+                          "will be ignored even if they are different files. You can disable "
+                          "this warning with --no-multiple-inclusion-warning.");
+        
         return; // ignore circular inclusions
+    }
     
     for (std::string const &path: d_includePaths)
     {
         try
         {
             d_scanner.pushStream(path + '/' + file);
-            d_included.push_back(file);
+            d_included.push_back(shortFile);
             return;
         }
         catch(...)

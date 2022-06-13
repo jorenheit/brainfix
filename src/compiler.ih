@@ -28,3 +28,11 @@ inline void Compiler::exceptionHandler(std::exception const &exc)
     // specifying std::
 
 //using namespace std;
+
+#ifndef BFX_DEFAULT_INCLUDE_PATH
+#error "Macro BFX_DEFAULT_INCLUDE_PATH undefined."
+#endif
+
+#define STRINGIFY(x) STRINGIFY2(x)
+#define STRINGIFY2(x) #x
+#define BFX_DEFAULT_INCLUDE_PATH_STRING STRINGIFY(BFX_DEFAULT_INCLUDE_PATH)

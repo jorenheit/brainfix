@@ -10,8 +10,8 @@ EXECUTABLE=bfx
 all:	$(SOURCES) $(EXECUTABLE) 
 
 $(EXECUTABLE):	$(OBJECTS)
-	$(CC) $(OBJECTS) -o $@
+	$(CC) $(OBJECTS) -o $@ 
 
 .cc.o:
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $< -o $@ -DBFX_DEFAULT_INCLUDE_PATH=$(BFX_DEFAULT_INCLUDE_PATH)
 
