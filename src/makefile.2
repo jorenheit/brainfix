@@ -8,7 +8,7 @@ EXECUTABLE=bfint
 all:	$(SOURCES) $(EXECUTABLE) 
 
 $(EXECUTABLE):$(OBJECTS)
-	$(CC) $(OBJECTS) -o $@
+	$(CC) $(OBJECTS) -o ../$@
 
 .cc.o:
 	$(CC) $(CFLAGS) $< -o $@
