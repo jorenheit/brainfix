@@ -118,11 +118,15 @@ int Compiler::lex()
 
 void Compiler::pushStream(std::string const &file)
 {
+    if (std::find(d_included.begin(), d_included.end(), file) != d_included.end())
+        return; // ignore circular inclusions
+    
     for (std::string const &path: d_includePaths)
     {
         try
         {
             d_scanner.pushStream(path + '/' + file);
+            d_included.push_back(file);
             return;
         }
         catch(...)

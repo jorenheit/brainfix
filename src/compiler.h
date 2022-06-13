@@ -32,6 +32,7 @@ class Compiler: public CompilerBase
     std::map<std::string, BFXFunction>         d_functionMap;
     std::map<std::string, int>                 d_constMap;
     std::vector<std::string>                   d_includePaths;
+    std::vector<std::string>                   d_included;
     std::ostringstream                         d_codeBuffer;
 
     using BcrMapType = std::map<std::string, std::pair<int, int>>;
