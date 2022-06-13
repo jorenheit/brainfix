@@ -25,7 +25,8 @@
 [x] Why does the memory start allocating at cell 2?    
 [x] merge for/while condition with breakflag
 [x] --no-bcr
-[ ] Better include: detect (and ignore) circular inclusion, use PATH, slash at the end.
-[ ] In int16 mode, possible to have control characters that move cursor to prev line?
-[ ] Add cursor movement to library
+[x] Better include: detect (and ignore) circular inclusion, use PATH, slash at the end.
+[x] In int16 mode, possible to have control characters that move cursor to prev line?
+    --> No int16 mode necessary. Use ANSI escape sequences. Works, but tedious.
+[ ] Add basic cursor movement to library using ANSI escape sequences
 [ ] Better solution to pass compiler options

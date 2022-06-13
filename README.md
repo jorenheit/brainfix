@@ -663,10 +663,10 @@ The compiler accepts only 1 sourcefile, but the `include` keyword can be used to
 Files, or files with the same filename, can only be included once. When a multiple inclusion (which could be circular) is detected, a warning is issued. Two files with the same filename, even when they are different files in different folders and with different contents, will be treated as the same file: only the file that was first encountered is parsed and a warning will be issued. This warning can be suppressed with the `--no-multiple-inclusion-warning` flag.
 
 ### Standard Library
-The standard library provides some useful functions in two categories: IO and mathematics. Below is a list of provided functions that you can use to make your programs interactive and mathematical. Also, in the "bool.bfx" headerfile, the constants `true` and `false` are defined to `1` and `0` respectively.
+The standard library provides some useful functions in two categories: IO and mathematics. Below is a list of provided functions that you can use to make your programs interactive and mathematical. Also, in the "stdbool.bfx" headerfile, the constants `true` and `false` are defined to `1` and `0` respectively.
 
 #### IO
-All functions below are defined in `std/io.bfx`:
+All functions below are defined in `BFX_INCLUDE/stdio.bfx`:
 
 |     function     | description  |
 | ---------------- | ------------ |
@@ -692,7 +692,7 @@ All functions below are defined in `std/io.bfx`:
 On the default architecture, where the cells are only 1 byte long, values can never grow beyond 255. It is therefore sufficient to assume that number will never grow beyond 3 digits. However, when the target architecture contains larger cells, the functions suffixed with `_4` can be used to extend some facilities to 4 digits. Printing and scanning even larger digits is also possible, but functions to this end are not provided by the standard library for the simple reason that these functions would be terribly slow and impractical.
 
 #### Math
-All functions below are defined in `std/math.bfx`:
+All functions below are defined in `BFX_INCLUDE/stdmath.bfx`:
 
 |     function     | description  |
 | ---------------- | ------------ |

@@ -1,7 +1,5 @@
 #include "compiler.ih"
 
-std::string const Compiler::DEFAULT_INCLUDE_PATH = BFX_DEFAULT_INCLUDE_PATH_STRING;
-
 namespace _MaxInt
 {
     template <typename T>
@@ -35,7 +33,7 @@ Compiler::Compiler(std::string const &file, CellType type, std::vector<std::stri
     d_bcrEnabled(bcrEnabled),
     d_includeWarningEnabled(includeWarningEnabled)
 {
-    d_includePaths.push_back(DEFAULT_INCLUDE_PATH);
+    d_includePaths.push_back(BFX_DEFAULT_INCLUDE_PATH_STRING);
     d_included.push_back(fileWithoutPath(file));
     
     d_bfGen.setTempRequestFn([this](){

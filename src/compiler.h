@@ -19,7 +19,6 @@
 class Compiler: public CompilerBase
 {
     static constexpr int TAPE_SIZE_INITIAL = 30000;
-    static std::string const DEFAULT_INCLUDE_PATH;
     long const MAX_INT;
     long const MAX_ARRAY_SIZE;
     int  const MAX_LOOP_UNROLL_ITERATIONS = 20;
