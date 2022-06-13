@@ -18,6 +18,27 @@
 
 class Compiler: public CompilerBase
 {
+public:
+    enum class CellType
+        {
+         INT8,
+         INT16,
+         INT32
+        };
+
+    struct Options
+    {
+        Compiler::CellType        cellType{Compiler::CellType::INT8};
+        std::vector<std::string>  includePaths;
+        std::string               bfxFile;
+        std::ostream*             outStream{&std::cout};
+        bool                      constEvalEnabled{true};
+        bool                      randomEnabled{false};
+        bool                      bcrEnabled{true};
+        bool                      includeWarningEnabled{true};
+    };
+
+private:
     static constexpr int TAPE_SIZE_INITIAL = 30000;
     long const MAX_INT;
     long const MAX_ARRAY_SIZE;
@@ -45,15 +66,16 @@ class Compiler: public CompilerBase
          FINISHED
         };
 
-    Stage       d_stage{Stage::IDLE};
-    std::string d_instructionFilename;
-    int         d_instructionLineNr;
-    bool        d_constEvalEnabled{true};
-    bool const  d_randomExtensionEnabled{false};
-    bool        d_returnExistingAddressOnAlloc{false};
-    bool        d_boundsCheckingEnabled{true};
-    bool const  d_bcrEnabled{true};
-    bool const  d_includeWarningEnabled{true};
+    Stage         d_stage{Stage::IDLE};
+    std::string   d_instructionFilename;
+    int           d_instructionLineNr;
+    bool          d_constEvalEnabled{true};
+    bool const    d_randomExtensionEnabled{false};
+    bool          d_returnExistingAddressOnAlloc{false};
+    bool          d_boundsCheckingEnabled{true};
+    bool const    d_bcrEnabled{true};
+    bool const    d_includeWarningEnabled{true};
+    std::ostream& d_outStream;
 
     struct State
     {
@@ -77,17 +99,10 @@ class Compiler: public CompilerBase
         };
     
 public:
-    enum class CellType
-        {
-         INT8,
-         INT16,
-         INT32
-        };
 
-    Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths,
-             bool constEval, bool randomEnabled, bool bcrEnabled, bool includeWarningEnabled);
+    Compiler(Options const &opt);
     int compile();
-    void write(std::ostream &out);
+    void write();
 
 private:
     int parse();

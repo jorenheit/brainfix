@@ -4,18 +4,6 @@
 #include <algorithm>
 #include "compiler.h"
 
-struct Options
-{
-    int                       err{0};
-    Compiler::CellType        cellType{Compiler::CellType::INT8};
-    std::vector<std::string>  includePaths;
-    std::string               bfxFile;
-    std::ostream*             outStream{&std::cout};
-    bool                      constEval{true};
-    bool                      randomExtension{false};
-    bool                      bcrEnabled{true};
-    bool                      includeWarningEnabled{true};
-};
 
 void printHelp(std::string const &progName)
 {
@@ -38,25 +26,23 @@ void printHelp(std::string const &progName)
               << "Example: " << progName << " -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx\n";
 }
 
-Options parseCmdLine(std::vector<std::string> const &args)
+std::pair<Compiler::Options, int> parseCmdLine(std::vector<std::string> const &args)
 {
-    Options opt;
-    
+    Compiler::Options opt;
+
     size_t idx = 1;
     while (idx < args.size())
     {
         if (args[idx] == "-h")
         {
-            opt.err = 1;
-            return opt;
+            return {opt, 1};
         }
         else if (args[idx] == "-t")
         {
             if (idx == args.size() - 1)
             {
                 std::cerr << "ERROR: No argument passed to option \'-t\'.\n";
-                opt.err = 1;
-                return opt;
+                return {opt, 1};
             }
 
             static std::map<std::string, Compiler::CellType> const getType{
@@ -81,8 +67,7 @@ Options parseCmdLine(std::vector<std::string> const &args)
             catch (std::out_of_range const&)
             {
                 std::cerr << "ERROR: Invalid argument passed to option \'-t\'\n";
-                opt.err = 1;
-                return opt;
+                return {opt, 1};
             }
         }
         else if (args[idx] == "-I")
@@ -90,8 +75,7 @@ Options parseCmdLine(std::vector<std::string> const &args)
             if (idx == args.size() - 1)
             {
                 std::cerr << "ERROR: No argument passed to option \'-I\'.\n";
-                opt.err = 1;
-                return opt;
+                return {opt, 1};
             }
             
             opt.includePaths.push_back(args[idx + 1]);
@@ -102,8 +86,7 @@ Options parseCmdLine(std::vector<std::string> const &args)
             if (idx == args.size() - 1)
             {
                 std::cerr << "ERROR: No argument passed to option \'-o\'.\n";
-                opt.err = 1;
-                return opt;
+                return {opt, 1};
             }
 
             if (args[idx + 1] == "stdout")
@@ -119,8 +102,7 @@ Options parseCmdLine(std::vector<std::string> const &args)
                 if (!file.good())
                 {
                     std::cerr << "ERROR: could not open output-file " << fname << ".\n";
-                    opt.err = 1;
-                    return opt;
+                    return {opt, 1};
                 }
 
                 opt.outStream = &file;
@@ -129,7 +111,7 @@ Options parseCmdLine(std::vector<std::string> const &args)
         }
         else if (args[idx] == "-O0")
         {
-            opt.constEval = false;
+            opt.constEvalEnabled = false;
             ++idx;
         }
         else if (args[idx] == "-O1")
@@ -138,7 +120,7 @@ Options parseCmdLine(std::vector<std::string> const &args)
         }
         else if (args[idx] == "--random")
         {
-            opt.randomExtension = true;
+            opt.randomEnabled = true;
             ++idx;
         }
         else if (args[idx] == "--no-bcr")
@@ -159,46 +141,41 @@ Options parseCmdLine(std::vector<std::string> const &args)
         else
         {
             std::cerr << "Unknown option " << args[idx] << ".\n";
-            opt.err = 1;
-            return opt;
+            return {opt, 1};
         }
     }
 
     if (!opt.outStream || !opt.outStream->good())
     {
         std::cerr << "ERROR: Output file not set. Use -o to specifiy stdout or a file.\n";
-        opt.err = 1;
-        return opt;
+        return {opt, 1};
     }
 
     if (idx > (args.size() - 1))
     {
         std::cerr << "ERROR: No input (.bfx) file specified.\n";
-        opt.err = 1;
-        return opt;
+        return {opt, 1};
     }
 
-    return opt;
+    return {opt, 0};
 }
 
 
 int main(int argc, char **argv) try
 {
-    Options opt = parseCmdLine(std::vector<std::string>(argv, argv + argc));
-    if (opt.err == 1)
+    auto result = parseCmdLine(std::vector<std::string>(argv, argv + argc));
+    if (result.second == 1)
     {
         printHelp(argv[0]);
         return 1;
     }
     
-    Compiler c(opt.bfxFile, opt.cellType, opt.includePaths,
-               opt.constEval, opt.randomExtension, opt.bcrEnabled,
-               opt.includeWarningEnabled);
+    Compiler c(result.first);
     int err = c.compile();
 
     if (err) return err;
 
-    c.write(*opt.outStream);
+    c.write();
 }
 catch (std::string const &msg)
 {

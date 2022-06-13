@@ -20,21 +20,20 @@ namespace _MaxInt
     }
 }
 
-Compiler::Compiler(std::string const &file, CellType type, std::vector<std::string> const &paths,
-                   bool const constEval, bool const randomEnabled, bool const bcrEnabled,
-                   bool const includeWarningEnabled):
-    MAX_INT(_MaxInt::get(type)),
+Compiler::Compiler(Options const &opt):
+    MAX_INT(_MaxInt::get(opt.cellType)),
     MAX_ARRAY_SIZE(MAX_INT - 5),
-    d_scanner(file, ""),
+    d_scanner(opt.bfxFile, ""),
     d_memory(TAPE_SIZE_INITIAL),
-    d_includePaths(paths),
-    d_constEvalEnabled(constEval),
-    d_randomExtensionEnabled(randomEnabled),
-    d_bcrEnabled(bcrEnabled),
-    d_includeWarningEnabled(includeWarningEnabled)
+    d_includePaths(opt.includePaths),
+    d_constEvalEnabled(opt.constEvalEnabled),
+    d_randomExtensionEnabled(opt.randomEnabled),
+    d_bcrEnabled(opt.bcrEnabled),
+    d_includeWarningEnabled(opt.includeWarningEnabled),
+    d_outStream(*opt.outStream)
 {
     d_includePaths.push_back(BFX_DEFAULT_INCLUDE_PATH_STRING);
-    d_included.push_back(fileWithoutPath(file));
+    d_included.push_back(fileWithoutPath(opt.bfxFile));
     
     d_bfGen.setTempRequestFn([this](){
                                  return allocateTemp();
@@ -210,9 +209,9 @@ int Compiler::compile()
     return 0;
 }
 
-void Compiler::write(std::ostream &out)
+void Compiler::write()
 {
-    out << cancelOppositeCommands(d_codeBuffer.str()) << '\n';
+    d_outStream << cancelOppositeCommands(d_codeBuffer.str()) << '\n';
 }
 
 void Compiler::error()
