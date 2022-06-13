@@ -19,11 +19,11 @@ cd src
 make
 ```
 
-To copy the resulting binaries to `/usr/local/bin`, run as root:
-
+To install the resulting binaries and standard library files to your PATH, run as root:
 ```
 make install
 ```
+By default, this will copy the binaries (bfx and bfint) to /usr/local/bin and the library files to /usr/include/bfx. These directories can be changed by editing the first couple of lines in the Makefile.
 
 If for some reason you want to change the grammar specification, you can let bisonc++ and flexc++ regenerate the sourcecode for the scanner (file: lexer) and parser (file: grammar) by running
 

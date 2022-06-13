@@ -1,4 +1,5 @@
 # Set default BFX include path
+INSTALL_PATH=/usr/local/bin
 BFX_INCLUDE=/usr/include/bfx
 
 .PHONY: bfx bfint
@@ -16,8 +17,8 @@ regenerate:
 	bisonc++ grammar && flexc++ lexer
 
 install: bfx bfint
-	cp bfx /usr/local/bin
-	cp bfint /usr/local/bin
+	cp bfx $(INSTALL_PATH)
+	cp bfint $(INSTALL_PATH)
 	mkdir -p $(BFX_INCLUDE)
 	cp ../std/std.bfx $(BFX_INCLUDE)
 	cp ../std/stdio.bfx $(BFX_INCLUDE)
@@ -25,6 +26,6 @@ install: bfx bfint
 	cp ../std/stdbool.bfx $(BFX_INCLUDE)
 
 uninstall:
-	rm /usr/local/bin/bfx 2> /dev/null
-	rm /usr/local/bin/bfint 2> /dev/null
+	rm -f $(INSTALL_PATH)/bfx
+	rm -f $(INSTALL_PATH)/bfint
 	rm -rf $(BFX_INCLUDE)
