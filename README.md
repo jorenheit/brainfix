@@ -31,6 +31,17 @@ If for some reason you want to change the grammar specification, you can let bis
 make regenerate
 ```
 
+To remove all object files, run
+```
+make clean
+```
+
+To undo all actions performed by `make install`, run as root
+```
+make uninstall
+```
+
+
 ## Usage
 ### Using the `bfx` executable
 Building the project results will produce the compiler executable `bfx`. The syntax for invoking the compiler can be inspected by running `bfx -h`:
