@@ -1,5 +1,33 @@
 // STD MATH
 
+/* Provided math functions:
+
+   MATHS
+
+   sqrt(x)	              - Calculate the square root of x, rounded down 
+   factorial(n)           - Calculate n! (overflows for n > 5) 
+   min(x,y)               - Returns the minimum of x and y 
+   max(x,y)               - Returns the maximum of x and y 
+
+   BINARY
+
+   to_binary_array(x)     - Returns 8-bit binary representation of x as array of 0's and 1's 
+   from_binary_array(x)   - Takes a binary array and converts it back to 8-bit integer 
+
+   BITWISE OPERATIONS
+
+   bit8_or(x, y)          - Returns bitwise OR of x and y (8-bit) 
+   bit8_and(x, y)         - Returns bitwise AND of x and y (8-bit) 
+   bit8_xor(x, y)         - Returns bitwise XOR of x and y (8-bit)
+   bit8_shift_left(x, n)  - Shift the binary representation of x by n bits to the left 
+   bit8_shift_right(x, n) - Shift the binary representation of x by n bits to the right
+
+   RANDOM NUMBER GENERATOR
+
+   rand()                 - Generate random number 
+*/
+
+
 function s = sqrt(&x)
 {
     let s = 0;
@@ -7,27 +35,23 @@ function s = sqrt(&x)
     let y = 1;
     while (s == 0)
     {
-        let square = y * y;
-        if (square == x)
+        let y2 = y^2;
+        if (y2 == x)
             s = y;
-        else if (square > x ||  square < previous) // check for overflow
+        else if (y2 > x || y2 < previous) // check for overflow
             s = y - 1;
 
-        previous = square;
+        previous = y2;
         ++y;
     }
 }
 
 function f = factorial(&x)
 {
-    // Overflows above 6! so this might as well
-    //   be implemented as a lookup-table... 
-    
     let f = 1;
-    for(let i = 1; i <= x; ++i)
+    for (let i = 1; i <= x; ++i)
         f *= i;
 }
-
 
 function m = min(&x, &y)
 {

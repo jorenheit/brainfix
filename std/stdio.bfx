@@ -62,65 +62,13 @@ function printd_4(&x)
 }
 
 
-function str = to_string(x)
-{
-    let hundreds = (x %=/ 100);
-    let tens = (x %=/ 10);
-    let ones = x;
-    
-    let idx = 0;
-    let [3]str = 0;
-    
-    if (hundreds != 0)
-    {
-        str[idx++] = hundreds + '0';
-        str[idx++] = tens + '0';
-    }
-    else if (tens != 0)
-    {
-        str[idx++] = tens + '0';
-    }
-
-    str[idx] = ones + '0';
-}
-
-function str = to_string_4(x)
-{
-    let thousands = (x %=/ 1000);
-    let hundreds = (x %=/ 100);
-    let tens = (x %=/ 10);
-    let ones = x;
-
-    let idx = 0;
-    let [4] str = 0;
-
-    if (thousands != 0)
-    {
-        str[idx++] = thousands + '0';
-        str[idx++] = hundreds + '0';
-        str[idx++] = tens + '0';
-    }
-    else if (hundreds != 0)
-    {
-        str[idx++] = hundreds + '0';
-        str[idx++] = tens + '0';
-    }
-    else if (tens != 0)
-    {
-        str[idx++] = tens + '0';
-    }
-
-    str[idx] = ones + '0';
-}
-
 function print_vec(&v)
 {
-    let sz = sizeof(v);
     printc('(');
-    for(let i = 0; i != sz; ++i)
+    for(let i = 0; i != sizeof(v); ++i)
     {
         printd(v[i]);
-        if (i != sz - 1)
+        if (i != sizeof(v) - 1)
         {
             printc(','); 
             printc(' ');
@@ -249,4 +197,56 @@ function str = to_hex_str(x)
     let [] c      = "0123456789abcdef";
     let [] str    = #{'0', 'x', c[x], c[lowNibble]};
 }
+
+function str = to_string(x)
+{
+    let hundreds = (x %=/ 100);
+    let tens = (x %=/ 10);
+    let ones = x;
+    
+    let idx = 0;
+    let [3]str = 0;
+    
+    if (hundreds != 0)
+    {
+        str[idx++] = hundreds + '0';
+        str[idx++] = tens + '0';
+    }
+    else if (tens != 0)
+    {
+        str[idx++] = tens + '0';
+    }
+
+    str[idx] = ones + '0';
+}
+
+function str = to_string_4(x)
+{
+    let thousands = (x %=/ 1000);
+    let hundreds = (x %=/ 100);
+    let tens = (x %=/ 10);
+    let ones = x;
+
+    let idx = 0;
+    let [4] str = 0;
+
+    if (thousands != 0)
+    {
+        str[idx++] = thousands + '0';
+        str[idx++] = hundreds + '0';
+        str[idx++] = tens + '0';
+    }
+    else if (hundreds != 0)
+    {
+        str[idx++] = hundreds + '0';
+        str[idx++] = tens + '0';
+    }
+    else if (tens != 0)
+    {
+        str[idx++] = tens + '0';
+    }
+
+    str[idx] = ones + '0';
+}
+
 

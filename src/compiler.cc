@@ -1844,36 +1844,36 @@ int Compiler::returnStatement()
 
 std::string Compiler::cancelOppositeCommands(std::string const &bf)
 {
-    auto cancel = [](std::string const &input, char up, char down) -> std::string
-                  {
-                      std::string result;
-                      int count = 0;
+    auto cancel =
+        [](std::string const &input, char const up, char const down) -> std::string
+        {
+            std::string result;
+            int count = 0;
 
-                      auto flush = [&]()
-                                   {
-                                       if (count > 0) result += std::string( count, up);
-                                       if (count < 0) result += std::string(-count, down);
-                                       count = 0;
-                                   };
+            auto flush = [&]()
+                         {
+                             if (count > 0) result += std::string( count, up);
+                             if (count < 0) result += std::string(-count, down);
+                             count = 0;
+                         };
 
     
-                      for (char c: input)
-                      {
-                          if (c == up)   ++count;
-                          else if (c == down) --count;
-                          else
-                          {
-                              flush();
-                              result += c;
-                          }
-                      }
+            for (char c: input)
+            {
+                if (c == up)   ++count;
+                else if (c == down) --count;
+                else
+                {
+                    flush();
+                    result += c;
+                }
+            }
     
-                      flush();
-                      return result;
-                  };
+            flush();
+            return result;
+        };
 
-    std::string result  = cancel(bf, '>', '<');
-    return cancel(result, '+', '-');
+    return cancel(cancel(bf, '>', '<'), '+', '-');
 }
 
 void Compiler::setFilename(std::string const &file)
