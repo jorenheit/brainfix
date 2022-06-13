@@ -16,6 +16,9 @@ void printHelp(std::string const &progName)
               << "                      This option may appear multiple times to specify multiple folders.\n"
               << "-O0                 Do NOT do any constant expression evaluation.\n"
               << "-O1                 Do constant expression evaluation (default).\n"
+              << "--max-unroll-iterations [N]\n"
+              << "                    Specify the maximum number of loop-iterations that will be unrolled.\n"
+              << "                      Defaults to 20.\n"
               << "--random            Enable random number generation (generates the ?-symbol).\n"
               << "                      Your interpreter must support this extension!\n"
               << "--no-bcr            Disable break/continue/return statements for more compact output.\n"
@@ -117,6 +120,23 @@ std::pair<Compiler::Options, int> parseCmdLine(std::vector<std::string> const &a
         else if (args[idx] == "-O1")
         {
             ++idx;
+        }
+        else if (args[idx] == "--max-unroll-iterations")
+        {
+            if (idx == args.size() - 1)
+            {
+                std::cerr << "ERROR: No argument passed to option \'--max-unroll-iterations\'.\n";
+                return {opt, 1};
+            }
+            
+            try {
+                opt.maxUnrollIterations = std::stoi(args[idx + 1]);
+                idx += 2;
+            }
+            catch (...) {
+                std::cerr << "Could not convert argument to --max-unroll-iterations to integer.";
+                return {opt, 1};
+            }
         }
         else if (args[idx] == "--random")
         {

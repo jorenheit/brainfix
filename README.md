@@ -55,6 +55,9 @@ Options:
                       This option may appear multiple times to specify multiple folders.
 -O0                 Do NOT do any constant expression evaluation.
 -O1                 Do constant expression evaluation (default).
+--max-unroll-iterations [N]
+                    Specify the maximum number of loop-iterations that will be unrolled.
+                      Defaults to 20.
 --random            Enable random number generation (generates the ?-symbol).
                       Your interpreter must support this extension!
 --no-bcr            Disable break/continue/return statements for more compact output.
@@ -513,7 +516,7 @@ for (let x: array)
 }
 ```
 
-The loop-variable can also be declared as a reference to modify the array-elements in-place. This only works for loops that will be unrolled (e.g. for arrays of size 20 or less, see the section of loop-unrolling below).  
+The loop-variable can also be declared as a reference to modify the array-elements in-place. This only works for loops that will be unrolled (see the section on loop-unrolling below).  
 
 ```javascript
 let [] array = #{1, 2, 3, 4, 5};
@@ -591,7 +594,7 @@ switch (x)
 ```    
 
 #### Preventing Loop Unrolling with `for*` and `while*`
-Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll loops by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds 20, it will fall back on generating code for executing the loop at runtime. 
+Within a runtime-evaluated loop, the compiler can't make any assumptions about the values of each of the variables, so it has to output BF-algorithms for each of the operations in the body of the loop. Because of this, loops generally yield great amounts of BF code. To reduce the size of the output, the compiler will by default try to unroll loops by evaluating the body and condition for as long as it can. When the loop can't be fully unrolled (because the stop-condition can only be known at runtime) or the number of iterations exceeds its maximum (20 by default, or otherwise set through `--max-unroll-iterations`), it will fall back on generating code for executing the loop at runtime. 
 
 However, loop-unrolling can take a long time, resulting in long compilation times for loops with large bodies or many iterations. Especially in the latter case, it can take some time before the compiler realizes it shouldn't unroll the loop at all (since it has to evaluate the body 20 times before coming to this conclusion). To indicate to the compiler that it shouldn't attempt to unroll the loop, we can use `for*` and `while*` instead. For range-based for-loops, the compiler can predetermine the number of iterations; this cannot be changed in the body of the loop. Therefore, it can decide beforehand whether or not to unroll the loop without any compilation time-penalty. Using `for*` will overrule the decision of the compiler and will force it to not unroll, but this will not result in faster compilation times.
 
@@ -599,21 +602,22 @@ However, loop-unrolling can take a long time, resulting in long compilation time
 function main()
 {
     // The compiler will try to unroll this, even though we can see
-    // that it will take 100 iterations (> 50).
+    // that it will take 100 iterations and will therefore not be
+    // unrolled (assuming the default maximum of 20 iterations).
     for (let i = 0; i != 100; ++i)
     {
         printd(i);
         endl();
     }
 
-    // Use for* instead: same resulting BF-code, faster compilation
+    // Use for* instead: same resulting BF-code, faster compilation.
     for* (let i = 0; i != 100; ++i)
     {
         printd(i);
         endl();
     }
 
-    // Will not compile any faster, but won't unroll:
+    // Ranged-for* will not unroll, but this won't result in faster compilation.
     let [] arr = #{1, 2, 3, 4};
     for* (let x: arr)
     {

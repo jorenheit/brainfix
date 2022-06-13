@@ -23,6 +23,7 @@ namespace _MaxInt
 Compiler::Compiler(Options const &opt):
     MAX_INT(_MaxInt::get(opt.cellType)),
     MAX_ARRAY_SIZE(MAX_INT - 5),
+    MAX_LOOP_UNROLL_ITERATIONS(opt.maxUnrollIterations),
     d_scanner(opt.bfxFile, ""),
     d_memory(TAPE_SIZE_INITIAL),
     d_includePaths(opt.includePaths),

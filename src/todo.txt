@@ -29,4 +29,5 @@
 [x] In int16 mode, possible to have control characters that move cursor to prev line?
     --> No int16 mode necessary. Use ANSI escape sequences. Works, but tedious.
 [ ] Add basic cursor movement to library using ANSI escape sequences
-[ ] Better solution to pass compiler options
+[x] Better solution to pass compiler options
+[x] MAX_LOOP_UNROLL_ITERATIONS as compiler option
