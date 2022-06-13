@@ -6,12 +6,12 @@ BFX_INCLUDE=/usr/include/bfx
 
 all: bfx bfint
 bfx:
-	make -f makefile.1 BFX_DEFAULT_INCLUDE_PATH=$(BFX_INCLUDE)
+	make -C src -f makefile.1 BFX_DEFAULT_INCLUDE_PATH=$(BFX_INCLUDE)
 bfint:
-	make -f makefile.2
+	make -C src -f makefile.2
 
 clean:
-	rm -f *.o interpreter/*.o
+	rm -f src/*.o src/interpreter/*.o
 
 regenerate:
 	bisonc++ grammar && flexc++ lexer
@@ -20,10 +20,10 @@ install: bfx bfint
 	cp bfx $(INSTALL_PATH)
 	cp bfint $(INSTALL_PATH)
 	mkdir -p $(BFX_INCLUDE)
-	cp ../std/std.bfx $(BFX_INCLUDE)
-	cp ../std/stdio.bfx $(BFX_INCLUDE)
-	cp ../std/stdmath.bfx $(BFX_INCLUDE)
-	cp ../std/stdbool.bfx $(BFX_INCLUDE)
+	cp std/std.bfx $(BFX_INCLUDE)
+	cp std/stdio.bfx $(BFX_INCLUDE)
+	cp std/stdmath.bfx $(BFX_INCLUDE)
+	cp std/stdbool.bfx $(BFX_INCLUDE)
 
 uninstall:
 	rm -f $(INSTALL_PATH)/bfx
