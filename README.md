@@ -36,7 +36,6 @@ make regenerate
 Building the project results will produce the compiler executable `bfx`. The syntax for invoking the compiler can be inspected by running `bfx -h`:
 
 ```
-$ bfx -h
 Usage: bfx [options] <target(.bfx)>
 Options:
 -h                  Display this text.
@@ -49,6 +48,9 @@ Options:
 --random            Enable random number generation (generates the ?-symbol).
                       Your interpreter must support this extension!
 --no-bcr            Disable break/continue/return statements for more compact output.
+--no-multiple-inclusion-warning
+                    Do not warn when a file is included more than once, or when files 
+                      with duplicate names are included.
 -o [file, stdout]   Specify the output stream/file (default stdout).
 
 Example: bfx -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx
@@ -655,7 +657,10 @@ function x = get()
 Because BF does not support arbitrary jumps in code, the break, continue and return directives (bcr) have been implemented through a pair of flags that need to be checked continuously in order to determine whether a statement needs to be executed. Effectively, this means that every line of code will be wrapped in an if-statement. Especially when compiling without constant-evaluation (`-O0`) or when constant evaluation is not possible due to user-input dependencies, this will lead to a lot of code-bloat and therefore very large BF-output. The compiler-flag `--no-bcr` will disable support for break, continue and return; using these directives will in that case produce a compiler error.
 
 ### File Inclusion
-The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one. Currently, circular inclusions are not detected, and will simply crash the compiler.
+The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one.
+
+#### Duplicate and Circular Inclusions
+Files, or files with the same filename, can only be included once. When a multiple inclusion (which could be circular) is detected, a warning is issued. Two files with the same filename, even when they are different files in different folders and with different contents, will be treated as the same file: only the file that was first encountered is parsed and a warning will be issued. This warning can be suppressed with the `--no-multiple-inclusion-warning` flag.
 
 ### Standard Library
 The standard library provides some useful functions in two categories: IO and mathematics. Below is a list of provided functions that you can use to make your programs interactive and mathematical. Also, in the "bool.bfx" headerfile, the constants `true` and `false` are defined to `1` and `0` respectively.
