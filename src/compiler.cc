@@ -122,7 +122,7 @@ void Compiler::pushStream(std::string const &file)
     {
         try
         {
-            d_scanner.pushStream(path + file);
+            d_scanner.pushStream(path + '/' + file);
             return;
         }
         catch(...)
