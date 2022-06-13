@@ -1612,27 +1612,46 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
     return -1;
 }
 
-int Compiler::forRangeStatement(std::string const &ident, Instruction const &array, Instruction const &body)
+int Compiler::forRangeStatement(BFXFunction::Parameter const &param, Instruction const &array, Instruction const &body)
 {
+    std::string const ident = param.first;
+    bool const reference = param.second == BFXFunction::ParameterType::Reference;
+    
     State state = save();
     int const arrayAddr = array();
     int const nIter = d_memory.sizeOf(arrayAddr);
     if (nIter > MAX_LOOP_UNROLL_ITERATIONS)
     {
         restore(std::move(state));
-        return forRangeStatementRuntime(ident, array, body);
+        return forRangeStatementRuntime(param, array, body);
     }
 
     enterScope(Scope::Type::For);
-    int const elementAddr = declareVariable(ident, TypeSystem::Type(1));
-    for (int i = 0; i != nIter; ++i)
+    if (reference)
     {
-        assign(elementAddr, arrayAddr + i);
-        body();
-        resetContinueFlag();
-        d_returnExistingAddressOnAlloc = true;
-    }    
-
+        for (int i = 0; i != nIter; ++i)
+        {
+            int const elementAddr = arrayAddr + i;
+            d_memory.push(elementAddr);
+            d_memory.rename(elementAddr, ident, d_scope.current());
+            body();
+            d_memory.pop();
+            resetContinueFlag();
+            d_returnExistingAddressOnAlloc = true;
+        }    
+    }
+    else
+    {
+        int const elementAddr = declareVariable(ident, TypeSystem::Type(1));
+        for (int i = 0; i != nIter; ++i)
+        {
+            assign(elementAddr, arrayAddr + i);
+            body();
+            resetContinueFlag();
+            d_returnExistingAddressOnAlloc = true;
+        }    
+    }
+    
     d_returnExistingAddressOnAlloc = false;
     exitScope();
     
@@ -1640,8 +1659,13 @@ int Compiler::forRangeStatement(std::string const &ident, Instruction const &arr
 
 }
 
-int Compiler::forRangeStatementRuntime(std::string const &ident, Instruction const &array, Instruction const &body)
+int Compiler::forRangeStatementRuntime(BFXFunction::Parameter const &param, Instruction const &array, Instruction const &body)
+                                       
 {
+    std::string const ident = param.first;
+    bool const reference = param.second == BFXFunction::ParameterType::Reference;
+    compilerWarningIf(reference, "Declaring ranged-for variable as reference has no effect in runtime loop.");
+    
     int const tmp = allocateTempBlock(3);
     int const iterator = tmp + 0;
     int const flag = tmp + 1;

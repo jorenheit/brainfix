@@ -749,12 +749,12 @@ for_statement:
         $$ = instruction<&Compiler::forStatementRuntime>($4, $6, $8, $10);
     }
 |
-    FOR '(' LET IDENT ':' expression ')' statement
+    FOR '(' LET parameter ':' expression ')' statement
     {
         $$ = instruction<&Compiler::forRangeStatement>($4, $6, $8);
     }
 |
-    FOR '*' '(' LET IDENT ':' expression ')' statement
+    FOR '*' '(' LET parameter ':' expression ')' statement
     {
         $$ = instruction<&Compiler::forRangeStatementRuntime>($5, $7, $9);
     }

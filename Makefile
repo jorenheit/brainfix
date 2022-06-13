@@ -14,7 +14,7 @@ clean:
 	rm -f src/*.o src/interpreter/*.o
 
 regenerate:
-	bisonc++ grammar && flexc++ lexer
+	cd src && bisonc++ grammar && flexc++ lexer
 
 install: bfx bfint
 	cp bfx $(INSTALL_PATH)

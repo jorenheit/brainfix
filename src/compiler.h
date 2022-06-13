@@ -231,8 +231,8 @@ private:
                      Instruction const &increment, Instruction const &body);
     int forStatementRuntime(Instruction const &init, Instruction const &condition,
                             Instruction const &increment, Instruction const &body);
-    int forRangeStatement(std::string const &ident, Instruction const &array, Instruction const &body);
-    int forRangeStatementRuntime(std::string const &ident, Instruction const &array, Instruction const &body);
+    int forRangeStatement(BFXFunction::Parameter const &param, Instruction const &array, Instruction const &body);
+    int forRangeStatementRuntime(BFXFunction::Parameter const &param, Instruction const &array, Instruction const &body);
     
     int whileStatement(Instruction const &condition, Instruction const &body);
     int whileStatementRuntime(Instruction const &condition, Instruction const &body);
