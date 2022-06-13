@@ -1,18 +1,15 @@
 #ifndef TYPESYSTEM_H
 #define TYPESYSTEM_H
+
 #include <map>
 #include <variant>
 #include <vector>
 #include <cassert>
 
-class TypeSystem
+namespace TypeSystem
 {
-    
-public:
     class StructDefinition;
-private:
-    static std::map<std::string, StructDefinition> typeMap;
-public:
+
     class Type
     {
         enum class Kind
@@ -49,10 +46,6 @@ public:
         bool isNullType() const;
     };
     
-private:
-    using NameTypePair = std::pair<std::string, Type>;
-
-public:        
     class StructDefinition
     {
     public:
@@ -76,20 +69,14 @@ public:
             d_valid{false}
         {}
 
-        void addField(NameTypePair const &f);
+        void addField(std::string const &name, Type const &type);
         int size() const;
         std::vector<Field> const &fields() const;
         std::string const &name() const;
     };
 
-
-    static std::string intName(int const sz)
-    {
-        return "__int_" + std::to_string(sz) + "__";
-    }
-    
-public:
-    static bool add(std::string const &name, std::vector<NameTypePair> const &fields);
+    bool add(std::string const &name,
+             std::vector<std::pair<std::string, Type>> const &fields);
 };
 
 #endif // TYPES_H

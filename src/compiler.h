@@ -15,6 +15,7 @@
 #include "scanner.h"
 #include "bfgenerator.h"
 #include "memory.h"
+#include "scope.h"
 
 class Compiler: public CompilerBase
 {

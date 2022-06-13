@@ -1,4 +1,4 @@
-#include "bfxfunction.h"
+#include "scope.ih"
 
 bool Scope::empty() const
 {

@@ -1,7 +1,15 @@
 #include <iostream>
 #include "typesystem.h"
 
-std::map<std::string, TypeSystem::StructDefinition> TypeSystem::typeMap;
+namespace TypeSystem
+{
+    static std::map<std::string, StructDefinition> typeMap;
+
+    static std::string intName(int const sz)
+    {
+        return "__int_" + std::to_string(sz) + "__";
+    }
+}
 
 int TypeSystem::Type::size() const
 {
@@ -62,26 +70,24 @@ bool TypeSystem::Type::isNullType() const
 {
     return d_kind == Kind::NULLTYPE;
 }
-
  
-void TypeSystem::StructDefinition::addField(NameTypePair const &f)
+void TypeSystem::StructDefinition::addField(std::string const &name, Type const &type)
 {
-    d_fields.emplace_back(Field{f.first, d_size, f.second});
-    d_size += f.second.size();
+    d_fields.emplace_back(Field{name, d_size, type});
+    d_size += type.size();
 }
 
 TypeSystem::StructDefinition::StructDefinition(int const sz):
     d_size(0),
     d_name(TypeSystem::intName(sz))
 {
-    addField(NameTypePair{"", Type(sz)});
+    addField("", Type(sz));
 }
 
 TypeSystem::StructDefinition::StructDefinition(std::string const &name):
     d_size(1),
     d_name(name)
 {}
-
 
 int TypeSystem::StructDefinition::size() const
 {
@@ -98,7 +104,8 @@ std::string const &TypeSystem::StructDefinition::name() const
     return d_name;
 }
 
-bool TypeSystem::add(std::string const &name, std::vector<NameTypePair> const &fields)
+bool TypeSystem::add(std::string const &name,
+                     std::vector<std::pair<std::string, Type>> const &fields)
 {
     if (typeMap.find(name) != typeMap.end())
         return false;
@@ -106,7 +113,7 @@ bool TypeSystem::add(std::string const &name, std::vector<NameTypePair> const &f
     StructDefinition s(name);
     for (auto const &f: fields)
     {
-        s.addField(f);
+        s.addField(f.first, f.second);
     }
 
     typeMap.insert({name, s});

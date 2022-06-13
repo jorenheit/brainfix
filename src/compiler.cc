@@ -327,7 +327,7 @@ int Compiler::addressOf(std::string const &ident)
 {
     int addr = d_memory.find(ident, d_scope.current());
     addr = (addr != -1) ? addr : d_memory.find(ident, "");
-    compilerErrorIf(addr < 0, "Variable \"", ident, "\" not defined in this scope.");
+    compilerErrorIf(addr < 0, "Variable \"", ident, "\" not declared in this scope.");
     return addr;
 }
 
@@ -349,7 +349,7 @@ int Compiler::allocateTempBlock(int const sz)
 int Compiler::sizeOfOperator(std::string const &ident)
 {
     int const sz = d_memory.sizeOf(ident, d_scope.current());
-    compilerErrorIf(sz == 0, "Variable \"", ident ,"\" not defined in this scope.");
+    compilerErrorIf(sz == 0, "Variable \"", ident ,"\" not declared in this scope.");
 
     return constVal(sz);
 }
@@ -1786,13 +1786,9 @@ int Compiler::breakStatement()
     
     int const flag = getCurrentBreakFlag();
     if (d_constEvalEnabled)
-    {
         constEvalSetToValue(flag, 0);
-    }
     else
-    {
         runtimeSetToValue(flag, 0);
-    }
     
     return -1;
 }

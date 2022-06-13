@@ -1,19 +1,9 @@
 #ifndef BFXFUNCTION_H
 #define BFXFUNCTION_H
 
-#include <functional>
 #include <vector>
 #include <string>
-#include <variant>
-#include <cassert>
-#include <deque>
-#include "typesystem.h"
-
-// namespace BFX ?????
-
-using Instruction = std::function<int()>;
-using VariableDeclaration = std::pair<std::string,
-                                      std::variant<int, std::string>>;
+#include "instruction.h"
 
 class BFXFunction
 {
@@ -27,7 +17,6 @@ public:
     using Parameter = std::pair<std::string, ParameterType>;
     
 private:
-    
     std::string            d_name;
     Instruction            d_body;
     std::vector<Parameter> d_params;
@@ -77,80 +66,5 @@ public:
         return d_returnVar.empty();
     }
 };
-
-class Scope
-{
-public:
-    enum class Type
-        {
-         Function,
-         For,
-         While,
-         Switch,
-         If,
-         Anonymous
-        };
-
-private:    
-    template <typename T>
-    using StackType = std::deque<T>;
-
-    struct SubScope
-    {
-        Type type;
-        int id;
-    };
-    
-    StackType<std::pair<std::string, StackType<SubScope>>> d_stack;
-
-public:
-    bool empty() const;
-    std::string function() const;
-    std::string current() const;
-    Type currentType() const;
-    std::string enclosing() const;
-    bool containsFunction(std::string const &name) const;
-    void push(Type type);
-    void push(std::string const &name);
-    std::string popFunction(std::string const &name);
-    std::pair<std::string, Type> pop();
-};
-    
-class AddressOrInstruction
-{
-    enum class Kind
-        {
-         ADDRESS,
-         INSTRUCTION
-        };
-    
-    mutable Kind d_kind;
-    mutable int d_addr;
-    Instruction const d_instr;
-    
-public:
-    AddressOrInstruction(int addr):
-        d_kind(Kind::ADDRESS),
-        d_addr(addr)
-    {}
-    
-    AddressOrInstruction(Instruction const &instr):
-        d_kind(Kind::INSTRUCTION),
-        d_instr(instr)
-    {}
-
-    operator int() const
-    {
-        if (d_kind == Kind::INSTRUCTION)
-        {
-            // Lazy evaluation
-            d_addr = d_instr();
-            d_kind = Kind::ADDRESS;
-        }
-        
-        return d_addr;
-    }
-};
-
 
 #endif 

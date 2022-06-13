@@ -2,7 +2,7 @@
 %filenames compiler
 %parsefun-source compiler_bisoncpp_generated.cc
 %scanner scanner.h
-%baseclass-preinclude "bfxfunction.h"
+%baseclass-preinclude "parser_types.h"
 %tag-mismatches on
 
 %polymorphic    INT:                    int;
@@ -344,22 +344,22 @@ expression:
         $$ = $2;
     }
 |
-    INC variable
+    INC expression
     {
         $$ = instruction<&Compiler::preIncrement>($2);
     }
 |
-    DEC variable
+    DEC expression
     {
         $$ = instruction<&Compiler::preDecrement>($2);
     }
 |
-    variable INC
+    expression INC
     {
         $$ = instruction<&Compiler::postIncrement>($1);
     }
 |
-    variable DEC
+    expression DEC
     {
         $$ = instruction<&Compiler::postDecrement>($1);
     }
