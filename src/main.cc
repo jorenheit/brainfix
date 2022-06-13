@@ -23,7 +23,7 @@ void printHelp(std::string const &progName)
               << "                    Do not warn when a file is included more than once, or when files \n"
               << "                      with duplicate names are included.\n"
               << "-o [file, stdout]   Specify the output stream/file (default stdout).\n\n"
-              << "Example: " << progName << " -o program.bf -O1 -I ~/brainfix/std/ -t int16 program.bfx\n";
+              << "Example: " << progName << " -o program.bf -O1 -I ~/my_bfx_project -t int16 program.bfx\n";
 }
 
 std::pair<Compiler::Options, int> parseCmdLine(std::vector<std::string> const &args)
