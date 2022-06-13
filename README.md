@@ -501,7 +501,7 @@ for (let i = 0; i != 10; ++i)
 ```
 
 #### Range-based for-loops
-It is common to iterate over the elements of an array. In some cases, where you don't need the index of the elements as an accessible variable, you can specify the array you need to iterate over without using an index:
+It is common to iterate over the elements of an array. In some cases, where you don't need the index of the elements as an accessible variable, you can specify the array you need to iterate over without using an index. In the example below, each element of the array will be copied into the variable `x`:
 
 ```javascript
 let [] array = #{1, 2, 3, 4, 5};
@@ -513,6 +513,8 @@ for (let x: array)
 }
 ```
 
+The loop-variable can also be declared as a reference to modify the array-elements in-place. This only works for loops that will be unrolled (e.g. for arrays of size 20 or less, see the section of loop-unrolling below).  
+
 ```javascript
 let [] array = #{1, 2, 3, 4, 5};
 
@@ -520,7 +522,6 @@ for (let &x: array)
     ++x;  // increment all elements in-place
 ```
 
-The loop-variable can also be declared as a reference to modify the array-elements in-place. This only works for loops that will be unrolled (e.g. for arrays of size 20 or less).  
 
 #### While-loops
 The while-loop also has syntax familiar from other C-style languages. It needs no further introduction:
