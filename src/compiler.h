@@ -134,6 +134,7 @@ private:
     void disableBoundChecking();
     void enableBoundChecking();
     void sync(int const addr);
+    int wrapValue(int val);
     void constEvalSetToValue(int const addr, int const val);
     void runtimeSetToValue(int const addr, int const val);
     void runtimeAssign(int const lhs, int const rhs);
@@ -142,11 +143,11 @@ private:
     static std::string cancelOppositeCommands(std::string const &bf);
     
     // Memory management uitilities
-    int  allocate(std::string const &ident, TypeSystem::Type type);
-    int  allocateTemp(TypeSystem::Type type);
-    int  allocateTemp(int const sz = 1);
-    int  allocateTempBlock(int const sz);
-    int  addressOf(std::string const &ident);
+    int allocate(std::string const &ident, TypeSystem::Type type);
+    int allocateTemp(TypeSystem::Type type);
+    int allocateTemp(int const sz = 1);
+    int allocateTempBlock(int const sz);
+    int addressOf(std::string const &ident);
 
         // Instruction generator
     template <auto Member, typename ... Args>

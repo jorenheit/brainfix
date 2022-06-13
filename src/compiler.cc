@@ -539,22 +539,25 @@ void Compiler::sync(int const addr)
         runtimeSetToValue(addr, d_memory.value(addr));
 }
 
+int Compiler::wrapValue(int val)
+{
+    val %= (MAX_INT + 1);
+    if (val < 0)
+        val += MAX_INT + 1;
+
+    return val;
+}
+
 void Compiler::constEvalSetToValue(int const addr, int const val)
 {
+    int const newVal = wrapValue(val);
     d_memory.setSync(addr, false);
-    int newVal = (val <= MAX_INT) ? val : (val % (MAX_INT + 1));
-    if (newVal < 0)
-        newVal += MAX_INT;
-    
-    d_memory.value(addr) = (val <= MAX_INT) ? val : (val % (MAX_INT + 1));
+    d_memory.value(addr) = newVal;
 }
 
 void Compiler::runtimeSetToValue(int const addr, int const val)
 {
-    int newVal = (val <= MAX_INT) ? val : (val % (MAX_INT + 1));
-    if (newVal < 0)
-        newVal += MAX_INT;
-    
+    int newVal = wrapValue(val);
     d_codeBuffer << d_bfGen.setToValue(addr, newVal);
     d_memory.value(addr) = newVal;
     d_memory.setSync(addr, true);
