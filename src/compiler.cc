@@ -1,5 +1,7 @@
 #include "compiler.ih"
 
+std::string const Compiler::DEFAULT_INCLUDE_PATH = "/usr/include/bfx/";
+
 namespace _MaxInt
 {
     template <typename T>
@@ -31,6 +33,8 @@ Compiler::Compiler(std::string const &file, CellType type, std::vector<std::stri
     d_randomExtensionEnabled(randomEnabled),
     d_bcrEnabled(bcrEnabled)
 {
+    d_includePaths.push_back(DEFAULT_INCLUDE_PATH);
+    
     d_bfGen.setTempRequestFn([this](){
                                  return allocateTemp();
                              });
@@ -520,12 +524,18 @@ void Compiler::sync(int const addr)
 void Compiler::constEvalSetToValue(int const addr, int const val)
 {
     d_memory.setSync(addr, false);
+    int newVal = (val <= MAX_INT) ? val : (val % (MAX_INT + 1));
+    if (newVal < 0)
+        newVal += MAX_INT;
+    
     d_memory.value(addr) = (val <= MAX_INT) ? val : (val % (MAX_INT + 1));
 }
 
 void Compiler::runtimeSetToValue(int const addr, int const val)
 {
-    int const newVal = (val <= MAX_INT) ? val : (val % (MAX_INT + 1));
+    int newVal = (val <= MAX_INT) ? val : (val % (MAX_INT + 1));
+    if (newVal < 0)
+        newVal += MAX_INT;
     
     d_codeBuffer << d_bfGen.setToValue(addr, newVal);
     d_memory.value(addr) = newVal;

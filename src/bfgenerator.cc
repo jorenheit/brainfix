@@ -2,7 +2,7 @@
 
 std::string BFGenerator::setToValue(int const addr, int const val)
 {
-    validateAddr(addr, val);
+    validateAddr(addr);
 
     std::ostringstream ops;
     ops << movePtr(addr)        // go to address
@@ -14,7 +14,7 @@ std::string BFGenerator::setToValue(int const addr, int const val)
 
 std::string BFGenerator::setToValuePlus(int const addr, int const val)
 {
-    validateAddr(addr, val);
+    validateAddr(addr);
 
     std::ostringstream ops;
     ops << movePtr(addr)        // go to address
@@ -26,7 +26,7 @@ std::string BFGenerator::setToValuePlus(int const addr, int const val)
 
 std::string BFGenerator::setToValue(int const start, int const val, size_t const n)
 {
-    validateAddr(start, val);
+    validateAddr(start);
     
     std::ostringstream ops;
     for (size_t i = 0; i != n; ++i)
@@ -37,7 +37,7 @@ std::string BFGenerator::setToValue(int const start, int const val, size_t const
 
 std::string BFGenerator::setToValuePlus(int const addr, int const val, size_t const n)
 {
-    validateAddr(addr, val);
+    validateAddr(addr);
     
     std::ostringstream ops;
     for (size_t i = 0; i != n; ++i)

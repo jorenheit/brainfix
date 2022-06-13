@@ -15,3 +15,5 @@ regenerate:
 install: bfx bfint
 	cp bfx /usr/local/bin
 	cp bfint /usr/local/bin
+	mkdir -p /usr/include/bfx
+	cp ../std/*.bfx /usr/include/bfx
