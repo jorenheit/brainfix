@@ -344,22 +344,22 @@ expression:
         $$ = $2;
     }
 |
-    INC expression
+    INC variable
     {
         $$ = instruction<&Compiler::preIncrement>($2);
     }
 |
-    DEC expression
+    DEC variable
     {
         $$ = instruction<&Compiler::preDecrement>($2);
     }
 |
-    expression INC
+    variable INC
     {
         $$ = instruction<&Compiler::postIncrement>($1);
     }
 |
-    expression DEC
+    variable DEC
     {
         $$ = instruction<&Compiler::postDecrement>($1);
     }
