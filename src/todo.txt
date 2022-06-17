@@ -31,3 +31,5 @@
 [ ] Add basic cursor movement to library using ANSI escape sequences
 [x] Better solution to pass compiler options
 [x] MAX_LOOP_UNROLL_ITERATIONS as compiler option
+[ ] anonymous scope block does not create new scope
+[ ] add note to readme about let [] x = str[0]

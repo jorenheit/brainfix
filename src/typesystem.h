@@ -24,6 +24,8 @@ namespace TypeSystem
         Kind d_kind{Kind::NULLTYPE};
         
     public:
+        Type() = default;
+        
         Type(std::string const &name):
             d_name(name),
             d_kind(Kind::STRUCT)
@@ -33,8 +35,6 @@ namespace TypeSystem
             d_size(sz),
             d_kind(Kind::INT)
         {}
-
-        Type() = default;
 
         int size() const;
         std::string name() const;

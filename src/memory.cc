@@ -104,6 +104,21 @@ int Memory::allocate(std::string const &ident, std::string const &scope, TypeSys
     return addr;
 }
 
+void Memory::addAlias(int const addr, std::string const &ident, std::string const &scope)
+{
+    d_aliasMap[addr].push_back({ident, scope});
+}
+
+void Memory::removeAlias(int const addr, std::string const &ident, std::string const &scope)
+{
+    assert(d_aliasMap.find(addr) != d_aliasMap.end() && "trying to erase non existent alias");
+    
+    std::erase_if(d_aliasMap[addr],
+                  [&](auto const &pr){
+                      return pr.first == ident && pr.second == scope;
+                  });
+}
+
 void Memory::place(TypeSystem::Type type, int const addr, bool const recursive)
 {
     if (type.isIntType())
@@ -152,34 +167,81 @@ void Memory::place(TypeSystem::Type type, int const addr, bool const recursive)
 
 int Memory::find(std::string const &ident, std::string const &scope, bool const includeEnclosedScopes) const
 {
-    if (!includeEnclosedScopes)
+    if (includeEnclosedScopes)
     {
+        int maxLength = -1;
+        int result = -1;
+        auto const match =
+            [&](std::string const &otherIdent, std::string const &otherScope, int const addr)
+            {
+                if (otherIdent == ident && scope.find(otherScope) == 0)
+                {
+                    if (static_cast<int>(otherScope.size()) > maxLength)
+                    {
+                        result = addr;
+                        maxLength = otherScope.size();
+                    }
+                }
+            };
+
+        // Search memory for this identifier in scope
+        for (size_t idx = 0; idx != d_memory.size(); ++idx)
+        {
+            Cell const &cell = d_memory[idx];
+            match(cell.identifier, cell.scope, idx);
+        }
+
+        // Identifier might be an alias
+        for (auto const &pr1: d_aliasMap)
+        {
+            int const addr = pr1.first;
+            std::vector<std::pair<std::string, std::string>> const &vec = pr1.second;
+            for (auto const &pr2: vec)
+            {
+                // TODO: use new syntax
+                std::string const aliasIdent = pr2.first;
+                std::string const aliasScope = pr2.second;
+                match(aliasIdent, aliasScope, addr);
+            }
+        }
+        
+        return result;
+    }
+    else
+    {
+        // Try to find perfect match in memory
         auto const it = std::find_if(d_memory.begin(), d_memory.end(),
                                  [&](Cell const &cell)
                                  {
                                      return cell.identifier == ident && scope == cell.scope;
                                  });
 
-        return (it != d_memory.end()) ? (it - d_memory.begin()) : -1;
-    }
-    else
-    {
-        int result = -1;
-        int maxLength = -1;
-        for (size_t idx = 0; idx != d_memory.size(); ++idx)
+        if (it != d_memory.end())
         {
-            Cell const &cell = d_memory[idx];
-            if (cell.identifier == ident && scope.find(cell.scope) == 0)
+            // Found a match, return address:
+            return it - d_memory.begin();
+        }
+
+        // Not in memory: try to find a match in the alias-map
+        for (auto const &pr1: d_aliasMap)
+        {
+            int const addr = pr1.first;
+            std::vector<std::pair<std::string, std::string>> const &vec = pr1.second;
+            for (auto const &pr2: vec)
             {
-                if (static_cast<int>(cell.scope.size()) > maxLength)
-                {
-                    result = idx;
-                    maxLength = cell.scope.size();
-                }
+                std::string const aliasIdent = pr2.first;
+                std::string const aliasScope = pr2.second;
+                    
+                if (ident == aliasIdent && scope == aliasScope)
+                    return addr;
             }
         }
-        return result;
-    }    
+
+        // Also not an alias -> not found
+        return -1;
+    }
+
+    assert(false && "unreachable");
 }
 
 void Memory::push(int const addr)
@@ -207,8 +269,18 @@ void Memory::freeTemps(std::string const &scope)
 
 void Memory::freeLocals(std::string const &scope)
 {
-    freeIf(
-           [&](Cell const &cell){
+    // Remove all aliases from this scope
+    for (auto &pr: d_aliasMap)
+    {
+        std::erase_if(pr.second,
+                      [&](auto const &pr2) -> bool
+                      {
+                          return pr2.second == scope;
+                      });
+    }
+
+    // Free all memory in this scope
+    freeIf([&](Cell const &cell){
                return cell.scope == scope;
            }
         );
@@ -323,6 +395,18 @@ std::vector<int> Memory::cellsInScope(std::string const &scope) const
     {
         if (scope.find(d_memory[i].scope) == 0)
             result.push_back(i);
+    }
+
+    for (auto const &pr1: d_aliasMap)
+    {
+        int const addr = pr1.first;
+        std::vector<std::pair<std::string, std::string>> const &vec = pr1.second;
+        for (auto const &pr2: vec)
+        {
+            std::string const aliasScope = pr2.second;
+            if (scope.find(aliasScope) == 0)
+                result.push_back(addr);
+        }
     }
     
     return result;

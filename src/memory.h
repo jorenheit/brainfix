@@ -55,6 +55,8 @@ private:
 
     std::vector<Memory::Cell> d_memory;
     std::stack<int> d_protectedStack;
+    std::map<int, std::vector<std::pair<std::string, std::string>>> d_aliasMap;
+    
     int d_maxAddr{0};
     
 public:
@@ -67,6 +69,9 @@ public:
     int getTemp(std::string const &scope, int const sz = 1);
     int getTempBlock(std::string const &scope, int const sz);
     int allocate(std::string const &ident, std::string const &scope, TypeSystem::Type type);
+    void addAlias(int const addr, std::string const &ident, std::string const &scope);
+    void removeAlias(int const addr, std::string const &ident, std::string const &scope);
+    
     int find(std::string const &ident, std::string const &scope, bool const includeEnclosedScopes = true) const;
     int sizeOf(int const addr) const;
     int sizeOf(std::string const &ident, std::string const &scope) const;

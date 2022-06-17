@@ -74,7 +74,7 @@ private:
     int           d_instructionLineNr;
     bool          d_constEvalEnabled{true};
     bool const    d_randomExtensionEnabled{false};
-    bool          d_returnExistingAddressOnAlloc{false};
+    bool          d_loopUnrolling{false};
     bool          d_boundsCheckingEnabled{true};
     bool const    d_bcrEnabled{true};
     bool const    d_includeWarningEnabled{true};
@@ -87,7 +87,7 @@ private:
         BFGenerator bfGen;
         std::string buffer;
         bool constEval;
-        bool returnExisting;
+        bool loopUnrolling;
         bool boundsChecking;
         BcrMapType bcrMap;
     };
@@ -188,7 +188,7 @@ private:
     int call(std::string const &functionName, std::vector<Instruction> const &args = {});
     int declareVariable(std::string const &ident, TypeSystem::Type type);
     int initializeExpression(std::string const &ident, TypeSystem::Type type,
-                             Instruction const &rhs);
+                             AddressOrInstruction const &rhs);
     int assign(AddressOrInstruction const &lhs, AddressOrInstruction const &rhs);
     int fetch(std::string const &ident);
     int fetchField(std::vector<std::string> const &expr);

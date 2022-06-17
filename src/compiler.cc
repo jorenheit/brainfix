@@ -57,7 +57,7 @@ Compiler::State Compiler::save()
             .bfGen          = d_bfGen,
             .buffer         = d_codeBuffer.str(),
             .constEval      = d_constEvalEnabled,
-            .returnExisting = d_returnExistingAddressOnAlloc,
+            .loopUnrolling  = d_loopUnrolling,
             .boundsChecking = d_boundsCheckingEnabled,
             .bcrMap         = d_bcrMap,
     };
@@ -70,7 +70,7 @@ void Compiler::restore(State &&state)
     d_bfGen                        = std::move(state.bfGen);
     d_bcrMap                       = std::move(state.bcrMap);
     d_constEvalEnabled             = state.constEval;
-    d_returnExistingAddressOnAlloc = state.returnExisting;
+    d_loopUnrolling                = state.loopUnrolling;
     d_boundsCheckingEnabled        = state.boundsChecking;
     d_codeBuffer.str(state.buffer);
     d_codeBuffer.seekp(0, std::ios_base::end);
@@ -311,7 +311,7 @@ int Compiler::allocate(std::string const &ident, TypeSystem::Type type)
 {
     int const addr = d_memory.allocate(ident, d_scope.current(), type);
 
-    if (!d_returnExistingAddressOnAlloc)
+    if (!d_loopUnrolling)
     {
         compilerErrorIf(addr < 0, "Variable ", ident, ": variable previously declared.");
     }
@@ -399,14 +399,11 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
                 "\": the expression passed as argument ", idx, " returns void.");
 
         // Check if the parameter is passed by value or reference
-        BFXFunction::Parameter const &p          = params[idx];
-        std::string const            &paramIdent = p.first;
-        BFXFunction::ParameterType    paramType  = p.second;
+        auto const &[paramIdent, paramType] = params[idx]; 
         if (paramType == BFXFunction::ParameterType::Value)
         {
             // Allocate local variable for the function of the correct size
             // and copy argument to this location
-            //            int const sz = d_memory.sizeOf(argAddr);
 
             int paramAddr = d_memory.allocate(paramIdent, func.name(), d_memory.type(argAddr));
             compilerErrorIf(paramAddr < 0,
@@ -417,9 +414,8 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         }
         else // Reference
         {
+            d_memory.addAlias(argAddr, paramIdent, func.name());
             references.push_back(argAddr);
-            d_memory.push(argAddr);
-            d_memory.rename(argAddr, paramIdent, func.name());
         }
     }
 
@@ -440,29 +436,19 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
                 "Returnvalue \"", retVar, "\" of function \"", func.name(),
                 "\" seems not to have been declared in the main scope of the function-body.");
 
-        // Check if the return variable was passed into the function as a reference
+        // If the return variable is also passed in to the function as a reference,
+        // we can simply return this address, as it's already local to the calling scope.
         bool const returnVariableIsReferenceParameter =
             std::any_of(references.begin(), references.end(), [&](int addr){
                                                                   return addr == ret;
                                                               });
-        if (returnVariableIsReferenceParameter)
-        {
-            // Return a copy
-            int const tmp = allocateTemp();
-            assign(tmp, ret);
-            ret = tmp;
-        }
-        else
+        if (!returnVariableIsReferenceParameter)
         {
             // Pull the variable into local (sub)scope as a temp
             d_memory.rename(ret, "", d_scope.current());
             d_memory.markAsTemp(ret);
         }
     }
-
-    // Pull referenced arguments back into original scope
-    for (size_t i = 0; i != references.size(); ++i)
-        d_memory.pop();
     
     // Clean up and return
     d_memory.freeLocals(func.name());
@@ -484,6 +470,7 @@ int Compiler::constVal(int const num)
 
 int Compiler::declareVariable(std::string const &ident, TypeSystem::Type type)
 {
+    compilerErrorIf(type.isNullType(), "Alias-variable ", ident, " cannot be declared without being initialized." );
     compilerErrorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
     
     int const sz = type.size();
@@ -497,34 +484,68 @@ int Compiler::declareVariable(std::string const &ident, TypeSystem::Type type)
     return allocate(ident, type);
 }
 
-int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type type, Instruction const &rhs)
+int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type type, AddressOrInstruction const &rhs)
 {
-    compilerErrorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
-
+    // Check validity of arguments:
+    // 1. Size must not equal 0. -1 is okay; this signals that the size has to be deduced.
+    // 2. If it's an intType, its size cannot exceed the MAX_ARRAY_SIZE.
+    // 3. The type needs te be previously defined, in case of user-defined struct-type.
+    
     int const sz = type.size();
     compilerErrorIf(sz == 0, "Cannot declare variable \"", ident, "\" of size 0.");
     compilerErrorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
-            "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", (int)sz, ").");
+                    "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded (got ", sz, ").");
+    compilerErrorIf(!type.defined(), "Variable \'", ident, "\' declared with unknown type.");
 
-    if (!d_returnExistingAddressOnAlloc)
+    // If we're not unrolling a loop, we check if the declared variable does not
+    // already exist in the current scope. Enclosing scopes are allowed to have
+    // a variable of the same name (which will be shadowed by the current one).
+    // When unrolling a loop, this check will not be performed because the same
+    // statement will be executed multiple times.
+
+    if (!d_loopUnrolling)
+    {
         compilerErrorIf(d_memory.find(ident, d_scope.current(), false) != -1,
                 "Variable ", ident, " previously declared.");
-    
-    int rhsAddr = rhs();
-    compilerErrorIf(rhsAddr < 0, "Use of void expression in assignment.");
-    
-    TypeSystem::Type rhsType = d_memory.type(rhsAddr);
-    
-    if (d_memory.isTemp(rhsAddr) && (sz == -1 || type == rhsType) && !d_returnExistingAddressOnAlloc)
+    }
+
+    if (type.isNullType())
     {
-        d_memory.rename(rhsAddr, ident, d_scope.current());
-        return rhsAddr;
+        // Variable was declared without a type, which means it's an alias variable
+        // and no new memory needs to be allocated.
+        compilerErrorIf(rhs < 0, "Use of void expression in assignment.");
+        compilerErrorIf(d_memory.isTemp(rhs), "Cannot create alias to temporary value.");
+        
+        d_memory.addAlias(rhs, ident, d_scope.current());
+        return rhs;
+    }
+
+    // If we arrive at this point, a new variable has been declared which needs to
+    // be initialized with the result of the evaluation of rhs, which cannot be void.
+    compilerErrorIf(rhs < 0, "Use of void expression in assignment.");
+
+    // A small optimization can be performed when the rhs cell contains a temporary:
+    // the temp can simply be renamed to avoid the copy. This only works when not in
+    // the middle of loop-unrolling.
+    
+    TypeSystem::Type rhsType = d_memory.type(rhs);
+    if (d_memory.isTemp(rhs) && (sz == -1 || type == rhsType) && !d_loopUnrolling)
+    {
+        // In this situation, we can simply rename the temporary variable that resulted
+        // from evaluating rhs to the declared variable.
+        
+        d_memory.rename(rhs, ident, d_scope.current());
+        return rhs;
     }
     else if (type == rhsType || (type.isIntType() && rhsType.isIntType()))
     {
-        return assign(allocate(ident, type), rhsAddr);
+        // rhs is not a temp, so we need to copy the result into a newly allocated
+        // variable.
+        return assign(allocate(ident, (sz != -1) ? type : rhsType), rhs);
     }
 
+    // If none of the cases matched, this means there's a type-mismatch between the
+    // lhs and rhs of the assignment.
     compilerError("Type mismatch in assignment of \"", rhsType.name(),
                   "\" to variable \"", ident, "\" of type \"", type.name(), "\"." );
     return -1;
@@ -861,6 +882,7 @@ int Compiler::scanCell()
 
 int Compiler::printCell(AddressOrInstruction const &target)
 {
+    
     if (d_constEvalEnabled)
         sync(target);
     
@@ -1570,9 +1592,9 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
         resetContinueFlag();
         increment();
         conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
-        d_returnExistingAddressOnAlloc = true;
+        d_loopUnrolling = true;
 
-        if (d_memory.valueUnknown(conditionAddr) || count++ > MAX_LOOP_UNROLL_ITERATIONS)
+        if (d_memory.valueUnknown(conditionAddr) || ++count > MAX_LOOP_UNROLL_ITERATIONS)
         {
             restore(std::move(state));
             return forStatementRuntime(init, condition, increment, body);
@@ -1580,7 +1602,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 
     }    
 
-    d_returnExistingAddressOnAlloc = false;
+    d_loopUnrolling = false;
     exitScope();
     
     return -1;
@@ -1632,13 +1654,11 @@ int Compiler::forRangeStatement(BFXFunction::Parameter const &param, Instruction
     {
         for (int i = 0; i != nIter; ++i)
         {
-            int const elementAddr = arrayAddr + i;
-            d_memory.push(elementAddr);
-            d_memory.rename(elementAddr, ident, d_scope.current());
+            d_memory.addAlias(arrayAddr + i, ident, d_scope.current());
             body();
-            d_memory.pop();
+            d_memory.removeAlias(arrayAddr + i, ident, d_scope.current());
             resetContinueFlag();
-            d_returnExistingAddressOnAlloc = true;
+            d_loopUnrolling = true;
         }    
     }
     else
@@ -1649,11 +1669,11 @@ int Compiler::forRangeStatement(BFXFunction::Parameter const &param, Instruction
             assign(elementAddr, arrayAddr + i);
             body();
             resetContinueFlag();
-            d_returnExistingAddressOnAlloc = true;
+            d_loopUnrolling = true;
         }    
     }
     
-    d_returnExistingAddressOnAlloc = false;
+    d_loopUnrolling = false;
     exitScope();
     
     return -1;
@@ -1720,7 +1740,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
         body();
         resetContinueFlag();
         conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
-        d_returnExistingAddressOnAlloc = true;
+        d_loopUnrolling = true;
         
         if (d_memory.valueUnknown(conditionAddr) || (count++ > MAX_LOOP_UNROLL_ITERATIONS))
         {
@@ -1729,7 +1749,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
         }
     }
     
-    d_returnExistingAddressOnAlloc = false;
+    d_loopUnrolling = false;
     exitScope();
     return -1;    
 }

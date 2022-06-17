@@ -33,7 +33,7 @@ std::string TypeSystem::Type::name() const
 
 bool TypeSystem::Type::defined() const
 {
-    if (isIntType())
+    if (isIntType() || isNullType())
         return true;
             
     auto const it = TypeSystem::typeMap.find(name());

@@ -842,6 +842,15 @@ variable_specification:
         };
     }
 |
+    '&' IDENT
+    {
+        $$ = std::pair<std::string, TypeSystem::Type>
+        {
+            $2,
+            TypeSystem::Type{}
+        };
+    }   
+|
     '[' ']' IDENT
     {
         $$ = std::pair<std::string, TypeSystem::Type>
