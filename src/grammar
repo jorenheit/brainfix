@@ -48,6 +48,7 @@
 
 %type <INSTRUCTION>         expression
 %type <INSTRUCTION>         statement
+%type <INSTRUCTION>         statement_
 %type <INSTRUCTION>         builtin_function
 %type <INSTRUCTION>         if_statement
 %type <INSTRUCTION>         for_statement
@@ -224,6 +225,13 @@ code_body:
 ;
 
 statement:
+    statement_
+    {
+        $$ = instruction<&Compiler::statement>($1);
+    }
+;
+
+statement_:
     error ';' // continue parsing at the next statement
 |
     ';'
@@ -232,49 +240,22 @@ statement:
     }
 |
     expression ';'
-    {
-        $$ = instruction<&Compiler::statement>($1);
-    }
 |
     scope_block
-    {
-        $$ = instruction<&Compiler::statement>($1);
-    }
 |
     for_statement
-    {
-        $$ = instruction<&Compiler::statement>($1);
-    }
 |
     if_statement
-    {
-        $$ = instruction<&Compiler::statement>($1);
-    }
 |
     while_statement
-    {
-        $$ = instruction<&Compiler::statement>($1);
-    }
 |
     switch_statement
-    {
-        $$ = instruction<&Compiler::statement>($1);
-    }
 |
     break_statement
-    {
-        $$ = instruction<&Compiler::statement>($1);
-    }
 |
     continue_statement
-    {
-        $$ = instruction<&Compiler::statement>($1);
-    }
 |
     return_statement
-    {
-        $$ = instruction<&Compiler::statement>($1);
-    }
 ;
 
 expression:

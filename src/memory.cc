@@ -2,8 +2,6 @@
 
 void Memory::Cell::clear()
 {
-    assert(content != Content::PROTECTED && "tried to clear a protected cell");
-
     identifier.clear();
     scope.clear();
     content = Content::EMPTY;
@@ -281,7 +279,6 @@ void Memory::markAsTemp(int const addr)
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
     Cell &cell = d_memory[addr];
     
-    assert(cell.content != Content::PROTECTED && "calling markAsTemp on protected cell");
     cell.identifier = "";
     cell.content = Content::TEMP;
 }
@@ -293,8 +290,7 @@ void Memory::rename(int const addr, std::string const &ident, std::string const 
     cell.identifier = ident;
     cell.scope = scope;
 
-    if (cell.content != Content::PROTECTED)
-        cell.content = Content::NAMED;
+    cell.content = Content::NAMED;
 }
 
 std::string Memory::identifier(int const addr) const
@@ -397,7 +393,6 @@ void Memory::dump() const
          "NAMED",
          "TEMP",
          "REFERENCED",
-         "PROTECTED"
         };
     
     std::cerr << "addr  |  var  |  scope  |  type  | content  |  value  |  synced | \n";

@@ -17,7 +17,6 @@ public:
          NAMED,
          TEMP,
          REFERENCED,
-         PROTECTED
         };
 
 private:
