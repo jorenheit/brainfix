@@ -31,9 +31,6 @@ private:
         bool             synced{false};
         
         void clear();
-        void backup();
-        void restore();
-        
         bool empty() const
         {
             return content == Content::EMPTY;
@@ -75,8 +72,6 @@ public:
     int find(std::string const &ident, std::string const &scope, bool const includeEnclosedScopes = true) const;
     int sizeOf(int const addr) const;
     int sizeOf(std::string const &ident, std::string const &scope) const;
-    int pop();
-    void push(int const addr);
     void freeTemps(std::string const &scope);
     void freeLocals(std::string const &scope);
     void markAsTemp(int const addr);

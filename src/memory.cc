@@ -1,29 +1,5 @@
 #include "memory.h"
 
-void Memory::Cell::backup()
-{
-    d_backupStack.push(Members{
-                               identifier,
-                               scope,
-                               content
-        });
-
-    // cells that have been backed up are protected -> cannot be cleared
-    content = Content::PROTECTED;
-}
-
-void Memory::Cell::restore()
-{
-    assert(d_backupStack.size() > 0 && "restore called on non-backed-up cell");
-    
-    Members const &m = d_backupStack.top();
-    identifier = std::get<0>(m);
-    scope      = std::get<1>(m);
-    content    = std::get<2>(m);
-
-    d_backupStack.pop();
-}
-            
 void Memory::Cell::clear()
 {
     assert(content != Content::PROTECTED && "tried to clear a protected cell");
@@ -244,20 +220,20 @@ int Memory::find(std::string const &ident, std::string const &scope, bool const 
     assert(false && "unreachable");
 }
 
-void Memory::push(int const addr)
-{
-    assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    d_memory[addr].backup();
-    d_protectedStack.push(addr);
-}
+// void Memory::push(int const addr)
+// {
+//     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
+//     d_memory[addr].backup();
+//     d_protectedStack.push(addr);
+// }
 
-int Memory::pop()
-{
-    int const addr = d_protectedStack.top();
-    d_memory[addr].restore();
-    d_protectedStack.pop();
-    return addr;
-}
+// int Memory::pop()
+// {
+//     int const addr = d_protectedStack.top();
+//     d_memory[addr].restore();
+//     d_protectedStack.pop();
+//     return addr;
+// }
 
 void Memory::freeTemps(std::string const &scope)
 {
