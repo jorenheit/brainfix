@@ -1858,14 +1858,6 @@ int Compiler::returnStatement()
     return -1;
 }
 
-int Compiler::anonymousScopeStatement(Instruction const &body)
-{
-    enterScope(Scope::Type::Anonymous);
-    body();
-    exitScope();
-    return -1;
-}
-
 std::string Compiler::cancelOppositeCommands(std::string const &bf)
 {
     auto cancel =

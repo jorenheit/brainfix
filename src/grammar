@@ -242,9 +242,6 @@ statement_:
     expression ';'
 |
     scope_block
-    {
-        $$ = instruction<&Compiler::anonymousScopeStatement>($1);
-    }
 |
     for_statement
 |
@@ -254,7 +251,7 @@ statement_:
 |
     switch_statement
 |
-    break_statement
+    break_statement 
 |
     continue_statement
 |

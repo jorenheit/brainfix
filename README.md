@@ -715,27 +715,6 @@ function x = get()
 ##### Compiler option: `--no-bcr`
 Because BF does not support arbitrary jumps in code, the break, continue and return directives (bcr) have been implemented through a pair of flags that need to be checked continuously in order to determine whether a statement needs to be executed. Effectively, this means that every line of code will be wrapped in an if-statement. Especially when compiling without constant-evaluation (`-O0`) or when constant evaluation is not possible due to user-input dependencies, this will lead to a lot of code-bloat and therefore very large BF-output. The compiler-flag `--no-bcr` will disable support for break, continue and return; using these directives will in that case produce a compiler error.
 
-#### Anonymous Scope
-So far, we've seen scope-blocks (code enclosed in `{` and `}`) to define the bodies of functions, loops and other flow-control mechanisms. It is however also possible to execute code in anonymous scope-blocks when you want to limit the lifetime of your variables to smaller sections of your function. This allows the garbage collection algorithm to reuse memory more efficiently:
-
-```javascript
-function fun()
-{
-    let x = 1;
-    
-    {
-        printd(x);
-        let y = 2;
-        printd(y);
-        endl();
-    }
-    // y is now out of scope
-
-    y = 4;     // error
-    let y = 4; // OK, new variable y
-}
-```
-
 ### File Inclusion
 The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one.
 
