@@ -243,6 +243,20 @@ function main()
     let [10] str3 = '0';  // OK: str3 is now a string of ten '0'-characters 
 }
 ```
+#### References (or alias-variables)
+Variables can also be declared as references (or aliases). The newly declared variable will from that point on be synonymous to the original variable, which can therefore be changed through the alias.
+
+```javascript
+function main()
+{
+    let x = 42;
+    let &y = x;
+
+    y = 69;
+    printd(x); // will print 69
+}
+```
+It's possible to alias entire arrays and single array-elements. The latter can only be done when the index is known at compiletime. When the index cannot be evaluated at compiletime, or when the compiler is in `-O0`-mode, the contents of the cell are copied to a temporary cell. As a general rule, it's forbidden to alias temporary objects, so an error will occur when trying to alias an array-element for which the address is not known. Furtermore, even when the index is known, trying to alias the first element (index 0) might lead to some unintuitive behavior: see the section below on deducing the size of `arr[0]`.
 
 #### Initializing Variables
 In the example above, we see how a string is used to initialize an array-variable. Other ways to initialize arrays all involve the `#` symbol to indicate an array-literal. In each of these cases, the size-specification can be empty, as the compiler is able to figure out the resulting size from its initializer.
@@ -262,6 +276,21 @@ function main()
 }
 ```
 Size specifications must be known at compiletime; see the section on the `const` keyword below on how to define named compile-time constants.
+
+##### Caution: Deducing the size of `arr[0]`
+To the compiler, the expressions `arr` and `arr[0]` are completely identical, because they both return the exact same address. This leads to complications when assigning the value of `arr[0]` to a new variable for which the size was not specified by the programmer, or when this element is being aliased.
+
+```javascript
+    let [] arr = #{1, 2, 3, 4, 5}; // sizeof(arr) == 5
+
+    let [] x = arr[2]; // OK, sizeof(x) == sizeof(arr[2]) == 1
+    let [] y = arr[0]; // Whoops, sizeof(y) == sizeof(arr) == 5
+
+    let &arr2 = arr[0]; // Whoops, arr2 refers to the entire array
+    let &z = arr[2];    // OK: z refers to 3rd element of arr
+```
+
+
 
 #### Structs
 In addition to declaring a variable by specifying its size, its type can be specified using the `struct` keyword and a previously defined struct-identifier. The definition of this `struct` must appear somewhere at global scope and can contain fields of any type, including arrays and other user defined types.
@@ -680,8 +709,32 @@ function x = get()
     }
 }
 ```
+
+
+
 ##### Compiler option: `--no-bcr`
 Because BF does not support arbitrary jumps in code, the break, continue and return directives (bcr) have been implemented through a pair of flags that need to be checked continuously in order to determine whether a statement needs to be executed. Effectively, this means that every line of code will be wrapped in an if-statement. Especially when compiling without constant-evaluation (`-O0`) or when constant evaluation is not possible due to user-input dependencies, this will lead to a lot of code-bloat and therefore very large BF-output. The compiler-flag `--no-bcr` will disable support for break, continue and return; using these directives will in that case produce a compiler error.
+
+#### Anonymous Scope
+So far, we've seen scope-blocks (code enclosed in `{` and `}`) to define the bodies of functions, loops and other flow-control mechanisms. It is however also possible to execute code in anonymous scope-blocks when you want to limit the lifetime of your variables to smaller sections of your function. This allows the garbage collection algorithm to reuse memory more efficiently:
+
+```javascript
+function fun()
+{
+    let x = 1;
+    
+    {
+        printd(x);
+        let y = 2;
+        printd(y);
+        endl();
+    }
+    // y is now out of scope
+
+    y = 4;     // error
+    let y = 4; // OK, new variable y
+}
+```
 
 ### File Inclusion
 The compiler accepts only 1 sourcefile, but the `include` keyword can be used to organize your code among different  files. Even though the inner workings are not exactly the same as the C-preprocessor, the semantics pretty much are. When an include directive is encountered, the lexical scanner is simply redirected to that file and continues scanning the original file when it has finished scanning the included one.
