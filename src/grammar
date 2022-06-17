@@ -236,12 +236,15 @@ statement_:
 |
     ';'
     {
-        $$ = instruction<&Compiler::statement>([](){ return -1; });
+        $$ = [](){ return -1; };
     }
 |
     expression ';'
 |
     scope_block
+    {
+        $$ = instruction<&Compiler::anonymousScopeStatement>($1);
+    }
 |
     for_statement
 |

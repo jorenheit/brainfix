@@ -243,6 +243,7 @@ private:
     int switchStatement(Instruction const &compareExpr,
                         std::vector<std::pair<Instruction, Instruction>> const &cases,
                         Instruction const &defaultCase);
+    int anonymousScopeStatement(Instruction const &body);
     int breakStatement();
     int continueStatement();
     int returnStatement();
