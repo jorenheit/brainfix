@@ -243,16 +243,15 @@ void Compiler::addStruct(std::string const &name,
     
     for (auto const &pr: fields)
     {
-        std::string const &fieldName = pr.first;
+        auto const &[fieldName, fieldType] = pr;
         compilerErrorIf(duplicateField(fieldName),
-                "Field \"", fieldName, "\" previously declared in definition of struct \"", name, "\".");
-        
-        TypeSystem::Type const &type = pr.second;
-        compilerErrorIf(!type.defined(),"Variable \'", fieldName, "\' declared with unknown (struct) type.");
+                        "Field \"", fieldName, "\" previously declared in definition of struct \"", name, "\".");
+        compilerErrorIf(!fieldType.defined(),
+                        "Variable \'", fieldName, "\' declared with undefined (struct) type.");
 
-        int const sz = type.size();
+        int const sz = fieldType.size();
         compilerErrorIf(sz == 0, "Cannot declare field \"", fieldName, "\" of size 0.");
-        compilerErrorIf(type.isIntType() && sz > MAX_ARRAY_SIZE,
+        compilerErrorIf(fieldType.isIntType() && sz > MAX_ARRAY_SIZE,
                 "Maximum array size (", MAX_ARRAY_SIZE, ") exceeded in struct definition (got ", sz, ").");
     }
 
@@ -279,8 +278,7 @@ void Compiler::addGlobals(std::vector<std::pair<std::string, TypeSystem::Type>> 
 {
     for (auto const &var: declarations)
     {
-        std::string const &ident = var.first;
-        TypeSystem::Type const &type = var.second;
+        auto const &[ident, type] = var;
         compilerErrorIf(type.size() <= 0, "Global declaration of \"", ident, "\" has invalid size specification.");
         d_memory.allocate(ident, "", type);
     }
@@ -515,8 +513,8 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
         // and no new memory needs to be allocated.
         compilerErrorIf(rhs < 0, "Use of void expression in assignment.");
         compilerErrorIf(d_memory.isTemp(rhs), "Cannot create alias to temporary value.");
-        
-        d_memory.addAlias(rhs, ident, d_scope.current());
+        if (!d_loopUnrolling)
+            d_memory.addAlias(rhs, ident, d_scope.current());
         return rhs;
     }
 
@@ -717,8 +715,7 @@ int Compiler::arrayFromList(std::vector<Instruction> const &list)
 
     for (auto const &pr: runtimeElements)
     {
-        int const elementIdx = pr.first;
-        int const elementAddr = pr.second;
+        auto const [elementIdx, elementAddr] = pr;
         d_codeBuffer << d_bfGen.assign(start + elementIdx, elementAddr);
         d_memory.setValueUnknown(start + elementIdx);
     }
@@ -1400,10 +1397,7 @@ void Compiler::exitScope(std::string const &name)
 {
     if (name.empty())
     {
-        auto const outOfScope = d_scope.pop();
-        std::string const &outOfScopeString = outOfScope.first;
-        //        Scope::Type outOfScopeType = outOfScope.second; 
-        
+        auto const &[outOfScopeString, outOfScopeType] = d_scope.pop();
         d_memory.freeLocals(outOfScopeString);
 
         if (d_bcrEnabled)
@@ -1637,8 +1631,7 @@ int Compiler::forStatementRuntime(Instruction const &init, Instruction const &co
 
 int Compiler::forRangeStatement(BFXFunction::Parameter const &param, Instruction const &array, Instruction const &body)
 {
-    std::string const ident = param.first;
-    bool const reference = param.second == BFXFunction::ParameterType::Reference;
+    auto const &[ident, paramType] = param;
     
     State state = save();
     int const arrayAddr = array();
@@ -1650,7 +1643,7 @@ int Compiler::forRangeStatement(BFXFunction::Parameter const &param, Instruction
     }
 
     enterScope(Scope::Type::For);
-    if (reference)
+    if (paramType == BFXFunction::ParameterType::Reference)
     {
         for (int i = 0; i != nIter; ++i)
         {
@@ -1683,9 +1676,9 @@ int Compiler::forRangeStatement(BFXFunction::Parameter const &param, Instruction
 int Compiler::forRangeStatementRuntime(BFXFunction::Parameter const &param, Instruction const &array, Instruction const &body)
                                        
 {
-    std::string const ident = param.first;
-    bool const reference = param.second == BFXFunction::ParameterType::Reference;
-    compilerWarningIf(reference, "Declaring ranged-for variable as reference has no effect in runtime loop.");
+    auto const &[ident, paramType] = param;
+    compilerWarningIf(paramType == BFXFunction::ParameterType::Reference,
+                      "Declaring ranged-for variable as reference has no effect in runtime loop.");
     
     int const tmp = allocateTempBlock(3);
     int const iterator = tmp + 0;

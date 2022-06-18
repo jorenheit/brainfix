@@ -80,6 +80,7 @@ int Memory::allocate(std::string const &ident, std::string const &scope, TypeSys
 
 void Memory::addAlias(int const addr, std::string const &ident, std::string const &scope)
 {
+    assert(find(ident, scope, false) == -1 && "alias identifier already exists");
     d_aliasMap[addr].push_back({ident, scope});
 }
 
@@ -168,13 +169,10 @@ int Memory::find(std::string const &ident, std::string const &scope, bool const 
         // Identifier might be an alias
         for (auto const &pr1: d_aliasMap)
         {
-            int const addr = pr1.first;
-            std::vector<std::pair<std::string, std::string>> const &vec = pr1.second;
+            auto const &[addr, vec] = pr1;
             for (auto const &pr2: vec)
             {
-                // TODO: use new syntax
-                std::string const aliasIdent = pr2.first;
-                std::string const aliasScope = pr2.second;
+                auto const &[aliasIdent, aliasScope] = pr2;
                 match(aliasIdent, aliasScope, addr);
             }
         }
@@ -199,13 +197,10 @@ int Memory::find(std::string const &ident, std::string const &scope, bool const 
         // Not in memory: try to find a match in the alias-map
         for (auto const &pr1: d_aliasMap)
         {
-            int const addr = pr1.first;
-            std::vector<std::pair<std::string, std::string>> const &vec = pr1.second;
+            auto const &[addr, vec] = pr1;
             for (auto const &pr2: vec)
             {
-                std::string const aliasIdent = pr2.first;
-                std::string const aliasScope = pr2.second;
-                    
+                auto const &[aliasIdent, aliasScope] = pr2;
                 if (ident == aliasIdent && scope == aliasScope)
                     return addr;
             }
@@ -217,21 +212,6 @@ int Memory::find(std::string const &ident, std::string const &scope, bool const 
 
     assert(false && "unreachable");
 }
-
-// void Memory::push(int const addr)
-// {
-//     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-//     d_memory[addr].backup();
-//     d_protectedStack.push(addr);
-// }
-
-// int Memory::pop()
-// {
-//     int const addr = d_protectedStack.top();
-//     d_memory[addr].restore();
-//     d_protectedStack.pop();
-//     return addr;
-// }
 
 void Memory::freeTemps(std::string const &scope)
 {
@@ -371,12 +351,10 @@ std::vector<int> Memory::cellsInScope(std::string const &scope) const
 
     for (auto const &pr1: d_aliasMap)
     {
-        int const addr = pr1.first;
-        std::vector<std::pair<std::string, std::string>> const &vec = pr1.second;
+        auto const &[addr, vec] = pr1;
         for (auto const &pr2: vec)
         {
-            std::string const aliasScope = pr2.second;
-            if (scope.find(aliasScope) == 0)
+            if (scope.find(pr2.second) == 0)
                 result.push_back(addr);
         }
     }
