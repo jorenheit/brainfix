@@ -144,6 +144,8 @@ function scans(&buf)
 
 function result = to_int(&str)
 {
+    static_assert(sizeof(str) <= 3, "Argument to to_int can have at most 3 digits.");
+    
     let nDigits = sizeof(str);
     if (nDigits > 3)
         nDigits = 3;
@@ -161,6 +163,8 @@ function result = to_int(&str)
 
 function result = to_int_4(&str)
 {
+    static_assert(sizeof(str) <= 3, "Argument to to_int_4 can have at most 4 digits.");
+
     let nDigits = sizeof(str);
     if (nDigits > 4)
         nDigits = 4;

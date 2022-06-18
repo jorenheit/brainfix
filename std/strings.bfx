@@ -8,10 +8,10 @@ strcpy(str, dest) - Copies entire string's contents to array (without checking f
 
 function n = strcpy(&dest, &str)
 {
-  let n = 0;
-  while (n < sizeof(str) && str[n] != 0)
+    let n = 0;
+    while (n < sizeof(str) && str[n] != 0)
 	{
-	  dest[n] = str[n];
+	    dest[n] = str[n];
 		++n;
 	}
 }

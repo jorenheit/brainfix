@@ -203,6 +203,7 @@ int Compiler::compile()
     compilerErrorIf(d_functionMap.find("main") == d_functionMap.end(),
             "No entrypoint provided. The entrypoint should be main().");
 
+    addConstant("__MAX_LOOP_UNROLL_ITERATIONS", MAX_LOOP_UNROLL_ITERATIONS);
     d_stage = Stage::CODEGEN;
     call("main");
     d_stage = Stage::FINISHED;
@@ -359,7 +360,8 @@ int Compiler::staticAssert(Instruction const &check, std::string const &msg)
     {
         compilerWarningIf(d_assertWarningEnabled,
                           "static_assert will be ignored in non-constant context. "
-                          "Are you compiling with -O0?");
+                          "Are you compiling with -O0? This warning can be suppressed "
+                          "with the --no-assert-warning option.");
         return -1;
     }
     
