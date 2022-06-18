@@ -1,6 +1,6 @@
 # Set default BFX include path
 INSTALL_PATH=/usr/local/bin
-BFX_INCLUDE=/usr/include/bfx
+BFX_INCLUDE=/usr/local/include/bfx
 
 .PHONY: bfx bfint
 
@@ -24,6 +24,7 @@ install: bfx bfint
 	cp std/stdio.bfx $(BFX_INCLUDE)
 	cp std/stdmath.bfx $(BFX_INCLUDE)
 	cp std/stdbool.bfx $(BFX_INCLUDE)
+	cp std/strings.bfx $(BFX_INCLUDE)
 
 uninstall:
 	rm -f $(INSTALL_PATH)/bfx

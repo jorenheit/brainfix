@@ -1,0 +1,18 @@
+// STD STRINGS
+
+/* Provided string functions:
+
+strcpy(str, dest) - Copies entire string's contents to array (without checking for buffer overflow)
+
+*/
+
+function n = strcpy(&dest, &str)
+{
+  let n = 0;
+  while (n < sizeof(str) && str[n] != 0)
+	{
+	  dest[n] = str[n];
+		++n;
+	}
+}
+
