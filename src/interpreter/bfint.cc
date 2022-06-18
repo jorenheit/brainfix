@@ -192,7 +192,7 @@ try
 
     std::ifstream file(opt.bfFile);
     if (!file.is_open())
-        throw std::string("File not found.");
+        throw std::string("File not found: ") + opt.bfFile;
 
     std::stringstream buffer;
     buffer << file.rdbuf();

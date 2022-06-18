@@ -50,7 +50,6 @@ private:
     };
 
     std::vector<Memory::Cell> d_memory;
-    std::stack<int> d_protectedStack;
     std::map<int, std::vector<std::pair<std::string, std::string>>> d_aliasMap;
     
     int d_maxAddr{0};

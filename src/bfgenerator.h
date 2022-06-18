@@ -6,7 +6,7 @@
 
 class BFGenerator
 {
-    size_t                  d_pointer;
+    size_t                  d_pointer{0};
     std::function<int()>    f_getTemp;
     std::function<int(int)> f_getTempBlock;
     std::function<int()>    f_getMemSize;
