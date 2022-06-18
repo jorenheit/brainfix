@@ -1,6 +1,6 @@
 # Set default BFX include path
 INSTALL_PATH=/usr/local/bin
-BFX_INCLUDE=/usr/local/include/bfx
+BFX_INCLUDE=/usr/include/bfx
 
 .PHONY: bfx bfint
 
