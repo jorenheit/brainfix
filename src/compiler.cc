@@ -436,16 +436,24 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
 
         // If the return variable is also passed in to the function as a reference,
         // we can simply return this address, as it's already local to the calling scope.
-        bool const returnVariableIsReferenceParameter =
-            std::any_of(references.begin(), references.end(), [&](int addr){
-                                                                  return addr == ret;
-                                                              });
+        
+        bool const returnVariableIsReferenceParameter = false
+        for (int const addr: references)
+        {
+            if (addr == ret)
+            {
+                returnVariableIsReferenceParameter = true;
+                break;
+            }
+        }
+        
         if (!returnVariableIsReferenceParameter)
         {
             // Pull the variable into local (sub)scope as a temp
             d_memory.rename(ret, "", d_scope.current());
             d_memory.markAsTemp(ret);
         }
+        // otherwise, do nothing
     }
     
     // Clean up and return
