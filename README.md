@@ -721,6 +721,44 @@ The compiler accepts only 1 sourcefile, but the `include` keyword can be used to
 #### Duplicate and Circular Inclusions
 Files, or files with the same filename, can only be included once. When a multiple inclusion (which could be circular) is detected, a warning is issued. Two files with the same filename, even when they are different files in different folders and with different contents, will be treated as the same file: only the file that was first encountered is parsed and a warning will be issued. This warning can be suppressed with the `--no-multiple-inclusion-warning` flag.
 
+### Custom Error Messages
+Generating runtime error messages usually produce lots of additional BF output. In many cases, you might want to perform checks which can be done at compiletime. In this case, you can use the compiler directive `static_assert(check, msg)`, which takes any (constant) expression and a message to be displayed as an error message. The compiler will report this error when the check fails:
+
+```javascript
+function copy(&dest, &src)
+{
+    static_assert(sizeof(dest) >= sizeof(src),
+                  "Destination buffer is too small.");
+
+    // ...
+}
+
+Because this is a compile-time check, static_assert can only be used when compiling with `-O1`. If used in a non-constant context (when compiling with `-O0` or in a runtime-evaluated for-loop for example), a warning will be issued and the assertion will be ignored. This warning can be disabled with the `--no-assert-warning` option.
+```
+
+#### Side Effects of `static_assert`
+The check-expression of a static assertion will *never* have any side effects. Internally, `static_assert` will reset the state of the program to the state prior to the assertion.
+
+```javascript
+function x = fun(&x)
+{
+    ++x;
+}
+
+function main()
+{
+    let x = 0;
+
+    static_assert(fun(x) == 1, "This is weird!");
+    printd(x); // prints 0
+    endl();
+
+    fun(x);
+    printd(x); // prints 1
+    endl();
+} 
+```
+
 ### Standard Library
 The standard library provides some useful functions in two categories: IO and mathematics. Below is a list of provided functions that you can use to make your programs interactive and mathematical. Also, in the "stdbool.bfx" headerfile, the constants `true` and `false` are defined to `1` and `0` respectively.
 

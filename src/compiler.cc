@@ -31,6 +31,7 @@ Compiler::Compiler(Options const &opt):
     d_randomExtensionEnabled(opt.randomEnabled),
     d_bcrEnabled(opt.bcrEnabled),
     d_includeWarningEnabled(opt.includeWarningEnabled),
+    d_assertWarningEnabled(opt.assertWarningEnabled),
     d_outStream(*opt.outStream)
 {
     d_includePaths.push_back(BFX_DEFAULT_INCLUDE_PATH_STRING);
@@ -354,6 +355,14 @@ int Compiler::sizeOfOperator(std::string const &ident)
 
 int Compiler::staticAssert(Instruction const &check, std::string const &msg)
 {
+    if (!d_constEvalEnabled)
+    {
+        compilerWarningIf(d_assertWarningEnabled,
+                          "static_assert will be ignored in non-constant context. "
+                          "Are you compiling with -O0?");
+        return -1;
+    }
+    
     State state = save();
     int const result = check();
     compilerErrorIf(d_memory.valueUnknown(result),

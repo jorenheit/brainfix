@@ -37,6 +37,7 @@ public:
         bool                      randomEnabled{false};
         bool                      bcrEnabled{true};
         bool                      includeWarningEnabled{true};
+        bool                      assertWarningEnabled{true};
         int                       maxUnrollIterations{20};
     };
 
@@ -78,6 +79,7 @@ private:
     bool          d_boundsCheckingEnabled{true};
     bool const    d_bcrEnabled{true};
     bool const    d_includeWarningEnabled{true};
+    bool const    d_assertWarningEnabled{true};
     std::ostream& d_outStream;
 
     struct State

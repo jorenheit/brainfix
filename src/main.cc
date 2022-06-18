@@ -25,6 +25,8 @@ void printHelp(std::string const &progName)
               << "--no-multiple-inclusion-warning\n"
               << "                    Do not warn when a file is included more than once, or when files \n"
               << "                      with duplicate names are included.\n"
+              << "--no-assert-warning\n"
+              << "                    Do not warn when static_assert is used in non-constant context.\n"
               << "-o [file, stdout]   Specify the output stream/file (default stdout).\n\n"
               << "Example: " << progName << " -o program.bf -O1 -I ~/my_bfx_project -t int16 program.bfx\n";
 }
@@ -151,6 +153,11 @@ std::pair<Compiler::Options, int> parseCmdLine(std::vector<std::string> const &a
         else if (args[idx] == "--no-multiple-inclusion-warning")
         {
             opt.includeWarningEnabled = false;
+            ++idx;
+        }
+        else if (args[idx] == "--no-assert-warning")
+        {
+            opt.assertWarningEnabled = false;
             ++idx;
         }
         else if (idx == args.size() - 1)
