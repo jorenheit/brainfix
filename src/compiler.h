@@ -151,6 +151,7 @@ private:
     int allocateTemp(int const sz = 1);
     int allocateTempBlock(int const sz);
     int addressOf(std::string const &ident);
+    int staticAssert(Instruction const &check, std::string const &msg);
 
         // Instruction generator
     template <auto Member, typename ... Args>

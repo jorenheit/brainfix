@@ -21,7 +21,7 @@
 
 // Keywords
 %token LET FUNCTION GLOBAL INCLUDE SCAN PRINT RAND
-%token SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT STRUCT BREAK CONTINUE RETURN
+%token SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT STRUCT BREAK CONTINUE RETURN ASSERT
 
 %nonassoc then
 %nonassoc ELSE
@@ -57,6 +57,7 @@
 %type <INSTRUCTION>         break_statement
 %type <INSTRUCTION>         continue_statement
 %type <INSTRUCTION>         return_statement
+%type <INSTRUCTION>         static_assert
 %type <CASE_LIST>           case_list
 %type <INSTRUCTION_PAIR>    switch_case
 %type <INSTRUCTION>         default_case
@@ -240,6 +241,8 @@ statement_:
     }
 |
     expression ';'
+|
+    static_assert ';'
 |
     scope_block
 |
@@ -593,6 +596,13 @@ builtin_function:
         $$ = instruction<&Compiler::randomCell>();
     }
 ;
+
+static_assert:
+    ASSERT '(' expression ',' STR ')' 
+    {
+        $$ = instruction<&Compiler::staticAssert>($3, $5);
+    }
+;    
 
 variable:
     IDENT 

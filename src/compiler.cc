@@ -352,6 +352,18 @@ int Compiler::sizeOfOperator(std::string const &ident)
     return constVal(sz);
 }
 
+int Compiler::staticAssert(Instruction const &check, std::string const &msg)
+{
+    State state = save();
+    int const result = check();
+    compilerErrorIf(d_memory.valueUnknown(result),
+                    "Could not evaluate static_assert at compiletime.");
+
+    compilerErrorIf(!d_memory.value(result), msg);
+    restore(std::move(state));
+    return -1;
+}
+
 int Compiler::statement(Instruction const &instr)
 {
     if (d_bcrEnabled)
@@ -437,7 +449,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         // If the return variable is also passed in to the function as a reference,
         // we can simply return this address, as it's already local to the calling scope.
         
-        bool const returnVariableIsReferenceParameter = false
+        bool returnVariableIsReferenceParameter = false;
         for (int const addr: references)
         {
             if (addr == ret)

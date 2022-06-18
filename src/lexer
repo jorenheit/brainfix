@@ -30,6 +30,7 @@ blanks [[:blank:]\n]
 "break"                     return CompilerBase::BREAK;
 "continue"                  return CompilerBase::CONTINUE;
 "return"                    return CompilerBase::RETURN;
+"static_assert"             return CompilerBase::ASSERT;
 "++"                        return CompilerBase::INC;
 "--"                        return CompilerBase::DEC;
 "+="                        return CompilerBase::ADD;
