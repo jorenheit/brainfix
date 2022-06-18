@@ -732,6 +732,7 @@ function copy(&dest, &src)
 
     // ...
 }
+```
 
 Because this is a compile-time check, static_assert can only be used when compiling with `-O1`. If used in a non-constant context (when compiling with `-O0` or in a runtime-evaluated for-loop for example), a warning will be issued and the assertion will be ignored. This warning can be disabled with the `--no-assert-warning` option.
 ```
