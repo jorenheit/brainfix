@@ -70,8 +70,10 @@ Options:
                       Your interpreter must support this extension!
 --no-bcr            Disable break/continue/return statements for more compact output.
 --no-multiple-inclusion-warning
-                    Do not warn when a file is included more than once, or when files
+                    Do not warn when a file is included more than once, or when files 
                       with duplicate names are included.
+--no-assert-warning
+                    Do not warn when static_assert is used in non-constant context.
 -o [file, stdout]   Specify the output stream/file (default stdout).
 
 Example: bfx -o program.bf -O1 -I ~/my_bfx_project -t int16 program.bfx
@@ -852,7 +854,9 @@ All functions below are defined in `BFX_INCLUDE/stdstring.bfx`:
 
 | function | description                                                                                         |
 | -------- | --------------------------------------------------------------------------------------------------- |
-|  strcpy(dest, str)  | - Copies entire string's contents to array. |
+|  strcpy(dest, str)  | Copies entire string's contents to array. Returns number of copies elements. |
+|  strlen(str) | Returns length of the string, up to terminating 0. |
+|  strcmp(dest, str)  | Copies entire string's contents to array. Returns 0 (unequal) or 1 (equal). |
 
 #### Pseudorandom Numbers
 
