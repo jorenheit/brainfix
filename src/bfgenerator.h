@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <functional>
+#include <map>
 
 class BFGenerator
 {
@@ -10,6 +11,8 @@ class BFGenerator
     std::function<int()>    f_getTemp;
     std::function<int(int)> f_getTempBlock;
     std::function<int()>    f_getMemSize;
+
+    std::map<int, int> d_profile;
     
 public:
     size_t getPointerIndex() const
@@ -69,6 +72,11 @@ public:
     std::string logicalAnd(int const lhs, int const rhs);
     std::string logicalOr(int const lhs, int const rhs, int const result);
     std::string logicalOr(int const lhs, int const rhs);
+
+    inline std::map<int, int> const &profile() const
+    {
+        return d_profile;
+    }
     
 private:
     

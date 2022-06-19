@@ -106,7 +106,8 @@ std::string BFGenerator::assign(int const lhs, int const rhs)
 std::string BFGenerator::movePtr(int const addr)
 {
     validateAddr(addr);
-    
+
+    ++d_profile[addr];
     int const diff = (int)addr - (int)d_pointer;
     d_pointer = addr;
     return (diff >= 0) ? std::string(diff, '>') : std::string(-diff, '<');

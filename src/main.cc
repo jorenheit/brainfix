@@ -21,6 +21,9 @@ void printHelp(std::string const &progName)
               << "                      Defaults to 20.\n"
               << "--random            Enable random number generation (generates the ?-symbol).\n"
               << "                      Your interpreter must support this extension!\n"
+              << "--profile [file]    Write the memory profile to a file. In this file, the number of visits\n"
+              << "                      to each of the cells is listed. It can for example be used to inspec\n"
+              << "                      the total number of cells used by the program."  
               << "--no-bcr            Disable break/continue/return statements for more compact output.\n"
               << "--no-multiple-inclusion-warning\n"
               << "                    Do not warn when a file is included more than once, or when files \n"
@@ -144,6 +147,18 @@ std::pair<Compiler::Options, int> parseCmdLine(std::vector<std::string> const &a
         {
             opt.randomEnabled = true;
             ++idx;
+        }
+        else if (args[idx] == "--profile")
+        {
+            if (idx == args.size() - 1)
+            {
+                std::cerr << "ERROR: No filename passed to option \'--profile\'.\n";
+                return {opt, 1};
+            }
+
+            opt.moveLogFile = args[idx + 1];
+            idx += 2;
+
         }
         else if (args[idx] == "--no-bcr")
         {

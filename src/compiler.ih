@@ -5,6 +5,7 @@
 // $insert class.h
 #include <set>
 #include <cmath>
+#include <fstream>
 #include "compiler.h"
 
 inline void Compiler::print()

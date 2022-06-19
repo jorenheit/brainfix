@@ -32,7 +32,8 @@ Compiler::Compiler(Options const &opt):
     d_bcrEnabled(opt.bcrEnabled),
     d_includeWarningEnabled(opt.includeWarningEnabled),
     d_assertWarningEnabled(opt.assertWarningEnabled),
-    d_outStream(*opt.outStream)
+    d_outStream(*opt.outStream),
+    d_moveLogFile(opt.moveLogFile)
 {
     d_includePaths.push_back(BFX_DEFAULT_INCLUDE_PATH_STRING);
     d_included.push_back(fileWithoutPath(opt.bfxFile));
@@ -209,8 +210,21 @@ int Compiler::compile()
     call("main");
     d_stage = Stage::FINISHED;
 
-    //    d_memory.dump();
+    if (!d_moveLogFile.empty())
+        writeMemoryProfile();
+    
     return 0;
+}
+
+void Compiler::writeMemoryProfile() const
+{
+    assert(d_stage == Stage::FINISHED && "call writeMemoryProfile after compiling.");
+    
+    std::ofstream file(d_moveLogFile);
+    compilerErrorIf(!file, "Could not open file for profile: ", d_moveLogFile, ".");
+    
+    for (auto const &pr: d_bfGen.profile())
+        file << pr.first << ", " << pr.second << '\n';
 }
 
 void Compiler::write()
