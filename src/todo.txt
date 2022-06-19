@@ -36,6 +36,6 @@
 [ ] anonymous scope block does not create new scope
 [x] add note to readme about let [] x = str[0]
 [ ] add memory profiling option
-[ ] something weird going on: syntax error on e.g. "x++ > 0", only with post-increment.
+[x] something weird going on: syntax error on e.g. "x++ > 0", only with post-increment.
 [x] let str = "bla" works for some reason
 [ ] implement more string functions: strlen, strcmp, memcpy, ...?

@@ -848,10 +848,11 @@ All functions below are defined in `BFX_INCLUDE/stdmath.bfx`:
 Each of the functions above returns the resulting value: their arguments are never modified, even if they are taken by reference (for optimization purposes).
 
 #### Strings
+All functions below are defined in `BFX_INCLUDE/stdstring.bfx`:
 
 | function | description                                                                                         |
 | -------- | --------------------------------------------------------------------------------------------------- |
-| strcpy   | strcpy(str, dest) - Copies entire string's contents to array (without checking for buffer overflow) |
+|  strcpy(dest, str)  | - Copies entire string's contents to array. |
 
 #### Pseudorandom Numbers
 
