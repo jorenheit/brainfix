@@ -24,7 +24,7 @@ install: bfx bfint
 	cp std/stdio.bfx $(BFX_INCLUDE)
 	cp std/stdmath.bfx $(BFX_INCLUDE)
 	cp std/stdbool.bfx $(BFX_INCLUDE)
-	cp std/strings.bfx $(BFX_INCLUDE)
+	cp std/stdstring.bfx $(BFX_INCLUDE)
 
 uninstall:
 	rm -f $(INSTALL_PATH)/bfx
