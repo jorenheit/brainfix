@@ -28,7 +28,7 @@ function i = toIndex(&c)
 
 function w = winner(&p1, &p2)
 {
-    let w = WIN_ARRAY[3 * toIndex(p1) + toIndex(p2)];
+    let w = WIN_ARRAY[3 * p1 + p2];
 }
 
 function printScore(&s)
@@ -57,17 +57,17 @@ function main()
         }
 
         // Generate computer move
-        let computer = "RPS"[rand() % 3];
+        let computer = rand() % 3;
         prints("Computer chose: ");
         switch (computer)
         {
-            case 'R': println("Rock!");
-            case 'P': println("Paper!");
-            case 'S': println("Scissors!");
+            case 0: println("Rock!");
+            case 1: println("Paper!");
+            case 2: println("Scissors!");
         }
 
         // Determine winner
-        switch (winner(input, computer))
+        switch (winner(toIndex(input), computer))
         {
             case 0: prints("It's a tie! ");
             case 1:
