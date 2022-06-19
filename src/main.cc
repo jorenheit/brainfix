@@ -23,7 +23,7 @@ void printHelp(std::string const &progName)
               << "                      Your interpreter must support this extension!\n"
               << "--profile [file]    Write the memory profile to a file. In this file, the number of visits\n"
               << "                      to each of the cells is listed. It can for example be used to inspec\n"
-              << "                      the total number of cells used by the program."  
+              << "                      the total number of cells used by the program.\n"  
               << "--no-bcr            Disable break/continue/return statements for more compact output.\n"
               << "--no-multiple-inclusion-warning\n"
               << "                    Do not warn when a file is included more than once, or when files \n"

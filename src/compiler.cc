@@ -222,6 +222,9 @@ void Compiler::writeMemoryProfile() const
     
     std::ofstream file(d_moveLogFile);
     compilerErrorIf(!file, "Could not open file for profile: ", d_moveLogFile, ".");
+
+    file << "Number of cells required: " << d_memory.cellsRequired() << '\n';
+    file << "Memory profile:\n";
     
     for (auto const &pr: d_bfGen.profile())
         file << pr.first << ", " << pr.second << '\n';

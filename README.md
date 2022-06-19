@@ -68,6 +68,9 @@ Options:
                       Defaults to 20.
 --random            Enable random number generation (generates the ?-symbol).
                       Your interpreter must support this extension!
+--profile [file]    Write the memory profile to a file. In this file, the number of visits
+                      to each of the cells is listed. It can for example be used to inspec
+                      the total number of cells used by the program.
 --no-bcr            Disable break/continue/return statements for more compact output.
 --no-multiple-inclusion-warning
                     Do not warn when a file is included more than once, or when files 
@@ -854,9 +857,9 @@ All functions below are defined in `BFX_INCLUDE/stdstring.bfx`:
 
 | function | description                                                                                         |
 | -------- | --------------------------------------------------------------------------------------------------- |
-|  strcpy(dest, str)  | Copies entire string's contents to array. Returns number of copies elements. |
-|  strlen(str) | Returns length of the string, up to terminating 0. |
-|  strcmp(dest, str)  | Copies entire string's contents to array. Returns 0 (unequal) or 1 (equal). |
+|  `strcpy(dest, str)`  | Copies entire string's contents to array. Returns number of copies elements. |
+|  `strlen(str)` | Returns length of the string, up to terminating 0. |
+|  `strcmp(dest, str)`  | Copies entire string's contents to array. Returns 0 (unequal) or 1 (equal). |
 
 #### Pseudorandom Numbers
 
@@ -879,3 +882,6 @@ function main()
 }
 
 ```
+
+## Profiling
+During compilation, the compiler keeps track the number of move-instructions to each of the allocated memory cells. This memory-profile can be saved to a file with the `--profile` option. The output file reports the total number of required BF-cells, followed by a CSV-formatted list of cells and the number of times a move to this address was generated. This will not necessarily be the same as the number of visits to this cell at runtime, because at runtime cells may be visited repeatedly in a loop.
