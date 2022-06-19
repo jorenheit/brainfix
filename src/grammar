@@ -25,6 +25,8 @@
 
 %nonassoc then
 %nonassoc ELSE
+%nonassoc _var
+%nonassoc _arr
 
 // Operators
 %right '=' ADD SUB MUL MOD DIV DIVMOD MODDIV POW
@@ -35,11 +37,10 @@
 %left '+' '-'
 %left '*' '/' '%'
 %left '^'
-%right INC DEC  '!' unaryMinus
+%right '!' unaryMinus
+%left INC DEC
 %left '['
 %left '.'
-%nonassoc _var
-%nonassoc _arr
 
 %token <STRING> IDENT
 %token <STRING> STR

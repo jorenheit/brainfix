@@ -50,8 +50,16 @@ function println(&x)
 function printd(&x)
 {
     let [3] str = to_string(x);
-    for (let d: str)
+    for (let &d: str)
         if (d) printc(d);
+}
+
+function printb(b)
+{
+    if (b)
+        prints("true");
+    else
+        prints("false");
 }
 
 function printd_4(&x)
