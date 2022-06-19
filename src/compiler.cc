@@ -191,6 +191,7 @@ bool Compiler::disableConstEval()
 int Compiler::compile()
 {
     assert(d_stage == Stage::IDLE && "Calling Compiler::compile() multiple times");
+    assert(d_bfGen.getPointerIndex() == 0 && "Pointer should be at 0");
     
     d_stage = Stage::PARSING;
     int err = parse();
@@ -626,6 +627,15 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
     
     int const leftSize = d_memory.sizeOf(lhs);
     int const rightSize = d_memory.sizeOf(rhs);
+    auto const leftType = d_memory.type(lhs);
+    auto const rightType = d_memory.type(rhs);
+
+    compilerErrorIf((leftType.isStructType() || rightType.isStructType()) && !(leftType == rightType),
+                    "Incompatible types in assignment: ", leftType.name(), " and ", rightType.name(), ".");
+
+    compilerErrorIf(leftSize != rightSize && leftSize != 1 && rightSize != 1,
+                    "Assignment to array of size ", leftSize,
+                    " with object of incompatible size ", rightSize, ".");
     
     if (leftSize > 1 && rightSize == 1)
     {
@@ -660,17 +670,16 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
                 runtimeAssign(lhs + i, rhs + i);
         }
     }
-    else if (leftSize == 1 && !d_memory.type(rhs).isStructType())
+    else if (leftSize == 1)
     {
         if (d_constEvalEnabled && !d_memory.valueUnknown(rhs))
             constEvalSetToValue(lhs, d_memory.value(rhs));
         else
             runtimeAssign(lhs, rhs);
-    }
+    }    
     else
     {
-        compilerErrorIf(true, "Cannot assign variables of unequal sizes (sizeof(lhs) = ", leftSize,
-                " vs sizeof(rhs) = ", rightSize, ").");
+        assert(false && "all other cases should have been caught by compiler errors");
     }
 
     return lhs;

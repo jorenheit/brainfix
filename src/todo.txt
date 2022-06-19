@@ -1,3 +1,5 @@
+
+'
 [x] consteval should take into account the int-type
 [x] Bounds checking for known index --> warning or error?
 [x] implement while*
@@ -36,3 +38,4 @@
 [ ] add memory profiling option
 [ ] something weird going on: syntax error on e.g. "x++ > 0", only with post-increment.
 [ ] let str = "bla" works for some reason
+[ ] implement more string functions: strlen, strcmp, memcpy, ...?
