@@ -145,12 +145,10 @@ Next, the main-function is defined. Every valid BFX-program should contain a `ma
 
 #### Compiling
 
-In `main()`, the function `println()` from the IO library is called to print the argument and a newline to the console. The IO library is part of the standard library, which is located in the `std` folder, which we have to pass as the include-path.
-
-Let's compile this example (assuming `bfx` and `bfint` are in your PATH):
+In `main()`, the function `println()` from the IO library is called to print the argument and a newline to the console. If you've run `make install`, these files should be in a folder known to the compiler. If not, you should point the compiler to the folder containing the stdlib-files using the `-I /path/to/std` option.
 
 ```
-$ bfx -o hello.bf -I std/ hello.bfx
+$ bfx -o hello.bf hello.bfx
 $ bfint hello.bf
 Hello, World!
 ```
