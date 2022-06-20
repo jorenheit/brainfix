@@ -202,12 +202,12 @@ int Compiler::compile()
         return err;
     }
     
-    compilerErrorIf(d_functionMap.find("main") == d_functionMap.end(),
+    compilerErrorIf(d_functionMap.find(BFXFunction::mangle("main", 0)) == d_functionMap.end(),
             "No entrypoint provided. The entrypoint should be main().");
 
     addConstant("__MAX_LOOP_UNROLL_ITERATIONS", MAX_LOOP_UNROLL_ITERATIONS);
     d_stage = Stage::CODEGEN;
-    call("main");
+    instruction<&Compiler::call>("main", std::vector<Instruction>{})();
     d_stage = Stage::FINISHED;
 
     if (!d_moveLogFile.empty())
@@ -248,9 +248,10 @@ void Compiler::addFunction(BFXFunction const &bfxFunc)
     compilerErrorIf(!validateFunction(bfxFunc), "Duplicate parameters used in the definition of function \"",
             bfxFunc.name(), "\".");
 
-    auto result = d_functionMap.insert({bfxFunc.name(), bfxFunc});
+    auto result = d_functionMap.insert({bfxFunc.mangled(), bfxFunc});
     compilerErrorIf(!result.second,
-            "Redefinition of function \"", bfxFunc.name(), "\" is not allowed.");
+                    "Redefinition of function \"", bfxFunc.name(), "\" with ", bfxFunc.params().size(),
+                    " arguments  is not allowed.");
 }
 
 void Compiler::addStruct(std::string const &name,
@@ -417,17 +418,16 @@ int Compiler::statement(Instruction const &instr)
 int Compiler::call(std::string const &name, std::vector<Instruction> const &args)
 {
     // Check if the function exists
-    bool const isFunction = d_functionMap.find(name) != d_functionMap.end();
-    compilerErrorIf(!isFunction,"Call to unknown function \"", name, "\"");
-    compilerErrorIf(d_scope.containsFunction(name),
+    std::string const mangled = BFXFunction::mangle(name, args.size());
+
+    compilerErrorIf(d_functionMap.find(mangled) == d_functionMap.end(),
+                    "Call to unknown function \"", name, "\"");
+    compilerErrorIf(d_scope.containsFunction(mangled),
             "Function \"", name, "\" is called recursively. Recursion is not allowed.");
     
     // Get the list of parameters
-    BFXFunction &func = d_functionMap.at(name);
+    BFXFunction const &func = d_functionMap.at(mangled);
     auto const &params = func.params();
-    compilerErrorIf(params.size() != args.size(),
-            "Calling function \"", func.name(), "\" with invalid number of arguments. "
-            "Expected ", params.size(), ", got ", args.size(), ".");
 
     std::vector<int> references;
     for (size_t idx = 0; idx != args.size(); ++idx)
@@ -445,7 +445,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
             // Allocate local variable for the function of the correct size
             // and copy argument to this location
 
-            int paramAddr = d_memory.allocate(paramIdent, func.name(), d_memory.type(argAddr));
+            int paramAddr = d_memory.allocate(paramIdent, func.mangled(), d_memory.type(argAddr));
             compilerErrorIf(paramAddr < 0,
                     "Could not allocate parameter", paramIdent, ". ",
                     "This should never happen.");
@@ -454,15 +454,15 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         }
         else // Reference
         {
-            d_memory.addAlias(argAddr, paramIdent, func.name());
+            d_memory.addAlias(argAddr, paramIdent, func.mangled());
             references.push_back(argAddr);
         }
     }
 
     // Execute body of the function
-    enterScope(func.name());
+    enterScope(func.mangled());
     func.body()();
-    exitScope(func.name());
+    exitScope(func.mangled());
     
 
     // Move return variable to local scope before cleaning up (if non-void)
@@ -471,7 +471,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     {
         // Locate the address of the return-variable
         std::string retVar = func.returnVariable();
-        ret = d_memory.find(retVar, func.name());
+        ret = d_memory.find(retVar, func.mangled());
         compilerErrorIf(ret == -1,
                 "Returnvalue \"", retVar, "\" of function \"", func.name(),
                 "\" seems not to have been declared in the main scope of the function-body.");
@@ -497,9 +497,9 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         }
         // otherwise, do nothing
     }
-    
+
     // Clean up and return
-    d_memory.freeLocals(func.name());
+    d_memory.freeLocals(func.mangled());
     return ret;
 }
 

@@ -22,6 +22,7 @@ private:
     Instruction            d_body;
     std::vector<Parameter> d_params;
     std::string            d_returnVar;
+    std::string            d_mangled;
 
 public:
     BFXFunction()
@@ -35,7 +36,8 @@ public:
 
     BFXFunction(std::string name, std::vector<Parameter> const &params):
         d_name(name),
-        d_params(params)
+        d_params(params),
+        d_mangled(mangle(name, params.size()))
     {}
 
     BFXFunction &setBody(Instruction const &body)
@@ -70,9 +72,26 @@ public:
         return d_name;
     }
 
+    std::string const &mangled() const
+    {
+        return d_mangled;
+    }
+    
     bool isVoid() const
     {
         return d_returnVar.empty();
+    }
+
+public:
+    static std::string mangle(BFXFunction const &func)
+    {
+        return mangle(func.name(), func.params().size());
+    }
+
+    
+    static std::string mangle(std::string const &name, int const nArgs)
+    {
+        return std::string("__f_") + std::to_string(nArgs) + "_" + name;
     }
 };
 
