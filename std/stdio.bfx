@@ -27,6 +27,17 @@
    to_string_4(x)   - Converts int to string, max 4 digits (0-9999)
    to_binary_str(x) - Converts number to 8-bit binary representation (as string)
    to_hex_str(x)    - Converts number to 8-bit hexadecimal representation (as string)
+
+   CURSOR/SCREEN MANIPULATION
+   
+   cursor_left(n)          - Move cursor left by n (default = 1)
+   cursor_right(n)         - Move cursor right by n (default = 1)
+   cursor_up(n)            - Move cursor up by n (default = 1)
+   cursor_down(n)          - Move cursor down by n (default = 1)
+   cursor_home()           - Move cursor to top-left of the screen
+   cursor_to(line, column) - Move cursor to given position
+   clear_screen()          - Clear the entire screen
+   clear_line()            - Clear the current line
 */
 
 function printc(&c)
@@ -263,8 +274,7 @@ function str = to_string_4(x)
 
 function clear_screen()
 {
-    printc(27);
-    prints("[H");
+    cursor_home();
     printc(27);
     prints("[2J");
 }
@@ -340,4 +350,10 @@ function cursor_left()
 {
     printc(27);
     prints("[1D");
+}
+
+function cursor_home()
+{
+    printc(27);
+    prints("[H");
 }

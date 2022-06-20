@@ -850,6 +850,20 @@ All functions below are defined in `BFX_INCLUDE/stdio.bfx`:
 
 On the default architecture, where the cells are only 1 byte long, values can never grow beyond 255. It is therefore sufficient to assume that number will never grow beyond 3 digits. However, when the target architecture contains larger cells, the functions suffixed with `_4` can be used to extend some facilities to 4 digits. Printing and scanning even larger digits is also possible, but functions to this end are not provided by the standard library for the simple reason that these functions would be terribly slow and impractical.
 
+##### Cursor and Screen Manipulation
+The functions below are also defined in `stdio.bfx` and can be used on ANSI-compatible terminals to move the cursor or clear (parts of) the screen. This can be used to print to the same region of the screen multiple times, allowing for better ascii-graphics.
+
+| function           | description                                     |
+| ------------------ | ------------------------------------------------|
+| `cursor_left(n)`         | Move cursor left by n (default = 1)       |
+| `cursor_right(n)`        | Move cursor right by n (default = 1)      |
+| `cursor_up(n)`           | Move cursor up by n (default = 1)         |
+| `cursor_down(n)`         | Move cursor down by n (default = 1)       |
+| `cursor_home()`          | Move cursor to top-left of the screen     |
+| `cursor_to(line, column)`| Move cursor to given position             |
+| `clear_screen()`         | Clear the entire screen                   |
+| `clear_line()`           | Clear the current line                    |
+
 #### Math
 
 All functions below are defined in `BFX_INCLUDE/stdmath.bfx`:
