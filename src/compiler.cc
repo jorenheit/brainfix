@@ -33,9 +33,11 @@ Compiler::Compiler(Options const &opt):
     d_includeWarningEnabled(opt.includeWarningEnabled),
     d_assertWarningEnabled(opt.assertWarningEnabled),
     d_outStream(*opt.outStream),
-    d_moveLogFile(opt.moveLogFile)
+    d_profileFile(opt.profileFile)
 {
+    d_includePaths.push_back(".");
     d_includePaths.push_back(BFX_DEFAULT_INCLUDE_PATH_STRING);
+    
     d_included.push_back(fileWithoutPath(opt.bfxFile));
     
     d_bfGen.setTempRequestFn([this](){
@@ -210,8 +212,7 @@ int Compiler::compile()
     instruction<&Compiler::call>("main", std::vector<Instruction>{})();
     d_stage = Stage::FINISHED;
 
-    if (!d_moveLogFile.empty())
-        writeMemoryProfile();
+    writeMemoryProfile();
     
     return 0;
 }
@@ -219,9 +220,12 @@ int Compiler::compile()
 void Compiler::writeMemoryProfile() const
 {
     assert(d_stage == Stage::FINISHED && "call writeMemoryProfile after compiling.");
-    
-    std::ofstream file(d_moveLogFile);
-    compilerErrorIf(!file, "Could not open file for profile: ", d_moveLogFile, ".");
+
+    if (d_profileFile.empty())
+        return;
+
+    std::ofstream file(d_profileFile);
+    compilerErrorIf(!file, "Could not open file for profile: ", d_profileFile, ".");
 
     file << "Number of cells required: " << d_memory.cellsRequired() << '\n';
     file << "Pointer ends on cell " << d_bfGen.getPointerIndex() << '\n';

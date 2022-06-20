@@ -32,7 +32,7 @@ public:
         Compiler::CellType        cellType{Compiler::CellType::INT8};
         std::vector<std::string>  includePaths;
         std::string               bfxFile;
-        std::string               moveLogFile;
+        std::string               profileFile;
         std::ostream*             outStream{&std::cout};
         bool                      constEvalEnabled{true};
         bool                      randomEnabled{false};
@@ -82,7 +82,7 @@ private:
     bool const    d_includeWarningEnabled{true};
     bool const    d_assertWarningEnabled{true};
     std::ostream& d_outStream;
-    std::string const d_moveLogFile;
+    std::string const d_profileFile;
 
     struct State
     {

@@ -156,7 +156,7 @@ std::pair<Compiler::Options, int> parseCmdLine(std::vector<std::string> const &a
                 return {opt, 1};
             }
 
-            opt.moveLogFile = args[idx + 1];
+            opt.profileFile = args[idx + 1];
             idx += 2;
 
         }
