@@ -1,0 +1,186 @@
+include "std.bfx"
+
+const OFFSET = 5;
+const PLAYER1 = 1;
+const PLAYER2 = 2;
+
+function drawEmptyGrid()
+{
+    let [] l1 = "   |   |   ";
+    let [] l2 = "___|___|___";
+    let [OFFSET] offset = ' ';
+    
+    prints(offset); println(l1);
+    prints(offset); println(l1);
+    prints(offset); println(l2);
+    prints(offset); println(l1);
+    prints(offset); println(l1);
+    prints(offset); println(l2);
+    prints(offset); println(l1);
+    prints(offset); println(l1);
+    prints(offset); println(l1);
+}
+
+struct Grid
+{
+    [9] cells;
+    [9] line;
+    [9] column;
+}
+
+function grid = newGrid()
+{
+    let [struct Grid] grid;
+
+    grid.cells = 0;
+    
+    grid.line = #{2, 2, 2,
+                  5, 5, 5,
+                  8, 8, 8};
+
+    grid.column = #{2, 6, 10,
+                    2, 6, 10,
+                    2, 6, 10};
+
+    for (let i = 0; i != 9; ++i)
+        grid.column[i] += OFFSET;
+}
+
+function drawGrid(&grid)
+{
+    for (let i = 0; i != 9; ++i)
+    {
+        cursor_to(grid.line[i], grid.column[i]);
+        let cell = grid.cells[i];
+        if (cell == 0)
+            printc(i + 1 + '0');
+        else if (cell == PLAYER1)
+            printc('X');
+        else if (cell == PLAYER2)
+            printc('O');
+    }
+}
+
+function c = getMove()
+{
+    let c; scans(c);
+    if (c < '1' || c > '9')
+        c = 0;
+    else
+        c -= '0';
+}
+
+function playerTurn(&grid, &name, &line, &playerID)
+{
+    cursor_to(line++, 1);
+    let move = 0;
+    while (!move)
+    {
+        prints(name);
+        prints(", please make your move (1-9): ");
+        move = getMove();
+        if (move == 0)
+        {
+            println("Invalid move.");
+            line += 2;
+        }
+        else if (grid.cells[move - 1])
+        {
+            println("Cell not available.");
+            move = 0;
+            line += 2;
+        }
+    }
+
+    grid.cells[move - 1] = playerID;
+}
+
+function w = won(&grid, &playerID)
+{
+    let w = false;
+    for (let i = 0; i != 3; ++i)
+    {
+        if (grid.cells[i * 3 + 0] == playerID &&
+            grid.cells[i * 3 + 1] == playerID &&
+            grid.cells[i * 3 + 2] == playerID)
+        {
+            w = true;
+            return;
+        }
+
+        if (grid.cells[i]     == playerID &&
+            grid.cells[i + 3] == playerID &&
+            grid.cells[i + 6] == playerID)
+        {
+            w = true;
+            return;
+        }
+    }
+
+    if (grid.cells[0] == playerID &&
+        grid.cells[4] == playerID &&
+        grid.cells[8] == playerID)
+    {
+        w = true;
+        return;
+    }
+
+    if (grid.cells[2] == playerID &&
+        grid.cells[4] == playerID &&
+        grid.cells[6] == playerID)
+    {
+        w = true;
+        return;
+    }
+}
+
+const NAME_BUFFER_SIZE = 10;
+
+function main()
+{
+    let [NAME_BUFFER_SIZE] p1;
+    let [NAME_BUFFER_SIZE] p2;
+              
+    prints("Player 1, please enter your name: ");
+    scans(p1);
+    prints("Player 2, please enter your name: ");
+    scans(p2);
+    
+    let [struct Grid] grid = newGrid();
+    
+    clear_screen();
+    drawEmptyGrid();
+    
+    drawGrid(grid);
+    let line = 11;
+    let nMoves = 0;
+    while (nMoves < 9)
+    {
+        let player = 1 + (nMoves % 2);
+        let [NAME_BUFFER_SIZE] name = 0;
+        if (player == 1)
+            strcpy(name, p1);
+        else
+            strcpy(name, p2);
+
+        playerTurn(grid, name, line, player);
+        drawGrid(grid);
+        if (won(grid, player))
+        {
+            cursor_to(line, 1);
+            if (player == PLAYER1)
+                prints(p1);
+            else
+                prints(p2);
+            
+            println(" won!");
+            return;
+        }
+        
+        ++nMoves;
+    }
+
+    cursor_to(line, 1);
+    println("It's a tie!");
+}
+
