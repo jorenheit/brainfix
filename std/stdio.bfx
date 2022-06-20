@@ -261,4 +261,83 @@ function str = to_string_4(x)
     str[idx] = ones + '0';
 }
 
+function clear_screen()
+{
+    printc(27);
+    prints("[H");
+    printc(27);
+    prints("[2J");
+}
 
+function clear_line()
+{
+    printc(13);
+    printc(27);
+    prints("[0K");
+}
+
+function cursor_to(&line, &column)
+{
+    printc(27);
+    printc('[');
+    prints(to_string(line));
+    printc(';');
+    prints(to_string(column));
+    printc('H');
+}
+
+function cursor_up(n)
+{
+    printc(27);
+    printc('[');
+    prints(to_string(n));
+    printc('A');
+}
+
+function cursor_up()
+{
+    printc(27);
+    prints("[1A");
+}
+
+function cursor_down(n)
+{
+    printc(27);
+    printc('[');
+    prints(to_string(n));
+    printc('B');
+}
+
+function cursor_down()
+{
+    printc(27);
+    prints("[1B");
+}
+
+function cursor_right(n)
+{
+    printc(27);
+    printc('[');
+    prints(to_string(n));
+    printc('C');
+}
+
+function cursor_right()
+{
+    printc(27);
+    prints("[1C");
+}
+
+function cursor_left(n)
+{
+    printc(27);
+    printc('[');
+    prints(to_string(n));
+    printc('D');
+}
+
+function cursor_left()
+{
+    printc(27);
+    prints("[1D");
+}

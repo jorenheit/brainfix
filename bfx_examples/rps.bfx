@@ -1,4 +1,5 @@
-// Note: compile and run with --random!
+// Note: compile and run with --random, will not compile with --no-bcr
+
 include "std.bfx"
 
 global [9] WIN_ARRAY;
