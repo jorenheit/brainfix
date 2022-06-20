@@ -429,7 +429,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     BFXFunction const &func = d_functionMap.at(mangled);
     auto const &params = func.params();
 
-    std::vector<int> references;
+    bool returnVariableIsReferenceParameter = false;
     for (size_t idx = 0; idx != args.size(); ++idx)
     {
         // Evaluate argument that's passed in and get its size
@@ -454,8 +454,10 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         }
         else // Reference
         {
+            if (func.returnVariable() == paramIdent)
+                returnVariableIsReferenceParameter = true;
+                
             d_memory.addAlias(argAddr, paramIdent, func.mangled());
-            references.push_back(argAddr);
         }
     }
 
@@ -463,11 +465,10 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     enterScope(func.mangled());
     func.body()();
     exitScope(func.mangled());
-    
 
     // Move return variable to local scope before cleaning up (if non-void)
     int ret = -1;
-    if (!func.isVoid())
+    if (!(func.isVoid() || returnVariableIsReferenceParameter))
     {
         // Locate the address of the return-variable
         std::string retVar = func.returnVariable();
@@ -476,26 +477,9 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
                 "Returnvalue \"", retVar, "\" of function \"", func.name(),
                 "\" seems not to have been declared in the main scope of the function-body.");
 
-        // If the return variable is also passed in to the function as a reference,
-        // we can simply return this address, as it's already local to the calling scope.
-        
-        bool returnVariableIsReferenceParameter = false;
-        for (int const addr: references)
-        {
-            if (addr == ret)
-            {
-                returnVariableIsReferenceParameter = true;
-                break;
-            }
-        }
-        
-        if (!returnVariableIsReferenceParameter)
-        {
-            // Pull the variable into local (sub)scope as a temp
-            d_memory.rename(ret, "", d_scope.current());
-            d_memory.markAsTemp(ret);
-        }
-        // otherwise, do nothing
+        // Pull the variable into local (sub)scope as a temp
+        d_memory.rename(ret, "", d_scope.current());
+        d_memory.markAsTemp(ret);
     }
 
     // Clean up and return
