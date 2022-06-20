@@ -24,10 +24,13 @@ Compiler::Compiler(Options const &opt):
     MAX_INT(_MaxInt::get(opt.cellType)),
     MAX_ARRAY_SIZE(MAX_INT - 5),
     MAX_LOOP_UNROLL_ITERATIONS(opt.maxUnrollIterations),
+    d_sourceFile(opt.bfxFile),
+    d_cellType(opt.cellType),
     d_scanner(opt.bfxFile, ""),
     d_memory(TAPE_SIZE_INITIAL),
     d_includePaths(opt.includePaths),
-    d_constEvalEnabled(opt.constEvalEnabled),
+    d_constEvalEnabled(opt.constEvalAllowed),
+    d_constEvalAllowed(opt.constEvalAllowed),
     d_randomExtensionEnabled(opt.randomEnabled),
     d_bcrEnabled(opt.bcrEnabled),
     d_includeWarningEnabled(opt.includeWarningEnabled),
@@ -162,7 +165,7 @@ bool Compiler::setConstEval(bool const enable)
     {
         assert(count != 0 && "Unbalanced enableConstEval/disableConstEval");
         if (--count == 0)
-            d_constEvalEnabled = true;
+            d_constEvalEnabled = d_constEvalAllowed;
     }
     else
     {
@@ -212,12 +215,12 @@ int Compiler::compile()
     instruction<&Compiler::call>("main", std::vector<Instruction>{})();
     d_stage = Stage::FINISHED;
 
-    writeMemoryProfile();
+    writeProfile();
     
     return 0;
 }
 
-void Compiler::writeMemoryProfile() const
+void Compiler::writeProfile() const
 {
     assert(d_stage == Stage::FINISHED && "call writeMemoryProfile after compiling.");
 
@@ -227,12 +230,22 @@ void Compiler::writeMemoryProfile() const
     std::ofstream file(d_profileFile);
     compilerErrorIf(!file, "Could not open file for profile: ", d_profileFile, ".");
 
-    file << "Number of cells required: " << d_memory.cellsRequired() << '\n';
-    file << "Pointer ends on cell " << d_bfGen.getPointerIndex() << '\n';
-    file << "Memory profile:\n";
+    file << "Profile for " << d_sourceFile << ":\n"
+         << "    cell-type:        " << d_cellType << '\n'
+         << "    optimization:     " << (d_constEvalEnabled ? "O1" : "O0") << '\n'
+         << "    bcr:              " << (d_bcrEnabled ? "enabled" : "disabled") << '\n'
+         << "    max unroll:       " << MAX_LOOP_UNROLL_ITERATIONS << '\n'
+         << "    random extension: " << (d_randomExtensionEnabled ? "enabled" : "disabled") << '\n'
+         << '\n'
+         << "Number of BF operations generated: " << d_codeBuffer.str().size() << '\n'
+         << "Number of cells required:          " << d_memory.cellsRequired() << '\n'
+         << '\n'
+         << "+---------+---------+\n"
+         << "| address | #visits |\n"
+         << "+---------+---------+\n";
     
     for (auto const &pr: d_bfGen.profile())
-        file << pr.first << ", " << pr.second << '\n';
+        file << pr.first << ": " << pr.second << '\n';
 }
 
 void Compiler::write()

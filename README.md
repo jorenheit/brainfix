@@ -183,7 +183,7 @@ function foo(x, y, z) {
 }
 ```
 
-When a function has a return-value, the syntax becomes:
+When the function has a return-value, the syntax becomes:
 
 ```javascript
 function ret = bar(x, y, z)
@@ -210,7 +210,7 @@ function z = bar(x, y)
 ```
 
 #### Function Overloading
-Functions can be overloaded on their number of arguments (not on return-value). This allows you to define multiple functions with the same name. In the example below, overloading is used to emulate a default argument (currently not supported natively by BFX):
+Functions can be overloaded on their number of arguments (not on return-value). This allows you to define multiple functions with the same name. In the example below, overloading is used to implement a default argument.
 
 ```javascript
 function bestNumber(x)
@@ -904,4 +904,31 @@ function main()
 ```
 
 ## Profiling
-During compilation, the compiler keeps track the number of move-instructions to each of the allocated memory cells. This memory-profile can be saved to a file with the `--profile` option. The output file reports the total number of required BF-cells, followed by a CSV-formatted list of cells and the number of times a move to this address was generated. This will not necessarily be the same as the number of visits to this cell at runtime, because at runtime cells may be visited repeatedly in a loop.
+During compilation, the compiler keeps track the number of move-instructions to each of the allocated memory cells. This memory-profile can be saved to a file with the `--profile` option. The output file reports the settings used for compilation, the resulting number of BF-operations and required cells, followed by a list of cells and the number of times a move to this address was generated. This will not necessarily be the same as the number of visits to this cell at runtime, because at runtime cells may be visited repeatedly in a loop.
+
+```
+$ bfx --no-bcr --profile prof.txt -o sieve.bf bfx_examples/sieve.bfx
+$ head -n 20 prof.txt
+Profile for bfx_examples/sieve.bfx:
+    cell-type:        int8
+    optimization:     O1
+    bcr:              disabled
+    max unroll:       20
+    random extension: disabled
+
+Number of BF operations generated: 233505
+Number of cells required:          1201
+
++---------+---------+
+| address | #visits |
++---------+---------+
+0: 39
+1: 29
+2: 8
+3: 8
+4: 12
+5: 10
+6: 13
+```
+
+

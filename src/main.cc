@@ -119,7 +119,7 @@ std::pair<Compiler::Options, int> parseCmdLine(std::vector<std::string> const &a
         }
         else if (args[idx] == "-O0")
         {
-            opt.constEvalEnabled = false;
+            opt.constEvalAllowed = false;
             ++idx;
         }
         else if (args[idx] == "-O1")

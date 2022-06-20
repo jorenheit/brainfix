@@ -34,7 +34,7 @@ public:
         std::string               bfxFile;
         std::string               profileFile;
         std::ostream*             outStream{&std::cout};
-        bool                      constEvalEnabled{true};
+        bool                      constEvalAllowed{true};
         bool                      randomEnabled{false};
         bool                      bcrEnabled{true};
         bool                      includeWarningEnabled{true};
@@ -48,6 +48,9 @@ private:
     long const MAX_INT;
     long const MAX_ARRAY_SIZE;
     int  const MAX_LOOP_UNROLL_ITERATIONS{20};
+
+    std::string const d_sourceFile;
+    CellType const d_cellType;
     
     Scanner     d_scanner;
     Memory      d_memory;
@@ -75,6 +78,7 @@ private:
     std::string   d_instructionFilename;
     int           d_instructionLineNr;
     bool          d_constEvalEnabled{true};
+    bool const    d_constEvalAllowed{true};
     bool const    d_randomExtensionEnabled{false};
     bool          d_loopUnrolling{false};
     bool          d_boundsCheckingEnabled{true};
@@ -113,7 +117,7 @@ public:
 
 private:
     int parse();
-    void writeMemoryProfile() const;
+    void writeProfile() const;
     void pushStream(std::string const &file);
     std::string fileWithoutPath(std::string const &file);
     void addFunction(BFXFunction const &bfxFunc);
@@ -384,6 +388,16 @@ int Compiler::eval(BFGenFunc&& bfFunc, ConstFunc&& constFunc, int const resultAd
     return resultAddr;
 }
 
+inline std::ostream &operator<<(std::ostream &out, Compiler::CellType type)
+{
+    switch (type)
+    {
+    case Compiler::CellType::INT8: return (out << "int8");
+    case Compiler::CellType::INT16: return (out << "int16");
+    case Compiler::CellType::INT32: return (out << "int32");
+    }
 
+    assert(false && "unreachable");
+}
 
 #endif //COMPILER_H
