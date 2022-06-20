@@ -69,8 +69,7 @@ Options:
 --random            Enable random number generation (generates the ?-symbol).
                       Your interpreter must support this extension!
 --profile [file]    Write the memory profile to a file. In this file, the number of visits
-                      to each of the cells is listed. It can for example be used to inspect
-                      the total number of cells used by the program.
+                      to each of the cells is listed. 
 --no-bcr            Disable break/continue/return statements for more compact output.
 --no-multiple-inclusion-warning
                     Do not warn when a file is included more than once, or when files 
