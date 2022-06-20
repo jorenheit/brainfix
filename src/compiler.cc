@@ -550,7 +550,7 @@ int Compiler::initializeExpression(std::string const &ident, TypeSystem::Type ty
     if (!d_loopUnrolling)
     {
         compilerErrorIf(d_memory.find(ident, d_scope.current(), false) != -1,
-                "Variable ", ident, " previously declared.");
+                        "Variable ", ident, " previously declared.");
     }
 
     if (type.isNullType())
@@ -1636,11 +1636,12 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
     int count = 0;
     while (d_memory.value(conditionAddr))
     {
+        //        std::cerr << d_instructionLineNr << ": " << count << ", unrolling = " << d_loopUnrolling << '\n';
         body();
         resetContinueFlag();
         increment();
         conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
-        d_loopUnrolling = true;
+        ++d_loopUnrolling; // = true;
 
         if (d_memory.valueUnknown(conditionAddr) || ++count > MAX_LOOP_UNROLL_ITERATIONS)
         {
@@ -1650,7 +1651,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 
     }    
 
-    d_loopUnrolling = false;
+    --d_loopUnrolling;// = false;
     exitScope();
     
     return -1;
@@ -1716,11 +1717,11 @@ int Compiler::forRangeStatement(BFXFunction::Parameter const &param, Instruction
             assign(elementAddr, arrayAddr + i);
             body();
             resetContinueFlag();
-            d_loopUnrolling = true;
+            ++d_loopUnrolling; // = true;
         }    
     }
     
-    d_loopUnrolling = false;
+    --d_loopUnrolling; // = false;
     exitScope();
     
     return -1;
@@ -1787,7 +1788,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
         body();
         resetContinueFlag();
         conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
-        d_loopUnrolling = true;
+        ++d_loopUnrolling; // = true;
         
         if (d_memory.valueUnknown(conditionAddr) || (count++ > MAX_LOOP_UNROLL_ITERATIONS))
         {
@@ -1796,7 +1797,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
         }
     }
     
-    d_loopUnrolling = false;
+    --d_loopUnrolling;// = false;
     exitScope();
     return -1;    
 }

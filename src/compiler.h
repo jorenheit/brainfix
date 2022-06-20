@@ -80,7 +80,7 @@ private:
     bool          d_constEvalEnabled{true};
     bool const    d_constEvalAllowed{true};
     bool const    d_randomExtensionEnabled{false};
-    bool          d_loopUnrolling{false};
+    int           d_loopUnrolling{0};
     bool          d_boundsCheckingEnabled{true};
     bool const    d_bcrEnabled{true};
     bool const    d_includeWarningEnabled{true};
@@ -95,7 +95,7 @@ private:
         BFGenerator bfGen;
         std::string buffer;
         bool constEval;
-        bool loopUnrolling;
+        int loopUnrolling;
         bool boundsChecking;
         BcrMapType bcrMap;
     };
