@@ -421,7 +421,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
     std::string const mangled = BFXFunction::mangle(name, args.size());
 
     compilerErrorIf(d_functionMap.find(mangled) == d_functionMap.end(),
-                    "Call to unknown function \"", name, "\"");
+                    "Call to unknown function \"", name, "\" with ", args.size(), " arguments.");
     compilerErrorIf(d_scope.containsFunction(mangled),
             "Function \"", name, "\" is called recursively. Recursion is not allowed.");
     
@@ -444,12 +444,7 @@ int Compiler::call(std::string const &name, std::vector<Instruction> const &args
         {
             // Allocate local variable for the function of the correct size
             // and copy argument to this location
-
-            int paramAddr = d_memory.allocate(paramIdent, func.mangled(), d_memory.type(argAddr));
-            compilerErrorIf(paramAddr < 0,
-                    "Could not allocate parameter", paramIdent, ". ",
-                    "This should never happen.");
-            
+            int const paramAddr = d_memory.allocate(paramIdent, func.mangled(), d_memory.type(argAddr));
             assign(paramAddr, argAddr);
         }
         else // Reference

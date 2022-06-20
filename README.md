@@ -211,6 +211,28 @@ function z = bar(x, y)
 }
 ```
 
+#### Function Overloading
+Functions can be overloaded on their number of arguments (not on return-value). This allows you to define multiple functions with the same name. In the example below, overloading is used to emulate a default argument (currently not supported natively by BFX):
+
+```javascript
+function bestNumber(x)
+{
+    printd(x);
+    prints(" is the best number.");
+}
+
+function bestNumber()
+{
+    bestNumber(42);
+}
+
+function main()
+{
+    bestNumber();
+    bestNumber(69);
+}
+```
+
 #### Value and Reference Semantics
 
 By default, all arguments are passed by value to a function: every argument is copied into the local scope of the function. Modifications to the arguments will therefore have no effect on the corresponding variables in the calling scope.
