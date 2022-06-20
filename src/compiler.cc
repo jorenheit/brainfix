@@ -224,6 +224,7 @@ void Compiler::writeMemoryProfile() const
     compilerErrorIf(!file, "Could not open file for profile: ", d_moveLogFile, ".");
 
     file << "Number of cells required: " << d_memory.cellsRequired() << '\n';
+    file << "Pointer ends on cell " << d_bfGen.getPointerIndex() << '\n';
     file << "Memory profile:\n";
     
     for (auto const &pr: d_bfGen.profile())
