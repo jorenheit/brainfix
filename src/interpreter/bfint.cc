@@ -49,7 +49,7 @@ void printHelp(std::string const &progName)
               << "-n [N]              Specify the number of cells (30,000 by default).\n"
               << "-o [file, stdout]   Specify the output stream (defaults to stdout).\n\n"
               << "--random            Enable Random Brainf*ck extension (support ?-symbol)\n"
-              << "--no-random-warning Don't display a warning when ? occurs without running --random.\n"
+              << "--no-random-warning Don't display a warning when ? occurs without running --random.\n\n"
               << "Example: " << progName << " --random -t int16 -o output.txt program.bf\n";
 }
 
