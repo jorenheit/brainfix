@@ -93,6 +93,8 @@ Options:
 -o [file, stdout]   Specify the output stream (defaults to stdout).
 
 --random            Enable Random Brainf*ck extension (support ?-symbol)
+--no-random-warning Don't display a warning when ? occurs without running --random.
+
 Example: bfint --random -t int16 -o output.txt program.bf
 ```
 
