@@ -30,14 +30,15 @@
 [x] Better include: detect (and ignore) circular inclusion, use PATH, slash at the end.
 [x] In int16 mode, possible to have control characters that move cursor to prev line?
     --> No int16 mode necessary. Use ANSI escape sequences. Works, but tedious.
-[ ] Add basic cursor movement to library using ANSI escape sequences
+[x] Add basic cursor movement to library using ANSI escape sequences
 [x] Better solution to pass compiler options
 [x] MAX_LOOP_UNROLL_ITERATIONS as compiler option
 [ ] anonymous scope block does not create new scope
 [x] add note to readme about let [] x = str[0]
-[ ] add memory profiling option
+[x] add memory profiling option
 [x] something weird going on: syntax error on e.g. "x++ > 0", only with post-increment.
 [x] let str = "bla" works for some reason
 [ ] implement more string functions: strlen, strcmp, memcpy, ...?
-[ ] Wild idea: lazy allocation --> only allocate when synced? would that compress the memory fingerprint in O1 mode?
+[ ] Wild idea: lazy allocation --> only allocate when synced? would that compress the memory footprint in O1 mode?
     Would need to keep track of a virtual memory array. Probably very tedious to implement.
+[ ] Shortcircuit on && and ||?

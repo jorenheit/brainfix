@@ -1,8 +1,8 @@
 include "std.bfx"
 
 const OFFSET = 10;
-const PLAYER1 = 1;
-const PLAYER2 = 2;
+const PLAYER = 1;
+const CPU = 2;
 
 function drawEmptyGrid()
 {
@@ -54,9 +54,9 @@ function drawGrid(&grid)
         let cell = grid.cells[i];
         if (cell == 0)
             printc(i + 1 + '0');
-        else if (cell == PLAYER1)
+        else if (cell == PLAYER)
             printc('X');
-        else if (cell == PLAYER2)
+        else if (cell == CPU)
             printc('O');
     }
 }
@@ -70,7 +70,7 @@ function c = getMove()
         c -= '0';
 }
 
-function playerTurn(&grid, &name, &line, &playerID)
+function playerTurn(&grid, &name, &line)
 {
     cursor_to(line++, 1);
     let move = 0;
@@ -92,8 +92,26 @@ function playerTurn(&grid, &name, &line, &playerID)
         }
     }
 
-    grid.cells[move - 1] = playerID;
+    grid.cells[move - 1] = PLAYER;
 }
+
+function cpuTurn(&grid, &line)
+{
+    let move = 0;
+    while (true)
+    {
+        move = rand() % 9;
+        if (grid.cells[move] == 0)
+            break;
+
+        move = 0;
+    }
+
+    cursor_to(line++, 1);
+    prints("CPU chose "); printd(move + 1); endl();
+    grid.cells[move] = CPU;
+}
+
 
 function w = won(&grid, &playerID)
 {
@@ -140,32 +158,26 @@ const NAME_BUFFER_SIZE = 10;
 
 function main()
 {
-    let [NAME_BUFFER_SIZE] p1;
-    let [NAME_BUFFER_SIZE] p2;
+    let [NAME_BUFFER_SIZE] name;
+    prints("Human, please enter your name: ");
+    scans(name);
               
-    prints("Player 1, please enter your name: ");
-    scans(p1);
-    prints("Player 2, please enter your name: ");
-    scans(p2);
     
     let [struct Grid] grid = newGrid();
-    
     clear_screen();
     drawEmptyGrid();
-    
     drawGrid(grid);
+    
     let line = 11;
     let nMoves = 0;
     while (nMoves < 9)
     {
         let player = 1 + (nMoves % 2);
-        let [NAME_BUFFER_SIZE] name = 0;
-        if (player == 1)
-            strcpy(name, p1);
+        if (player == PLAYER)
+            playerTurn(grid, name, line);
         else
-            strcpy(name, p2);
-
-        playerTurn(grid, name, line, player);
+            cpuTurn(grid, line);
+        
         drawGrid(grid);
         if (won(grid, player))
         {
