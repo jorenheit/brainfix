@@ -3,6 +3,46 @@
 
 namespace TypeSystem
 {
+    class StructDefinition
+    {
+    private:
+        int d_size;
+        bool const d_valid{true};
+        std::string d_name;
+        std::vector<Field> d_fields;
+
+    public:
+        StructDefinition(std::string const &name):
+            d_size(1),
+            d_name(name)
+        {}
+        
+        StructDefinition():
+            d_valid{false}
+        {}
+
+        void addField(std::string const &name, Type const &type)
+        {
+            d_fields.emplace_back(Field{name, d_size, type});
+            d_size += type.size();
+        }
+        
+        int size() const
+        {
+            return d_size;
+        }
+        
+        std::vector<Field> const &fields() const
+        {
+            return d_fields;
+        }
+        
+        std::string const &name() const
+        {
+            return d_name;
+        }
+    };
+
     static std::map<std::string, StructDefinition> typeMap;
 
     static std::string intName(int const sz)
@@ -40,15 +80,11 @@ bool TypeSystem::Type::defined() const
     return it != TypeSystem::typeMap.end();
 }
         
-TypeSystem::StructDefinition TypeSystem::Type::definition() const
+std::vector<TypeSystem::Field> TypeSystem::Type::fields() const
 {
-    assert(defined() &&
-           "requesting definition of undefined type. Call defined() before calling definition()");
+    assert(defined() && isStructType() && "requesting fields of undefined type.");
 
-    if (isStructType())
-        return typeMap.at(name());
-
-    return StructDefinition(size());
+    return typeMap.at(name()).fields();
 }
 
 bool TypeSystem::Type::operator==(Type const &other) const
@@ -69,39 +105,6 @@ bool TypeSystem::Type::isStructType() const
 bool TypeSystem::Type::isNullType() const
 {
     return d_kind == Kind::NULLTYPE;
-}
- 
-void TypeSystem::StructDefinition::addField(std::string const &name, Type const &type)
-{
-    d_fields.emplace_back(Field{name, d_size, type});
-    d_size += type.size();
-}
-
-TypeSystem::StructDefinition::StructDefinition(int const sz):
-    d_size(0),
-    d_name(TypeSystem::intName(sz))
-{
-    addField("", Type(sz));
-}
-
-TypeSystem::StructDefinition::StructDefinition(std::string const &name):
-    d_size(1),
-    d_name(name)
-{}
-
-int TypeSystem::StructDefinition::size() const
-{
-    return d_size;
-}
-
-std::vector<TypeSystem::StructDefinition::Field> const &TypeSystem::StructDefinition::fields() const
-{
-    return d_fields;
-}
-
-std::string const &TypeSystem::StructDefinition::name() const
-{
-    return d_name;
 }
 
 bool TypeSystem::add(std::string const &name,

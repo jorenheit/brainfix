@@ -8,8 +8,8 @@
 
 namespace TypeSystem
 {
-    class StructDefinition;
-
+    struct Field;
+    
     class Type
     {
         enum class Kind
@@ -39,41 +39,20 @@ namespace TypeSystem
         int size() const;
         std::string name() const;
         bool defined() const;
-        StructDefinition definition() const;
+        std::vector<Field> fields() const;
         bool operator==(Type const &other) const;
         bool isIntType() const;
         bool isStructType() const;
         bool isNullType() const;
     };
-    
-    class StructDefinition
+
+    struct Field
     {
-    public:
-        struct Field
-        {
-            std::string name;
-            int         offset;
-            Type        type;
-        };
-
-    private:
-        int d_size;
-        bool const d_valid{true};
-        std::string d_name;
-        std::vector<Field> d_fields;
-
-    public:
-        StructDefinition(int const sz);
-        StructDefinition(std::string const &name);
-        StructDefinition():
-            d_valid{false}
-        {}
-
-        void addField(std::string const &name, Type const &type);
-        int size() const;
-        std::vector<Field> const &fields() const;
-        std::string const &name() const;
+        std::string name;
+        int         offset;
+        Type        type;
     };
+
 
     bool add(std::string const &name,
              std::vector<std::pair<std::string, Type>> const &fields);

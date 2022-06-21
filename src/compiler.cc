@@ -723,8 +723,7 @@ int Compiler::fetchFieldImpl(std::vector<std::string> const &expr, int const bas
     TypeSystem::Type type = d_memory.type(baseAddr);
     compilerErrorIf(!type.isStructType(), "Type \"", type.name(), "\" is not a structure.");
     
-    auto def = type.definition();
-    for (auto const &f: def.fields())
+    for (auto const &f: type.fields())
     {
         if (f.name == expr[baseIdx + 1])
         {
@@ -800,15 +799,15 @@ int Compiler::anonymousStructObject(std::string const name, std::vector<Instruct
     TypeSystem::Type type(name);
     compilerErrorIf(!type.defined(), "Unknown (struct) type \"", name, "\".");
 
-    auto const def = type.definition();
-    compilerErrorIf(values.size() > def.fields().size(),
+    auto const &fields = type.fields();
+    compilerErrorIf(values.size() > fields.size(),
             "Too many field-initializers provided to struct \"", name, "\": ",
-            "expects ", def.fields().size(), ", got ", values.size(), ".");
+            "expects ", fields.size(), ", got ", values.size(), ".");
 
     int const addr = allocateTemp(type);
     for (size_t i = 0; i != values.size(); ++i)
     {
-        auto const &field = def.fields()[i];
+        auto const &field = fields[i];
         
         int val = values[i]();
         TypeSystem::Type valType = d_memory.type(val);

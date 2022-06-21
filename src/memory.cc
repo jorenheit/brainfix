@@ -116,8 +116,7 @@ void Memory::place(TypeSystem::Type type, int const addr, bool const recursive)
         cell.type = type;
     }
         
-    auto const &definition = type.definition();
-    for (auto const &f: definition.fields())
+    for (auto const &f: type.fields())
     {
         if (f.type.isStructType())
         {
