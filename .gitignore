@@ -1,0 +1,9 @@
+# macOS system file
+.DS_Store
+
+# any compiled files
+*.bf
+
+# generated executables
+bfint
+bfx
