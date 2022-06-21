@@ -1,0 +1,13 @@
+# macOS system file
+.DS_Store
+
+# any compiled files
+*.bf
+
+# generated files and executables
+src/*.o
+src/interpreter/*.o
+
+bfint
+bfx
+
