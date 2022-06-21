@@ -20,7 +20,8 @@ public:
         d_code(code)
     {}
     
-    virtual void run(std::istream &in = std::cin, std::ostream &out = std::cout, bool randEnabled = false) = 0;
+    virtual void run(std::istream &in, std::ostream &out,
+                     bool const randEnabled, bool const randomWarning) = 0;
 };
 
 template <typename CellType>
@@ -58,7 +59,8 @@ public:
         d_rng.seed(ms);
     }
     
-    virtual void run(std::istream &in = std::cin, std::ostream &out = std::cout, bool const randEnabled = false) override
+    virtual void run(std::istream &in, std::ostream &out,
+                     bool const randEnabled, bool const randomWarning) override
     {
         while (true)
         {
@@ -75,8 +77,21 @@ public:
             case END_LOOP: endLoop(); break;
             case RAND:
                 {
+                    static bool warned = false;
                     if (randEnabled)
                         random();
+                    else if (randomWarning && !warned)
+                    {
+                        std::cerr << "\n"
+                            "=========================== !!!!!! ==============================\n"
+                            "Warning: BF-code contains '?'-commands, which may be\n"
+                            "interpreted as the random-operation, an extension to the\n"
+                            "canonical BF instructionset. This extension can be enabled\n"
+                            "with the --random option.\n"
+                            "This warning can be disabled with the --no-random-warning option.\n"
+                            "=========================== !!!!!! ==============================\n";
+                        warned = true;
+                    }
                     break;
                 }
             default: break;

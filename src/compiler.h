@@ -346,11 +346,11 @@ int Compiler::eval(BFGenFunc&& bfFunc, ConstFunc&& constFunc, int const resultAd
 
     static constexpr int N = (sizeof ... (Args));
     int const arguments[N] = {args ...};
-    constexpr auto isVolatile = [](int const argIdx)
-                                {
-                                    return VolatileMask & (1 << (N - argIdx - 1));
-                                };
-    
+    constexpr auto isVolatile =
+        [](int const argIdx)
+        {
+            return VolatileMask & (1 << (N - argIdx - 1));
+        };
 
     bool const canBeConstEvaluated = (not d_memory.valueUnknown(args) && ...);
     if (canBeConstEvaluated && d_constEvalEnabled)

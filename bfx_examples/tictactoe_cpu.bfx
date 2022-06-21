@@ -1,3 +1,5 @@
+// Compiler and run with --random!
+
 include "std.bfx"
 
 const OFFSET = 10;

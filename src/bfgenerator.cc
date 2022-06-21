@@ -308,7 +308,7 @@ std::string BFGenerator::logicalAnd(int const lhs, int const rhs, int const resu
            <<     setToValue(x, 0)
            << "]"
            << movePtr(result);
-
+    
     return ops.str();
 }
 

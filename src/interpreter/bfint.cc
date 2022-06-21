@@ -36,6 +36,7 @@ struct Options
     std::string  bfFile;
     std::ostream *outStream{&std::cout};
     bool         random{false};
+    bool         randomWarning{true};
 };
 
 void printHelp(std::string const &progName)
@@ -48,6 +49,7 @@ void printHelp(std::string const &progName)
               << "-n [N]              Specify the number of cells (30,000 by default).\n"
               << "-o [file, stdout]   Specify the output stream (defaults to stdout).\n\n"
               << "--random            Enable Random Brainf*ck extension (support ?-symbol)\n"
+              << "--no-random-warning Don't display a warning when ? occurs without running --random.\n"
               << "Example: " << progName << " --random -t int16 -o output.txt program.bf\n";
 }
 
@@ -155,6 +157,12 @@ Options parseCmdLine(std::vector<std::string> const &args)
             opt.random = true;
             ++idx;
         }
+        else if (args[idx] == "--no-random-warning")
+        {
+            opt.randomWarning = false;
+            ++idx;
+        }
+        
         else if (idx == args.size() - 1)
         {
             opt.bfFile = args.back();
@@ -198,7 +206,7 @@ try
     buffer << file.rdbuf();
 
     auto ptr = getInterpreter(opt.cellType, opt.tapeLength, buffer.str());
-    ptr->run(std::cin, *opt.outStream, opt.random);
+    ptr->run(std::cin, *opt.outStream, opt.random, opt.randomWarning);
 }
  catch (std::string const &msg)
 {

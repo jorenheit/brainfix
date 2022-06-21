@@ -41,4 +41,4 @@
 [ ] implement more string functions: strlen, strcmp, memcpy, ...?
 [ ] Wild idea: lazy allocation --> only allocate when synced? would that compress the memory footprint in O1 mode?
     Would need to keep track of a virtual memory array. Probably very tedious to implement.
-[ ] Shortcircuit on && and ||?
+[ ] Shortcircuit on && and ||? ==> hard! Make note in readme that this is not supported.
