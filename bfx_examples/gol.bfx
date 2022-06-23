@@ -29,15 +29,17 @@ include "std.bfx"
 */
 
 
-const GRID_WIDTH = 11;
-const GRID_HEIGHT = 18;
-const ARRAY_SIZE = 198; // GRID_WIDTH * GRID_HEIGHT
+const GRID_WIDTH = 5;
+const GRID_HEIGHT = 5;
+const ARRAY_SIZE = 25; // GRID_WIDTH * GRID_HEIGHT
 
-const ALIVE = 1;
-const DEAD = 0;
 const ALIVE_SYMBOL_LEFT = '<';
 const ALIVE_SYMBOL_RIGHT = '>';
 const DEAD_SYMBOL = ' ';
+
+// Don't alter values for DEAD and ALIVE!
+const DEAD = 0;
+const ALIVE = 1;
 
 struct Grid
 {
