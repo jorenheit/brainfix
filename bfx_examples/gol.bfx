@@ -1,0 +1,195 @@
+include "std.bfx"
+
+/* Conway's Game of Life
+
+   - Define the grid dimensions by setting the parameters below.
+   - Prepare a file with 0's and 1's (characters) which denote
+     the initial conditions (0 = dead, 1 = alive). E.g. for a 
+     5x5 grid:
+
+     00000
+     01110
+     11100
+     00000
+     00000
+
+  - The examplefiles golglider5x5.txt and golglider10x10.txt are 
+    included in the examples folder.
+
+  - Compile the program:
+    $ bfx gol.bf bfx_examples/gol.bfx 
+
+  - Run the interpreter while redirecting the prepared file to stdin:
+    $ bfint gol.bf < bfx_examples/golglider5x5.txt
+
+  - The output becomes very slow very fast for larger grids. However, 
+    if you insist on grids larger than 250 cells in total, use the
+    compiler flag -t int16 to allow for larger BF-cells (necessary for 
+    array indexing). Run bfint in int16 mode as well.
+*/
+
+
+const GRID_WIDTH = 10;
+const GRID_HEIGHT = 10;
+const ARRAY_SIZE = 100; // GRID_WIDTH * GRID_HEIGHT
+
+const ALIVE = 1;
+const DEAD = 0;
+const ALIVE_SYMBOL = '#';
+const DEAD_SYMBOL = ' ';
+
+struct Grid
+{
+    [ARRAY_SIZE] cells;
+};
+
+function i = toIndex(&row, &col)
+{
+    let i = row * GRID_WIDTH + col;
+}
+
+function g = getGridFromStdin()
+{
+    let [struct Grid] g;
+
+    for (let row = 0; row != GRID_HEIGHT; ++row)
+    {
+        for (let col = 0; col != GRID_WIDTH; ++col)
+        {
+            let c = scanc() - '0';
+            while (c != ALIVE && c != DEAD)
+                c = scanc() - '0';
+
+            g.cells[toIndex(row, col)] = c;
+        }
+    }
+}
+
+function dispGrid(&g)
+{
+    printc('+');
+    for (let col = 0; col != GRID_WIDTH; ++col)
+        printc('-');
+    printc('+');
+    endl();
+    
+    for (let row = 0; row != GRID_HEIGHT; ++row)
+    {
+        printc('|');
+        for (let col = 0; col != GRID_WIDTH; ++col)
+        {
+            if (g.cells[toIndex(row, col)] == ALIVE)
+                printc(ALIVE_SYMBOL);
+            else
+                printc(DEAD_SYMBOL);
+        }
+        printc('|');
+        endl();
+    }
+
+    printc('+');
+    for (let col = 0; col != GRID_WIDTH; ++col)
+        printc('-');
+    printc('+');
+    endl();
+}
+
+function row = rowAbove(row)
+{
+    if (row == 0)
+        row = GRID_HEIGHT - 1;
+    else
+        --row;
+}
+
+function row = rowBelow(row)
+{
+    if (row == GRID_HEIGHT - 1)
+        row = 0;
+    else
+        ++row;
+}
+
+function col = colLeft(col)
+{
+    if (col == 0)
+        col = GRID_WIDTH - 1;
+    else
+        --col;
+}
+
+function col = colRight(col)
+{
+    if (col == GRID_WIDTH - 1)
+        col = 0;
+    else
+        ++col;
+}
+
+function nb = neighbors(row, col)
+{
+    let [8] nb;
+
+    nb[0] = toIndex(rowAbove(row), col); // N
+    nb[1] = toIndex(row, colRight(col)); // E
+    nb[2] = toIndex(rowBelow(row), col); // S
+    nb[3] = toIndex(row, colLeft(col)); // W
+    
+    nb[4] = toIndex(rowAbove(row), colRight(col)); // NE
+    nb[5] = toIndex(rowBelow(row), colRight(col)); // SE
+    nb[6] = toIndex(rowBelow(row), colLeft(col)); // SW
+    nb[7] = toIndex(rowAbove(row), colLeft(col)); // NW
+}
+
+function n = countLiveNeighbors(&grid, &row, &col)
+{
+    let [8] nb = neighbors(row, col);
+    let n = 0;
+    for (let i = 0; i != sizeof(nb); ++i)
+        n += grid.cells[nb[i]];
+}
+
+function iterate(&grid)
+{
+    let [struct Grid] newGrid;
+    for (let row = 0; row != GRID_HEIGHT; ++row)
+    {
+        for (let col = 0; col != GRID_WIDTH; ++col)
+        {
+            let idx = toIndex(row, col);
+            let n = countLiveNeighbors(grid, row, col);
+            if (grid.cells[idx] == ALIVE)
+            {
+                if (n < 2 || n > 3)
+                    newGrid.cells[idx] = DEAD;
+                else
+                    newGrid.cells[idx] = ALIVE;
+            }
+            else
+            {
+                if (n == 3)
+                    newGrid.cells[idx] = ALIVE;
+                else
+                    newGrid.cells[idx] = DEAD;
+            }
+        }
+    }
+
+    grid = newGrid;
+}
+
+function main()
+{
+    let [] g = getGridFromStdin();
+
+    let count = 0;
+    clear_screen();
+    while* (true)
+    {
+        cursor_home();
+        dispGrid(g);
+        iterate(g);
+        prints("Iterations: ");
+        printd(count++); endl();
+    }
+}

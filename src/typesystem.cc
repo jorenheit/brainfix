@@ -65,10 +65,7 @@ int TypeSystem::Type::size() const
 
 std::string TypeSystem::Type::name() const
 {
-    if (isStructType())
-        return d_name;
-
-    return TypeSystem::intName(d_size);
+    return isStructType() ? d_name : TypeSystem::intName(d_size);
 }
 
 bool TypeSystem::Type::defined() const
