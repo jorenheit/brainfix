@@ -538,6 +538,30 @@ The following operators are supported by BrainFix:
 | `<=`     | less than or equal to                                           |
 | `>=`     | greater than or equal to                                        |
 
+#### Logical Shortcircuiting
+
+Unline in many other languages, the logical operators `&&` and `||` will not short-circuit, which means that it's guaranteed that both operands will be evaluated and their side-effects will be taking place.
+
+```javascript
+function x = foo()
+{
+    println("Hello from foo");
+    let x = false;
+}
+
+function x = bar()
+{
+    println("Hello from bar");
+    let x = true;
+}
+
+function main()
+{
+    let x = foo() && bar(); // bar will be called, even though foo() already returned false;
+    let y = bar() || foo(); // foo will be called, even though bar() already returned true;
+}
+```
+
 #### The div-mod and mod-div operators
 
 Most of these operators are commonplace and use well known notation. The exception might be the div-mod and mod-div operators, which were added as a small optimizing feature. The BF-algorithm that is implemented to execute a division, calculates the remainder in the process. These operators reflect this fact, and let you collect both results in a single operation.
