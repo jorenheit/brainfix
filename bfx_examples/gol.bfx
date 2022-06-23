@@ -25,7 +25,7 @@ include "std.bfx"
   - The output becomes very slow very fast for larger grids. However, 
     if you insist on grids larger than 250 cells in total, use the
     compiler flag -t int16 to allow for larger BF-cells (necessary for 
-    array indexing). Run bfint in int16 mode as well.
+    array indexing). Run bfint in int16-mode as well.
 */
 
 
@@ -142,12 +142,12 @@ function nb = neighbors(row, col)
     nb[0] = toIndex(rowAbove(row), col); // N
     nb[1] = toIndex(row, colRight(col)); // E
     nb[2] = toIndex(rowBelow(row), col); // S
-    nb[3] = toIndex(row, colLeft(col)); // W
+    nb[3] = toIndex(row, colLeft(col));  // W
     
     nb[4] = toIndex(rowAbove(row), colRight(col)); // NE
     nb[5] = toIndex(rowBelow(row), colRight(col)); // SE
-    nb[6] = toIndex(rowBelow(row), colLeft(col)); // SW
-    nb[7] = toIndex(rowAbove(row), colLeft(col)); // NW
+    nb[6] = toIndex(rowBelow(row), colLeft(col));  // SW
+    nb[7] = toIndex(rowAbove(row), colLeft(col));  // NW
 }
 
 function n = countLiveNeighbors(&grid, &row, &col)
@@ -168,19 +168,9 @@ function iterate(&grid)
             let idx = toIndex(row, col);
             let n = countLiveNeighbors(grid, row, col);
             if (grid.cells[idx] == ALIVE)
-            {
-                if (n < 2 || n > 3)
-                    newGrid.cells[idx] = DEAD;
-                else
-                    newGrid.cells[idx] = ALIVE;
-            }
+                newGrid.cells[idx] = !(n < 2 || n > 3);
             else
-            {
-                if (n == 3)
-                    newGrid.cells[idx] = ALIVE;
-                else
-                    newGrid.cells[idx] = DEAD;
-            }
+                newGrid.cells[idx] = (n == 3);
         }
     }
 
