@@ -13,14 +13,14 @@ include "std.bfx"
      00000
      00000
 
-  - The examplefiles golglider5x5.txt and golglider10x10.txt are 
-    included in the examples folder.
+  - The examplefiles golglider5x5.txt, golglider10x10.txt and 
+    golpenta11x18.txt are included in the examples folder.
 
   - Compile the program:
     $ bfx gol.bf bfx_examples/gol.bfx 
 
   - Run the interpreter while redirecting the prepared file to stdin:
-    $ bfint gol.bf < bfx_examples/golglider5x5.txt
+    $ bfint gol.bf < bfx_examples/gol/golglider5x5.txt
 
   - The output becomes very slow very fast for larger grids. However, 
     if you insist on grids larger than 250 cells in total, use the
@@ -29,9 +29,9 @@ include "std.bfx"
 */
 
 
-const GRID_WIDTH = 10;
-const GRID_HEIGHT = 10;
-const ARRAY_SIZE = 100; // GRID_WIDTH * GRID_HEIGHT
+const GRID_WIDTH = 11;
+const GRID_HEIGHT = 18;
+const ARRAY_SIZE = 198; // GRID_WIDTH * GRID_HEIGHT
 
 const ALIVE = 1;
 const DEAD = 0;
