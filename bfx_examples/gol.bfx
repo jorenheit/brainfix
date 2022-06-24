@@ -179,6 +179,9 @@ function iterate(&grid)
 
 function main()
 {
+    static_assert(ARRAY_SIZE == GRID_WIDTH * GRID_HEIGHT,
+                  "Array-size not equal to width * height.");
+    
     let [] g = getGridFromStdin();
 
     let count = 0;
