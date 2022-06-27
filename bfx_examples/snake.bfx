@@ -9,6 +9,22 @@ include "std.bfx"
      SLEEP_TIME to modify framerate (higher = slower). 
    - Compile with --random 
    - Run with --random --gaming
+
+   Screenshot:
+   +------------------------+
+   |                        |
+   |                        |
+   |                        |
+   |                      ()|
+   |    <>                  |
+   |    <>  You died!       |
+   |    <>**<>              |
+   |    <>  <>              |
+   |    <><><>              |
+   |                        |
+   |                        |
+   |                        |
+   +------------------------+
 */
 
 // Controls
