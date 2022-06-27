@@ -5,9 +5,6 @@
 
 #ifdef USE_CURSES
 #include <ncurses.h>
-#define GAMING_MODE_AVAILABLE 1
-#else
-#define GAMING_MODE_AVAILABLE 0
 #endif
 
 #include "bfint.h"
@@ -44,15 +41,12 @@ BFInterpreter::BFInterpreter(size_t arraySize, std::string const &code, CellType
 }
     
 void BFInterpreter::run(std::istream &in, std::ostream &out,
-                        bool const randEnabled, bool const randomWarning,
-                        bool const gamingMode) 
+                        bool const randEnabled, bool const randomWarning
+#ifdef USE_CURSES
+                        , bool const gamingMode
+#endif
+                        )
 {
-    if (gamingMode && !GAMING_MODE_AVAILABLE)
-    {
-        std::cerr << "Warning: bfint was not linked against ncurses during compilation, so gaming mode is not "
-            "available and the program will run as usual. Recompile with gaming mode enabled to fix.\n";
-    }
-
 #ifdef USE_CURSES
     // Setup ncurses window
     if (gamingMode)
@@ -433,7 +427,6 @@ void BFInterpreter::handleAnsi(std::string &ansiStr, bool const force)
         }
     }
     
-
     if (handled)
     {
         ansiStr.clear();
@@ -446,7 +439,7 @@ void BFInterpreter::handleAnsi(std::string &ansiStr, bool const force)
 
     // Still going. Don't do anything and wait for next call
 #else
-    assert(false && "handleAnsi calles without USE_CURSES defined");
+    assert(false && "handleAnsi called without USE_CURSES defined");
 #endif
 }
 

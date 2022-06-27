@@ -43,8 +43,11 @@ class BFInterpreter
 public:
     BFInterpreter(size_t arraySize, std::string const &code, CellType const type);
     void run(std::istream &in, std::ostream &out,
-             bool const randEnabled, bool const randomWarning,
-             bool const gamingMode);
+             bool const randEnabled, bool const randomWarning
+#ifdef USE_CURSES             
+             , bool const gamingMode
+#endif             
+             );       
 
 private:
     int consume(Ops op);

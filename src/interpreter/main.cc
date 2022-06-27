@@ -24,16 +24,47 @@ void printHelp(std::string const &progName)
 {
     std::cout << "Usage: " << progName << " [options] <target(.bf)>\n"
               << "Options:\n"
-              << "-h                  Display this text.\n"
-              << "-t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of\n"
+              << "-h, --help          Display this text.\n"
+              << "-t, --type [Type]   Specify the number of bytes per BF-cell, where [Type] is one of\n"
                  "                    int8, int16 and int32 (int8 by default).\n"
               << "-n [N]              Specify the number of cells (30,000 by default).\n"
               << "-o [file, stdout]   Specify the output stream (defaults to stdout).\n\n"
+#ifdef USE_CURSES        
               << "--gaming            Enable gaming-mode.\n"
+              << "--gaming-help       Display additional information about gaming-mode.\n"
+#endif        
               << "--random            Enable Random Brainf*ck extension (support ?-symbol)\n"
               << "--no-random-warning Don't display a warning when ? occurs without running --random.\n\n"
               << "Example: " << progName << " --random -t int16 -o output.txt program.bf\n";
 }
+
+#ifdef USE_CURSES
+void printGamingHelp(std::string const &progName)
+{
+    std::cout <<
+        "When " << progName << " is run with the --gaming option, all writes and reads are performed\n"
+        "by ncurses, in order to establish non-blocking IO. This allowes you to run games written in\n"
+        "BF that require keyboard-input (',' in BF) to be processed immediately, without waiting for\n"
+        "the user to press enter. If no key was pressed, a 0 is stored to the current BF-cell.\n\n"
+        
+        "In the default non-gaming mode, it is possible to write ANSI escape sequences to the output,\n"
+        " which may be used to modify the cursor position, clear the screen, or change the color. A\n"
+        "subset of these sequences has been implemented and will be translated to sequences of\n"
+        "ncurses-calls to mimic this behavior:\n\n"
+        "  - ESC[nA    ==> Move the cursor up n lines.\n"
+        "  - ESC[nB    ==> Move the cursor down n lines.\n"
+        "  - ESC[nC    ==> Move the cursor right n steps.\n"
+        "  - ESC[nD    ==> Move the cursor left n steps (erasing present characters).\n"
+        "  - ESC[n;mH  ==> Move the cursor to row n, column m.\n"
+        "  - ESC[H     ==> Move the cursor to the top-left of the screen.\n"
+        "  - ESC[nK    ==> n = 0: clear from cursor to end-of-line.\n"
+        "                  n = 1: clear from cursor to start-of-line.\n"
+        "                  n = 2: clear the entire line\n"
+        "  - ESC[nJ    ==> n = 0: clear from cursor to bottom of screen.\n"
+        "              ==> n = 1: clear all lines above cursor, including current line.\n"
+        "              ==> n = 2: clear entire screen.\n\n";
+}
+#endif
 
 Options parseCmdLine(std::vector<std::string> const &args)
 {
@@ -42,13 +73,13 @@ Options parseCmdLine(std::vector<std::string> const &args)
     size_t idx = 1;
     while (idx < args.size())
     {
-        if (args[idx] == "-h")
+        if (args[idx] == "-h" || args[idx] == "--help")
         {
             opt.err = 1;
             return opt;
         }
 
-        else if (args[idx] == "-t")
+        else if (args[idx] == "-t" || args[idx] == "--type")
         {
             if (idx == args.size() - 1)
             {
@@ -144,6 +175,12 @@ Options parseCmdLine(std::vector<std::string> const &args)
             opt.gaming = true;
             ++idx;
         }
+        else if (args[idx] == "--gaming-help")
+        {
+            opt.gaming = true;
+            opt.err = 1;
+            return opt;
+        }
         else if (args[idx] == "--no-random-warning")
         {
             opt.randomWarning = false;
@@ -181,7 +218,14 @@ try
     Options opt = parseCmdLine(std::vector<std::string>(argv, argv + argc));
     if (opt.err == 1)
     {
+#ifdef USE_CURSES        
+        if (opt.gaming)
+            printGamingHelp(argv[0]);
+        else
+            printHelp(argv[0]);
+#else
         printHelp(argv[0]);
+#endif        
         return 1;
     }
 

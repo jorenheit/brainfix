@@ -9,8 +9,8 @@ void printHelp(std::string const &progName)
 {
     std::cout << "Usage: " << progName << " [options] <target(.bfx)>\n"
               << "Options:\n"
-              << "-h                  Display this text.\n"
-              << "-t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of\n"
+              << "-h, --help          Display this text.\n"
+              << "-t, --type [Type]   Specify the number of bytes per BF-cell, where [Type] is one of\n"
                  "                    int8, int16 and int32 (int8 by default).\n"
               << "-I [path to folder] Specify additional include-path.\n"
               << "                      This option may appear multiple times to specify multiple folders.\n"
@@ -40,11 +40,11 @@ std::pair<Compiler::Options, int> parseCmdLine(std::vector<std::string> const &a
     size_t idx = 1;
     while (idx < args.size())
     {
-        if (args[idx] == "-h")
+        if (args[idx] == "-h" || args[idx] == "--help")
         {
             return {opt, 1};
         }
-        else if (args[idx] == "-t")
+        else if (args[idx] == "-t" || args[idx] == "--type")
         {
             if (idx == args.size() - 1)
             {

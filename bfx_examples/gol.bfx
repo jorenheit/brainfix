@@ -31,11 +31,7 @@ include "std.bfx"
 
 const GRID_WIDTH = 5;
 const GRID_HEIGHT = 5;
-const ARRAY_SIZE = 25; // GRID_WIDTH * GRID_HEIGHT
-
-const ALIVE_SYMBOL_LEFT = '<';
-const ALIVE_SYMBOL_RIGHT = '>';
-const DEAD_SYMBOL = ' ';
+const ARRAY_SIZE = 25; // should be GRID_WIDTH * GRID_HEIGHT
 
 // Don't alter values for DEAD and ALIVE!
 const DEAD = 0;
@@ -82,15 +78,9 @@ function dispGrid(&g)
         for (let col = 0; col != GRID_WIDTH; ++col)
         {
             if (g.cells[toIndex(row, col)] == ALIVE)
-            {
-                printc(ALIVE_SYMBOL_LEFT);
-                printc(ALIVE_SYMBOL_RIGHT);
-            }                
+                prints("<>");
             else
-            {
-                printc(DEAD_SYMBOL);
-                printc(DEAD_SYMBOL);
-            }                
+                prints("  ");
         }
         printc('|');
         endl();

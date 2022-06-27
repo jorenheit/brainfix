@@ -3,8 +3,8 @@ include "std.bfx"
 const GRID_WIDTH = 12;
 const GRID_HEIGHT = 12;
 const ARRAY_SIZE = 144;
-const FRUIT_PROB = 30; // relative to 255
 const MAX_LENGTH = 15;
+const SLEEP_TIME = 180;
 
 const N = 0;
 const E = 1;
@@ -14,7 +14,7 @@ const W = 3;
 struct Game
 {
     [ARRAY_SIZE] indices;
-    length, dir, fruitPresent, fruitIndex;
+    length, dir, fruitIndex;
 };
 
 function i = toIndex(&row, &col)
@@ -61,17 +61,17 @@ function col = colRight(col)
         ++col;
 }
 
-function s = initGame()
+function game = initGame()
 {
-    let [struct Game] s;
-    s.indices = 0;
-    s.length = 2;
-    s.fruitPresent = false;
-    s.fruitIndex = 0;
-    s.dir = E;
+    let [struct Game] game;
+    game.indices = 0;
+    game.length = 2;
+    game.dir = E;
     
-    s.indices[0] = toIndex(GRID_HEIGHT / 2, 1);
-    s.indices[0] = toIndex(GRID_HEIGHT / 2, 0);
+    game.indices[0] = toIndex(GRID_HEIGHT / 2, 1);
+    game.indices[0] = toIndex(GRID_HEIGHT / 2, 0);
+
+    spawnFruit(game);
 }
 
 
@@ -118,12 +118,10 @@ function drawGame(&game)
         prints("<>");
     }
 
-    if (game.fruitPresent)
-    {
-        let [2] fruit = toRowCol(game.fruitIndex);
-        cursor_to(2 + fruit[0], 2 + 2 * fruit[1]);
-        prints("()");
-    }
+    // Draw Fruit
+    let [2] fruit = toRowCol(game.fruitIndex);
+    cursor_to(2 + fruit[0], 2 + 2 * fruit[1]);
+    prints("()");
 }
 
 function iterate(&game)
@@ -141,11 +139,9 @@ function iterate(&game)
         case W: game.indices[0] = toIndex(row, colLeft(col));
     }
 
-    if (game.fruitPresent)
-    {
-        if (game.fruitIndex == game.indices[0])
-            eatFruit(game);
-    }
+    // Check if fruit is eaten
+    if (game.fruitIndex == game.indices[0])
+        eatFruit(game);
 
     // Update body indices
     for (let i = 1; i != game.length; ++i)
@@ -185,26 +181,20 @@ function handleInput(&game)
 
 function spawnFruit(&game)
 {
-    if (!game.fruitPresent)
-    {
-        if (rand() < FRUIT_PROB)
-        {
-            let row = rand() % GRID_HEIGHT;
-            let col = rand() % GRID_WIDTH;
-            game.fruitIndex = toIndex(row, col);
-            game.fruitPresent = true;
-        }
-    }
+    let row = rand() % GRID_HEIGHT;
+    let col = rand() % GRID_WIDTH;
+    game.fruitIndex = toIndex(row, col);
 }
 
 function eatFruit(&game)
 {
-    game.fruitPresent = 0;
     if (game.length < MAX_LENGTH)
     {
         let tailIndex = game.indices[game.length - 1];
         game.indices[game.length++] = tailIndex;
     }
+
+    spawnFruit(game);
 }
 
 function dead = died(&game)
@@ -236,7 +226,6 @@ function main()
 
 
     let [struct Game] game = initGame();
-
     while* (true)
     {
         if (died(game))
@@ -246,8 +235,7 @@ function main()
         drawEmptyGrid();
         drawGame(game);
         iterate(game);
-        spawnFruit(game);
-        sleep(180);
+        sleep(SLEEP_TIME);
     }
 
     println("You died!");
