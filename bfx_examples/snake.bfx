@@ -1,11 +1,32 @@
 include "std.bfx"
 
+/* Snake
+
+   Simple implementation of the classic Snake game.
+   
+   - Optionally edit the controls and screen-dimensions below
+   - The speed at which it runs, depends on your system. Edit 
+     SLEEP_TIME to modify framerate (higher = slower). 
+   - Compile with --random 
+   - Run with --random --gaming
+*/
+
+// Controls
+const UP_KEY = 'w';
+const DOWN_KEY = 's';
+const LEFT_KEY = 'a';
+const RIGHT_KEY = 'd';
+
+// Dimensions
 const GRID_WIDTH = 12;
 const GRID_HEIGHT = 12;
 const ARRAY_SIZE = 144;
 const MAX_LENGTH = 15;
+
+// Speed
 const SLEEP_TIME = 180;
 
+// Do not alter
 const N = 0;
 const E = 1;
 const S = 2;
@@ -13,8 +34,8 @@ const W = 3;
 
 struct Game
 {
-    [ARRAY_SIZE] indices;
-    length, dir, fruitIndex;
+    [ARRAY_SIZE] snake;
+    snakeLength, dir, fruitIndex;
 };
 
 function i = toIndex(&row, &col)
@@ -64,12 +85,12 @@ function col = colRight(col)
 function game = initGame()
 {
     let [struct Game] game;
-    game.indices = 0;
-    game.length = 2;
+    game.snake = 0;
+    game.snakeLength = 2;
     game.dir = E;
     
-    game.indices[0] = toIndex(GRID_HEIGHT / 2, 1);
-    game.indices[0] = toIndex(GRID_HEIGHT / 2, 0);
+    game.snake[0] = toIndex(GRID_HEIGHT / 2, 1);
+    game.snake[0] = toIndex(GRID_HEIGHT / 2, 0);
 
     spawnFruit(game);
 }
@@ -106,14 +127,14 @@ function drawEmptyGrid()
 function drawGame(&game)
 {
     // Draw head
-    let [2] head = toRowCol(game.indices[0]);
+    let [2] head = toRowCol(game.snake[0]);
     cursor_to(2 + head[0], 2 + 2 * head[1]);
     prints("**");
 
     // Draw body
-    for (let i = 1; i != game.length; ++i)
+    for (let i = 1; i != game.snakeLength; ++i)
     {
-        let [2] body = toRowCol(game.indices[i]);
+        let [2] body = toRowCol(game.snake[i]);
         cursor_to(2 + body[0], 2 + 2 * body[1]);
         prints("<>");
     }
@@ -127,25 +148,25 @@ function drawGame(&game)
 function iterate(&game)
 {
     // Update head
-    let [] oldIndices = game.indices;
-    let row = game.indices[0] / GRID_WIDTH;
-    let col = game.indices[0] % GRID_WIDTH;
+    let [] oldSnake = game.snake;
+    let row = game.snake[0] / GRID_WIDTH;
+    let col = game.snake[0] % GRID_WIDTH;
     
     switch (game.dir)
     {
-        case N: game.indices[0] = toIndex(rowAbove(row), col);
-        case E: game.indices[0] = toIndex(row, colRight(col));
-        case S: game.indices[0] = toIndex(rowBelow(row), col);
-        case W: game.indices[0] = toIndex(row, colLeft(col));
+        case N: game.snake[0] = toIndex(rowAbove(row), col);
+        case E: game.snake[0] = toIndex(row, colRight(col));
+        case S: game.snake[0] = toIndex(rowBelow(row), col);
+        case W: game.snake[0] = toIndex(row, colLeft(col));
     }
 
     // Check if fruit is eaten
-    if (game.fruitIndex == game.indices[0])
+    if (game.fruitIndex == game.snake[0])
         eatFruit(game);
 
-    // Update body indices
-    for (let i = 1; i != game.length; ++i)
-        game.indices[i] = oldIndices[i - 1];
+    // Update body snake
+    for (let i = 1; i != game.snakeLength; ++i)
+        game.snake[i] = oldSnake[i - 1];
 }
 
 function handleInput(&game)
@@ -156,22 +177,22 @@ function handleInput(&game)
 
     switch (c)
     {
-        case 'w':
+        case UP_KEY:
         {
             if (game.dir != S)
                 game.dir = N;
         }
-        case 's':
+        case DOWN_KEY:
         {
             if (game.dir != N)
                 game.dir = S;
         }
-        case 'a':
+        case LEFT_KEY:
         {
             if (game.dir != E)
                 game.dir = W;
         }
-        case 'd':
+        case RIGHT_KEY:
         {
             if (game.dir != W)
                 game.dir = E;
@@ -188,10 +209,10 @@ function spawnFruit(&game)
 
 function eatFruit(&game)
 {
-    if (game.length < MAX_LENGTH)
+    if (game.snakeLength < MAX_LENGTH)
     {
-        let tailIndex = game.indices[game.length - 1];
-        game.indices[game.length++] = tailIndex;
+        let tailIndex = game.snake[game.snakeLength - 1];
+        game.snake[game.snakeLength++] = tailIndex;
     }
 
     spawnFruit(game);
@@ -200,9 +221,9 @@ function eatFruit(&game)
 function dead = died(&game)
 {
     let dead = false;
-    for (let i = 1; i != game.length; ++i)
+    for (let i = 1; i != game.snakeLength; ++i)
     {
-        if (game.indices[0] == game.indices[i])
+        if (game.snake[0] == game.snake[i])
         {
             dead = true;
             return;
@@ -222,7 +243,7 @@ function main()
                   "Array-size not equal to width * height.");
 
     static_assert(MAX_LENGTH <= ARRAY_SIZE,
-                  "Maximum game length must be less or equal to width * height.");
+                  "Maximum snake-length must be less or equal to width * height.");
 
 
     let [struct Game] game = initGame();

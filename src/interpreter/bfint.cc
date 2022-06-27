@@ -262,7 +262,7 @@ void BFInterpreter::printCurses(std::ostream &out)
         
     refresh();
 #else
-    print(out);
+    assert(false && "printCurses() called but not compiled with USE_CURSES");
 #endif        
 }
 
@@ -456,7 +456,7 @@ void BFInterpreter::readCurses(std::istream &out)
     int c = getch();
     d_array[d_arrayPointer] = (c < 0) ? 0 : static_cast<char>(c);
 #else
-    read(out);
+    assert(false && "readCurses() called but not compiled with USE_CURSES");
 #endif        
 }
 
