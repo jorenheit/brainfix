@@ -276,7 +276,7 @@ function clear_screen()
 {
     cursor_home();
     printc(27);
-    prints("[2J");
+    prints("[0J");
 }
 
 function clear_line()

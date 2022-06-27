@@ -1,0 +1,254 @@
+include "std.bfx"
+
+const GRID_WIDTH = 12;
+const GRID_HEIGHT = 12;
+const ARRAY_SIZE = 144;
+const FRUIT_PROB = 30; // relative to 255
+const MAX_LENGTH = 15;
+
+const N = 0;
+const E = 1;
+const S = 2;
+const W = 3;
+
+struct Game
+{
+    [ARRAY_SIZE] indices;
+    length, dir, fruitPresent, fruitIndex;
+};
+
+function i = toIndex(&row, &col)
+{
+    let i = row * GRID_WIDTH + col;
+}
+
+function rc = toRowCol(&index)
+{
+    let [2] rc;
+    rc[0] = index / GRID_WIDTH;
+    rc[1] = index % GRID_HEIGHT;
+}
+
+function row = rowAbove(row)
+{
+    if (row == 0)
+        row = GRID_HEIGHT - 1;
+    else
+        --row;
+}
+
+function row = rowBelow(row)
+{
+    if (row == GRID_HEIGHT - 1)
+        row = 0;
+    else
+        ++row;
+}
+
+function col = colLeft(col)
+{
+    if (col == 0)
+        col = GRID_WIDTH - 1;
+    else
+        --col;
+}
+
+function col = colRight(col)
+{
+    if (col == GRID_WIDTH - 1)
+        col = 0;
+    else
+        ++col;
+}
+
+function s = initGame()
+{
+    let [struct Game] s;
+    s.indices = 0;
+    s.length = 2;
+    s.fruitPresent = false;
+    s.fruitIndex = 0;
+    s.dir = E;
+    
+    s.indices[0] = toIndex(GRID_HEIGHT / 2, 1);
+    s.indices[0] = toIndex(GRID_HEIGHT / 2, 0);
+}
+
+
+function drawEmptyGrid()
+{
+    clear_screen();
+    printc('+');
+    for (let col = 0; col != GRID_WIDTH; ++col)
+        prints("--");
+    printc('+');
+    endl();
+
+    
+    for (let row = 0; row != GRID_HEIGHT; ++row)
+    {
+        printc('|');
+        for (let col = 0; col != GRID_WIDTH; ++col)
+        {
+            prints("  ");
+        }
+        printc('|');
+        endl();
+    }
+    
+    printc('+');
+    for (let col = 0; col != GRID_WIDTH; ++col)
+        prints("--");
+    printc('+');
+    endl();
+}
+
+function drawGame(&game)
+{
+    // Draw head
+    let [2] head = toRowCol(game.indices[0]);
+    cursor_to(2 + head[0], 2 + 2 * head[1]);
+    prints("**");
+
+    // Draw body
+    for (let i = 1; i != game.length; ++i)
+    {
+        let [2] body = toRowCol(game.indices[i]);
+        cursor_to(2 + body[0], 2 + 2 * body[1]);
+        prints("<>");
+    }
+
+    if (game.fruitPresent)
+    {
+        let [2] fruit = toRowCol(game.fruitIndex);
+        cursor_to(2 + fruit[0], 2 + 2 * fruit[1]);
+        prints("()");
+    }
+}
+
+function iterate(&game)
+{
+    // Update head
+    let [] oldIndices = game.indices;
+    let row = game.indices[0] / GRID_WIDTH;
+    let col = game.indices[0] % GRID_WIDTH;
+    
+    switch (game.dir)
+    {
+        case N: game.indices[0] = toIndex(rowAbove(row), col);
+        case E: game.indices[0] = toIndex(row, colRight(col));
+        case S: game.indices[0] = toIndex(rowBelow(row), col);
+        case W: game.indices[0] = toIndex(row, colLeft(col));
+    }
+
+    if (game.fruitPresent)
+    {
+        if (game.fruitIndex == game.indices[0])
+            eatFruit(game);
+    }
+
+    // Update body indices
+    for (let i = 1; i != game.length; ++i)
+        game.indices[i] = oldIndices[i - 1];
+}
+
+function handleInput(&game)
+{
+    let c = scanc();
+    if (!c)
+        return;
+
+    switch (c)
+    {
+        case 'w':
+        {
+            if (game.dir != S)
+                game.dir = N;
+        }
+        case 's':
+        {
+            if (game.dir != N)
+                game.dir = S;
+        }
+        case 'a':
+        {
+            if (game.dir != E)
+                game.dir = W;
+        }
+        case 'd':
+        {
+            if (game.dir != W)
+                game.dir = E;
+        }
+    }
+}
+
+function spawnFruit(&game)
+{
+    if (!game.fruitPresent)
+    {
+        if (rand() < FRUIT_PROB)
+        {
+            let row = rand() % GRID_HEIGHT;
+            let col = rand() % GRID_WIDTH;
+            game.fruitIndex = toIndex(row, col);
+            game.fruitPresent = true;
+        }
+    }
+}
+
+function eatFruit(&game)
+{
+    game.fruitPresent = 0;
+    if (game.length < MAX_LENGTH)
+    {
+        let tailIndex = game.indices[game.length - 1];
+        game.indices[game.length++] = tailIndex;
+    }
+}
+
+function dead = died(&game)
+{
+    let dead = false;
+    for (let i = 1; i != game.length; ++i)
+    {
+        if (game.indices[0] == game.indices[i])
+        {
+            dead = true;
+            return;
+        }
+    }
+}
+
+function sleep(n)
+{
+    for* (let i = 0; i != n; ++i)
+    {}
+}
+
+function main()
+{
+    static_assert(ARRAY_SIZE == GRID_WIDTH * GRID_HEIGHT,
+                  "Array-size not equal to width * height.");
+
+    static_assert(MAX_LENGTH <= ARRAY_SIZE,
+                  "Maximum game length must be less or equal to width * height.");
+
+
+    let [struct Game] game = initGame();
+
+    while* (true)
+    {
+        if (died(game))
+            break;
+
+        handleInput(game);
+        drawEmptyGrid();
+        drawGame(game);
+        iterate(game);
+        spawnFruit(game);
+        sleep(180);
+    }
+
+    println("You died!");
+}

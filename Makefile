@@ -1,6 +1,9 @@
-# Set default BFX include path
+# Set default BFX include path and install path
 INSTALL_PATH=/usr/local/bin
 BFX_INCLUDE=/usr/local/include/bfx
+
+# Compile with gaming mode available? Requires ncurses
+GAMING_MODE_AVAILABLE=1
 
 .PHONY: bfx bfint
 
@@ -8,7 +11,7 @@ all: bfx bfint
 bfx:
 	make -C src -f makefile.1 BFX_DEFAULT_INCLUDE_PATH=$(BFX_INCLUDE)
 bfint:
-	make -C src -f makefile.2
+	make -C src -f makefile.2 GAMING_MODE_AVAILABLE=$(GAMING_MODE_AVAILABLE)
 
 clean:
 	rm -f src/*.o src/interpreter/*.o

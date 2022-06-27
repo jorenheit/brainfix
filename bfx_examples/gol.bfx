@@ -165,8 +165,8 @@ function iterate(&grid)
     {
         for (let col = 0; col != GRID_WIDTH; ++col)
         {
-            let idx = toIndex(row, col);
             let n = countLiveNeighbors(grid, row, col);
+            let idx = toIndex(row, col);
             if (grid.cells[idx] == ALIVE)
                 newGrid.cells[idx] = !(n < 2 || n > 3);
             else

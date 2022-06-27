@@ -1,214 +1,488 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <memory>
-#include <map>
-#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <csignal>
+#include <cstring> // debug
+
+#ifdef USE_CURSES
+#include <ncurses.h>
+#define GAMING_MODE_AVAILABLE 1
+#else
+#define GAMING_MODE_AVAILABLE 0
+#endif
+
 #include "bfint.h"
 
-enum class CellType
-    {
-     INT8,
-     INT16,
-     INT32
-    };
-
-std::unique_ptr<BFInterpreterBase> getInterpreter(CellType type, int tapeSize, std::string const &code)
+namespace _MaxInt
 {
-    switch (type)
+    template <typename T>
+    constexpr size_t _getMax()
+    {
+        return (static_cast<size_t>(1) << (8 * sizeof(T))) - 1;
+    }
+    
+    inline static size_t get(CellType c)
+    {
+        switch (c)
+        {
+        case CellType::INT8:  return _getMax<uint8_t>();
+        case CellType::INT16: return _getMax<uint16_t>();
+        case CellType::INT32: return _getMax<uint32_t>();;
+        }
+        throw -1;
+    }
+}
+
+BFInterpreter::BFInterpreter(size_t arraySize, std::string const &code, CellType const type):
+    d_array(arraySize),
+    d_code(code),
+    d_cellType(type),
+    d_uniformDist(0, _MaxInt::get(type))
+{
+    auto t0 = std::chrono::system_clock::now().time_since_epoch();
+    auto ms = duration_cast<std::chrono::milliseconds>(t0).count();
+    d_rng.seed(ms);
+}
+    
+void BFInterpreter::run(std::istream &in, std::ostream &out,
+                        bool const randEnabled, bool const randomWarning,
+                        bool const gamingMode) 
+{
+    if (gamingMode && !GAMING_MODE_AVAILABLE)
+    {
+        std::cerr << "Warning: bfint was not linked against ncurses during compilation, so gaming mode is not "
+            "available and the program will run as usual. Recompile with gaming mode enabled to fix.\n";
+    }
+
+#ifdef USE_CURSES
+    // Setup ncurses window
+    if (gamingMode)
+    {
+        auto win = initscr();
+        scrollok(win, true);
+        cbreak();
+        noecho();
+        nonl();
+        nodelay(stdscr, TRUE);
+        curs_set(0);
+
+        signal(SIGINT, [](int sig)
+                       {
+                           finish(sig);
+                       });
+    }
+#endif        
+        
+    while (true)
+    {
+        char token = d_code[d_codePointer];
+        switch (token)
+        {
+        case LEFT: pointerDec(); break;
+        case RIGHT: pointerInc(); break;
+        case PLUS: plus(); break;
+        case MINUS: minus(); break;
+        case PRINT:
+            {
+                if (gamingMode)
+                    printCurses(out);
+                else
+                    print(out);
+                break;
+            }
+        case READ:
+            {
+                if (gamingMode)
+                    readCurses(in);
+                else
+                    read(in);
+                break;
+            }
+        case START_LOOP: startLoop(); break;
+        case END_LOOP: endLoop(); break;
+        case RAND:
+            {
+                static bool warned = false;
+                if (randEnabled)
+                    random();
+                else if (randomWarning && !warned)
+                {
+                    std::cerr << "\n"
+                        "=========================== !!!!!! ==============================\n"
+                        "Warning: BF-code contains '?'-commands, which may be\n"
+                        "interpreted as the random-operation, an extension to the\n"
+                        "canonical BF instructionset. This extension can be enabled\n"
+                        "with the --random option.\n"
+                        "This warning can be disabled with the --no-random-warning option.\n"
+                        "=========================== !!!!!! ==============================\n";
+                    warned = true;
+                }
+                break;
+            }
+        default: break;
+        }
+
+        if (++d_codePointer >= d_code.size())
+            break;
+    }
+
+    if (gamingMode)
+    {
+        nodelay(stdscr, false);
+        getch();
+        finish(0);
+    }
+}
+
+int BFInterpreter::consume(Ops op)
+{
+    assert(d_code[d_codePointer] == op && "codepointer should be pointing at op now");
+        
+    int n = 1;
+    while (d_code[d_codePointer + n] == op)
+        ++n;
+
+    d_codePointer += (n - 1);
+    return n;
+}
+    
+void BFInterpreter::plus()
+{
+    int const n = consume(PLUS);
+    switch (d_cellType)
     {
     case CellType::INT8:
-        return std::make_unique<BFInterpreter<uint8_t>>(tapeSize, code);
+        d_array[d_arrayPointer] = static_cast<uint8_t>(d_array[d_arrayPointer] + n);
+        break;
     case CellType::INT16:
-        return std::make_unique<BFInterpreter<uint16_t>>(tapeSize, code);
+        d_array[d_arrayPointer] = static_cast<uint16_t>(d_array[d_arrayPointer] + n);
+        break;
     case CellType::INT32:
-        return std::make_unique<BFInterpreter<uint32_t>>(tapeSize, code);
-    default:
-        return nullptr;
-    };
+        d_array[d_arrayPointer] = static_cast<uint32_t>(d_array[d_arrayPointer] + n);
+        break;
+    }
 }
-
-struct Options
-{
-    int          err{0};
-    CellType     cellType{CellType::INT8};
-    int          tapeLength{30000};
-    std::string  bfFile;
-    std::ostream *outStream{&std::cout};
-    bool         random{false};
-    bool         randomWarning{true};
-};
-
-void printHelp(std::string const &progName)
-{
-    std::cout << "Usage: " << progName << " [options] <target(.bf)>\n"
-              << "Options:\n"
-              << "-h                  Display this text.\n"
-              << "-t [Type]           Specify the number of bytes per BF-cell, where [Type] is one of\n"
-                 "                    int8, int16 and int32 (int8 by default).\n"
-              << "-n [N]              Specify the number of cells (30,000 by default).\n"
-              << "-o [file, stdout]   Specify the output stream (defaults to stdout).\n\n"
-              << "--random            Enable Random Brainf*ck extension (support ?-symbol)\n"
-              << "--no-random-warning Don't display a warning when ? occurs without running --random.\n\n"
-              << "Example: " << progName << " --random -t int16 -o output.txt program.bf\n";
-}
-
-Options parseCmdLine(std::vector<std::string> const &args)
-{
-    Options opt;
     
-    size_t idx = 1;
-    while (idx < args.size())
+void BFInterpreter::minus()
+{
+    int const n = consume(MINUS);
+    switch (d_cellType)
     {
-        if (args[idx] == "-h")
-        {
-            opt.err = 1;
-            return opt;
-        }
+    case CellType::INT8:
+        d_array[d_arrayPointer] = static_cast<uint8_t>(d_array[d_arrayPointer] - n);
+        break;
+    case CellType::INT16:
+        d_array[d_arrayPointer] = static_cast<uint16_t>(d_array[d_arrayPointer] - n);
+        break;
+    case CellType::INT32:
+        d_array[d_arrayPointer] = static_cast<uint32_t>(d_array[d_arrayPointer] - n);
+        break;
+    }
+}
 
-        else if (args[idx] == "-t")
-        {
-            if (idx == args.size() - 1)
-            {
-                std::cerr << "ERROR: No argument passed to option \'-t\'.\n";
-                opt.err = 1;
-                return opt;
-            }
+void BFInterpreter::pointerInc()
+{
+    int const n = consume(RIGHT);
+    d_arrayPointer += n;
 
-            static std::map<std::string, CellType> const getType{
-                {"int8", CellType::INT8},
-                {"int16", CellType::INT16},
-                {"int32", CellType::INT32}
-            };
+    while (d_arrayPointer >= d_array.size())
+        d_array.resize(2 * d_array.size());
+}
 
-            auto tolower = [](std::string str)->std::string
-                           {
-                               std::transform(str.begin(), str.end(), str.begin(),
-                                              [](unsigned char c){ return std::tolower(c); });
-                               return str;
-                           };
+void BFInterpreter::pointerDec()
+{
+    if (d_arrayPointer == 0)
+        throw std::string("Error: trying to decrement pointer beyond beginning.");
 
-            std::string arg = tolower(args[idx + 1]);
-            try
-            {
-                opt.cellType = getType.at(arg);
-                idx += 2;
-            }
-            catch (std::out_of_range const&)
-            {
-                std::cerr << "ERROR: Invalid argument passed to option \'-t\'\n";
-                opt.err = 1;
-                return opt;
-            }
-        }
-        else if (args[idx] == "-n")
-        {
-            if (idx == args.size() - 1)
-            {
-                std::cerr << "ERROR: No argument passed to option \'-n\'.\n";
-                opt.err = 1;
-                return opt;
-            }
-            
-            try
-            {
-                opt.tapeLength = std::stoi(args[idx + 1]);
-                idx += 2;
-            }
-            catch (std::invalid_argument const&)
-            {
-                std::cerr << "ERROR: Invalid argument passed to option \'-n\'\n";
-                opt.err = 1;
-                return opt;
-            }
-        }
-        else if (args[idx] == "-o")
-        {
-            if (idx == args.size() - 1)
-            {
-                std::cerr << "ERROR: No argument passed to option \'-o\'.\n";
-                opt.err = 1;
-                return opt;
-            }
+    int const n = consume(LEFT);
+    d_arrayPointer -= n;
+}
 
-            if (args[idx + 1] == "stdout")
-            {
-                opt.outStream = &std::cout;
-                idx += 2;
-            }
-            else
-            {
-                std::string const &fname = args[idx + 1];
-                static std::ofstream file;
-                file.open(fname);
-                if (!file.good())
-                {
-                    std::cerr << "ERROR: could not open output-file " << fname << ".\n";
-                    opt.err = 1;
-                    return opt;
-                }
+void BFInterpreter::startLoop()
+{
+    if (d_array[d_arrayPointer] != 0)
+    {    
+        d_loopStack.push(d_codePointer);
+    }
+    else
+    {
+        int bracketCount = 1;
+        while (bracketCount != 0 && d_codePointer < d_code.size())
+        {
+            ++d_codePointer;
+            if (d_code[d_codePointer] == START_LOOP)
+                ++bracketCount;
+            else if (d_code[d_codePointer] == END_LOOP)
+                --bracketCount;
+        }
+    }
+}
 
-                opt.outStream = &file;
-                idx += 2;
-            }
-        }
-        else if (args[idx] == "--random")
+void BFInterpreter::endLoop()
+{
+    if (d_array[d_arrayPointer] != 0)
+    {
+        d_codePointer = d_loopStack.top();
+    }
+    else
+    {
+        d_loopStack.pop();
+    }
+}
+
+void BFInterpreter::print(std::ostream &out)
+{
+    out << (char)d_array[d_arrayPointer] << std::flush;
+}
+
+void BFInterpreter::printCurses(std::ostream &out)
+{
+#ifdef USE_CURSES
+    static char const ESC = 27; // Control char
+    static std::string ansiBuffer;
+    
+    char const c = d_array[d_arrayPointer];
+    if (c == ESC)
+    {
+        if (ansiBuffer.empty())
         {
-            opt.random = true;
-            ++idx;
-        }
-        else if (args[idx] == "--no-random-warning")
-        {
-            opt.randomWarning = false;
-            ++idx;
-        }
-        
-        else if (idx == args.size() - 1)
-        {
-            opt.bfFile = args.back();
-            break;
+            ansiBuffer.push_back(c);
         }
         else
         {
-            std::cerr << "Unknown option " << args[idx] << ".\n";
-            opt.err = 1;
-            return opt;
+            handleAnsi(ansiBuffer, true);
+            ansiBuffer.push_back(c);
         }
     }
-
-
-    if (idx > (args.size() - 1))
+    else
     {
-        std::cerr << "ERROR: No input (.bf) file specified.\n";
-        opt.err = 1;
-        return opt;
+        if (ansiBuffer.empty())
+        {
+            addch(c);
+        }
+        else
+        {
+            ansiBuffer.push_back(c);
+            handleAnsi(ansiBuffer, false);
+        }
+    }
+        
+    refresh();
+#else
+    print(out);
+#endif        
+}
+
+void BFInterpreter::handleAnsi(std::string &ansiStr, bool const force)
+{
+#ifdef USE_CURSES
+    static char const ESC = 27; // Control char
+    assert(ansiStr.length() > 1 && "handleAnsi called with less than 2 characters");
+    assert(ansiStr[0] == ESC && "handleAnsi called on string not starting with ESC");
+
+    auto const flush = [&]()
+                       {
+                           addstr(ansiStr.c_str());
+                           ansiStr.clear();
+                       };
+    
+    if (ansiStr.length() == 2 && ansiStr[1] != '[')
+    {
+        // ESC not followed by '[' -> not ansi
+        flush();
+        return;
     }
     
-    return opt;
-}
-
-
-int main(int argc, char **argv)
-try
-{
-    Options opt = parseCmdLine(std::vector<std::string>(argv, argv + argc));
-    if (opt.err == 1)
+    if (ansiStr.length() < 3)
     {
-        printHelp(argv[0]);
-        return 1;
+        if (force)
+            flush();
+        
+        return; // cannot be a complete ansi escape sequence
     }
 
-    std::ifstream file(opt.bfFile);
-    if (!file.is_open())
-        throw std::string("File not found: ") + opt.bfFile;
+    // 3 or more characters present
+    int row, col;
+    getyx(stdscr, row, col);
 
-    std::stringstream buffer;
-    buffer << file.rdbuf();
+    bool handled = true;
+    switch (ansiStr.back())
+    {
+    case 'A': // cursor up
+        {
+            int n = std::stoi(ansiStr.substr(2, ansiStr.length() - 3));
+            if (row)
+            {
+                row = std::max(0, row - n);
+                move(row, col);
+            }
+            break;
+        }
+    case 'B': // cursor down
+        {
+            int n = std::stoi(ansiStr.substr(2, ansiStr.length() - 3));
+            move(row + n, col);
+            break;
+        }
+    case 'C': // cursor right
+        {
+            int n = std::stoi(ansiStr.substr(2, ansiStr.length() - 3));
+            move(row, col + n);
+            break;
+        }
+    case 'D': // cursor left
+        {
+            int n = std::stoi(ansiStr.substr(2, ansiStr.length() - 3));
+            if (col)
+            {
+                col = std::max(0, col - n);
+                move(row, col);
+                clrtoeol();
+            }
+            break;
+        }
+    case 'H':
+        {
+            if (ansiStr.length() == 3)
+            {
+                move(0, 0);
+                break;
+            }
+            
+            size_t const separator = ansiStr.find(';');
+            if (separator == std::string::npos)
+            {
+                flush();
+                break;
+            }
 
-    auto ptr = getInterpreter(opt.cellType, opt.tapeLength, buffer.str());
-    ptr->run(std::cin, *opt.outStream, opt.random, opt.randomWarning);
+            row = std::stoi(ansiStr.substr(2, separator - 2)) - 1;
+            col = std::stoi(ansiStr.substr(separator + 1, ansiStr.length() - separator - 2)) - 1;
+            move(row, col);
+            break;
+        }
+    case 'K':
+        {
+            int n = (ansiStr.length() == 3) ? 0 :
+                std::stoi(ansiStr.substr(2, ansiStr.length() - 3));
+
+            switch (n)
+            {
+            case 0:
+                {
+                    clrtoeol();
+                    break;
+                }
+            case 1:
+                {
+                    move(row, 0);
+                    addstr(std::string(col, ' ').c_str());
+                    break;
+                }
+            case 2:
+                {
+                    move(row, 0);
+                    clrtoeol();
+                    move(row, col);
+                    break;
+                }
+            default:
+                {
+                    handled = false;
+                }
+            }
+            break;
+        }
+    case 'J':
+        {
+            int n = (ansiStr.length() == 3) ? 0 :
+                std::stoi(ansiStr.substr(2, ansiStr.length() - 3));
+            
+            switch (n)
+            {
+            case 0:
+                {
+                    clrtobot();
+                    break;
+                }
+            case 1:
+                {
+                    for (int i = 0; i <= row; ++i)
+                    {
+                        move(i, 0);
+                        clrtoeol();
+                    }
+                    move(row, col);
+                    break;
+                }
+            case 2:
+                {
+                    move(0,0);
+                    clrtobot();
+                    break;
+                }
+            default:
+                {
+                    handled = false;
+                }   
+            }
+            break;
+        }
+    default:
+        {
+            handled = false;
+        }
+    }
+    
+
+    if (handled)
+    {
+        ansiStr.clear();
+        return;
+    }
+    
+    // ANSI sequence not yet terminated. Check if character is allowed
+    if (std::string("0123456789;").find(ansiStr.back()) == std::string::npos || force)
+        flush();
+
+    // Still going. Don't do anything and wait for next call
+#else
+    assert(false && "handleAnsi calles without USE_CURSES defined");
+#endif
 }
- catch (std::string const &msg)
+
+void BFInterpreter::read(std::istream &in)
 {
-    std::cerr << msg << '\n';
+    char c;
+    in.get(c);
+    d_array[d_arrayPointer] = c;
+}
+
+void BFInterpreter::readCurses(std::istream &out)
+{ 
+#ifdef USE_CURSES       
+    int c = getch();
+    d_array[d_arrayPointer] = (c < 0) ? 0 : static_cast<char>(c);
+#else
+    read(out);
+#endif        
+}
+
+void BFInterpreter::random()
+{
+    auto val = d_uniformDist(d_rng);
+    d_array[d_arrayPointer] = val;
+}
+
+void BFInterpreter::printState()
+{
+    for (auto x: d_array)
+        std::cout << (int)x << ' ';
+    std::cout << '\n';
+}
+
+void BFInterpreter::finish(int sig)
+{
+    endwin();
+    if (sig == SIGINT)
+        exit(0);
 }

@@ -1,16 +1,29 @@
 CC=g++
-CFLAGS=-c -O3 -Wall --std=c++2a -fmax-errors=2 #-Wfatal-errors
-SOURCES=interpreter/bfint.cc
+CFLAGS= -c -O3 -Wall --std=c++2a -fmax-errors=2 #-Wfatal-errors
+SOURCES=interpreter/bfint.cc interpreter/main.cc
 
 OBJECTS=$(SOURCES:.cc=.o)
 EXECUTABLE=bfint
 
 all:	$(SOURCES) $(EXECUTABLE) 
 
+
+ifeq ($(GAMING_MODE_AVAILABLE),1)
+$(EXECUTABLE):$(OBJECTS)
+	$(CC) $(OBJECTS) -o ../$@ -lncurses
+
+.cc.o:
+	$(CC) $(CFLAGS) -DUSE_CURSES $< -o $@ 
+
+else
+
 $(EXECUTABLE):$(OBJECTS)
 	$(CC) $(OBJECTS) -o ../$@
 
 .cc.o:
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $< -o $@ 
+
+endif
+
 
 
