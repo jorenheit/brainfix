@@ -976,8 +976,6 @@ $ bfint --random --rand-max 255 --type int16 --gaming snake.bf
 
 In this example the BF-cells can hold 16-bit integers, but the RNG will only return values up to 255: the best of both worlds!
 
-```
-
 ## Profiling
 During compilation, the compiler keeps track the number of move-instructions to each of the allocated memory cells. This memory-profile can be saved to a file with the `--profile` option. The output file reports the settings used for compilation, the resulting number of BF-operations and required cells, followed by a list of cells and the number of times a move to this address was generated. This will not necessarily be the same as the number of visits to this cell at runtime, because at runtime cells may be visited repeatedly in a loop.
 
