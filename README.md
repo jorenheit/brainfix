@@ -98,6 +98,8 @@ Options:
 --gaming            Enable gaming-mode.
 --gaming-help       Display additional information about gaming-mode.
 --random            Enable Random Brainf*ck extension (support ?-symbol)
+--rand-max [N]      Specifiy maximum value returned by RNG.
+                      Defaults to maximum supported value of cell-type
 --no-random-warning Don't display a warning when ? occurs without running --random.
 
 Example: ./bfint --random -t int16 -o output.txt program.bf
@@ -947,7 +949,7 @@ All functions below are defined in `BFX_INCLUDE/stdstring.bfx`:
 
 #### Pseudorandom Numbers
 
-To generate random numbers, BrainFix makes use of the [Random Brainfix extension](https://esolangs.org/wiki/Random_Brainfuck), where a `?` symbol tells the interpreter to generate a random number. The way this random number is generated is therefore fully up to the interpreter itself and cannot even be seeded from within BrainFix. If the `rand()`-function is used in a program that is compiled without the `--random` option, a warning will be issued and compilation will proceed as normal. The included interpreter supports this extension (if the `--random` flag is passed in to `bfint`) and will generate a random number uniformly in the range of possible cell-values (0-255 in the single byte case). It is up to the programmer to manipulate the result of `rand()` into the desired range. A common way to do this is by using the modulo-operator as in the example below.
+To generate random numbers, BrainFix makes use of the [Random Brainfix extension](https://esolangs.org/wiki/Random_Brainfuck), where a `?` symbol tells the interpreter to generate a random number. The way this random number is generated is therefore fully up to the interpreter itself and cannot even be seeded from within BrainFix. If the `rand()`-function is used in a program that is compiled without the `--random` option, a warning will be issued and compilation will proceed as normal. The included interpreter supports this extension (if the `--random` flag is passed in to `bfint`) and will generate a random number uniformly in the range of possible cell-values (0-255 in the single byte case), or up to `rand-max` if this was provided using the `--rand-max` option. It is up to the programmer to manipulate the result of `rand()` into the desired range. A common way to do this is by using the modulo-operator as in the example below.
 
 ```javascript
 include "std.bfx"
@@ -964,6 +966,15 @@ function main()
         }
     }
 }
+
+##### Rand-Max
+As mentioned briefly above, the maximum value for the RNG can be specified using the `--rand-max` option. This is particularly useful when running `bfint` in int16-mode when the RNG enabled, which would by default generate very large numbers. These numbers are hard to deal with in BF, causing the resulting program to perform very poorly. It's often not needed to generate random numbers in this range, which is why the maximum can be specified, e.g.
+
+```
+$ bfint --random --rand-max 255 --type int16 --gaming snake.bf
+```
+
+In this example the BF-cells can hold 16-bit integers, but the RNG will only return values up to 255: the best of both worlds!
 
 ```
 
