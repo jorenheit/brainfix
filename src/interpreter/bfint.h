@@ -13,6 +13,17 @@ enum class CellType
      INT32
     };
 
+struct Options
+{
+    int          err{0};
+    CellType     cellType{CellType::INT8};
+    int          tapeLength{30000};
+    std::string  bfFile;
+    std::ostream *outStream{&std::cout};
+    bool         randomEnabled{false};
+    bool         randomWarningEnabled{true};
+    bool         gamingMode{false};
+};
 
 class BFInterpreter
 {
@@ -21,12 +32,18 @@ class BFInterpreter
     size_t d_arrayPointer{0};
     size_t d_codePointer{0};
     std::stack<int> d_loopStack;
-    CellType const d_cellType;
 
     using RngType = std::mt19937;
     std::uniform_int_distribution<RngType::result_type> d_uniformDist;
     RngType d_rng;
 
+    // Options
+    CellType const d_cellType;
+    std::ostream &d_out;
+    bool const d_randomEnabled{false};
+    bool const d_randomWarningEnabled{true};
+    bool const d_gamingMode{false};
+    
     enum Ops: char
         {
          PLUS  = '+',
@@ -41,13 +58,8 @@ class BFInterpreter
         };
 
 public:
-    BFInterpreter(size_t arraySize, std::string const &code, CellType const type);
-    void run(std::istream &in, std::ostream &out,
-             bool const randEnabled, bool const randomWarning
-#ifdef USE_CURSES             
-             , bool const gamingMode
-#endif             
-             );       
+    BFInterpreter(Options const &opt);
+    void run();
 
 private:
     int consume(Ops op);
@@ -59,8 +71,8 @@ private:
     void endLoop();
     void print(std::ostream &out);
     void printCurses(std::ostream &out);
-    void read(std::istream &in);
-    void readCurses(std::istream &out);
+    void read();
+    void readCurses();
     void random();
     void printState();
     void handleAnsi(std::string &ansiStr, bool const force);

@@ -1,7 +1,8 @@
 #include <cassert>
 #include <chrono>
 #include <csignal>
-#include <cstring> // debug
+#include <fstream>
+#include <sstream>
 
 #ifdef USE_CURSES
 #include <ncurses.h>
@@ -23,33 +24,41 @@ namespace _MaxInt
         {
         case CellType::INT8:  return _getMax<uint8_t>();
         case CellType::INT16: return _getMax<uint16_t>();
-        case CellType::INT32: return _getMax<uint32_t>();;
+        case CellType::INT32: return _getMax<uint32_t>();
         }
         throw -1;
     }
 }
 
-BFInterpreter::BFInterpreter(size_t arraySize, std::string const &code, CellType const type):
-    d_array(arraySize),
-    d_code(code),
-    d_cellType(type),
-    d_uniformDist(0, _MaxInt::get(type))
+BFInterpreter::BFInterpreter(Options const &opt):
+    d_array(opt.tapeLength),
+    d_uniformDist(0, _MaxInt::get(opt.cellType)),
+    d_cellType(opt.cellType),
+    d_out(*opt.outStream),
+    d_randomEnabled(opt.randomEnabled),
+    d_randomWarningEnabled(opt.randomWarningEnabled),
+    d_gamingMode(opt.gamingMode)
 {
+    // init code
+    std::ifstream file(opt.bfFile);
+    if (!file.is_open())
+        throw std::string("File not found: ") + opt.bfFile;
+    
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    d_code = buffer.str();
+
+    // init rng
     auto t0 = std::chrono::system_clock::now().time_since_epoch();
     auto ms = duration_cast<std::chrono::milliseconds>(t0).count();
     d_rng.seed(ms);
 }
     
-void BFInterpreter::run(std::istream &in, std::ostream &out,
-                        bool const randEnabled, bool const randomWarning
-#ifdef USE_CURSES
-                        , bool const gamingMode
-#endif
-                        )
+void BFInterpreter::run()
 {
 #ifdef USE_CURSES
     // Setup ncurses window
-    if (gamingMode)
+    if (d_gamingMode)
     {
         auto win = initscr();
         scrollok(win, true);
@@ -59,8 +68,7 @@ void BFInterpreter::run(std::istream &in, std::ostream &out,
         nodelay(stdscr, TRUE);
         curs_set(0);
 
-        signal(SIGINT, [](int sig)
-                       {
+        signal(SIGINT, [](int sig){
                            finish(sig);
                        });
     }
@@ -77,18 +85,18 @@ void BFInterpreter::run(std::istream &in, std::ostream &out,
         case MINUS: minus(); break;
         case PRINT:
             {
-                if (gamingMode)
-                    printCurses(out);
+                if (d_gamingMode)
+                    printCurses(d_out);
                 else
-                    print(out);
+                    print(d_out);
                 break;
             }
         case READ:
             {
-                if (gamingMode)
-                    readCurses(in);
+                if (d_gamingMode)
+                    readCurses();
                 else
-                    read(in);
+                    read();
                 break;
             }
         case START_LOOP: startLoop(); break;
@@ -96,9 +104,9 @@ void BFInterpreter::run(std::istream &in, std::ostream &out,
         case RAND:
             {
                 static bool warned = false;
-                if (randEnabled)
+                if (d_randomEnabled)
                     random();
-                else if (randomWarning && !warned)
+                else if (d_randomWarningEnabled && !warned)
                 {
                     std::cerr << "\n"
                         "=========================== !!!!!! ==============================\n"
@@ -119,12 +127,14 @@ void BFInterpreter::run(std::istream &in, std::ostream &out,
             break;
     }
 
-    if (gamingMode)
+#ifdef USE_CURSES    
+    if (d_gamingMode)
     {
         nodelay(stdscr, false);
         getch();
         finish(0);
     }
+#endif    
 }
 
 int BFInterpreter::consume(Ops op)
@@ -334,7 +344,7 @@ void BFInterpreter::handleAnsi(std::string &ansiStr, bool const force)
             }
             break;
         }
-    case 'H':
+    case 'H': // cursor to coordinate
         {
             if (ansiStr.length() == 3)
             {
@@ -354,7 +364,7 @@ void BFInterpreter::handleAnsi(std::string &ansiStr, bool const force)
             move(row, col);
             break;
         }
-    case 'K':
+    case 'K': // clear line
         {
             int n = (ansiStr.length() == 3) ? 0 :
                 std::stoi(ansiStr.substr(2, ansiStr.length() - 3));
@@ -386,7 +396,7 @@ void BFInterpreter::handleAnsi(std::string &ansiStr, bool const force)
             }
             break;
         }
-    case 'J':
+    case 'J': // clear (part of) screen
         {
             int n = (ansiStr.length() == 3) ? 0 :
                 std::stoi(ansiStr.substr(2, ansiStr.length() - 3));
@@ -443,14 +453,14 @@ void BFInterpreter::handleAnsi(std::string &ansiStr, bool const force)
 #endif
 }
 
-void BFInterpreter::read(std::istream &in)
+void BFInterpreter::read()
 {
     char c;
-    in.get(c);
+    std::cin.get(c);
     d_array[d_arrayPointer] = c;
 }
 
-void BFInterpreter::readCurses(std::istream &out)
+void BFInterpreter::readCurses()
 { 
 #ifdef USE_CURSES       
     int c = getch();
@@ -475,7 +485,11 @@ void BFInterpreter::printState()
 
 void BFInterpreter::finish(int sig)
 {
+#ifdef USE_CURSES    
     endwin();
     if (sig == SIGINT)
         exit(0);
+#else
+    assert(false && "finish() called but not compiled with USE_CURSES");
+#endif
 }

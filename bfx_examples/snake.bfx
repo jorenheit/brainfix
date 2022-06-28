@@ -40,7 +40,7 @@ const ARRAY_SIZE = 144;
 const MAX_LENGTH = 15;
 
 // Speed
-const SLEEP_TIME = 180;
+const SLEEP_TIME = 100;
 
 // Do not alter
 const N = 0;
@@ -180,7 +180,7 @@ function iterate(&game)
     if (game.fruitIndex == game.snake[0])
         eatFruit(game);
 
-    // Update body snake
+    // Update body
     for (let i = 1; i != game.snakeLength; ++i)
         game.snake[i] = oldSnake[i - 1];
 }

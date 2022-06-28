@@ -1,24 +1,7 @@
 #include <iostream>
-#include <fstream>
-#include <sstream>
-#include <memory>
+#include <vector>
 #include <map>
-#include <algorithm>
-#include <ctime>
-#include <unistd.h>
 #include "bfint.h"
-
-struct Options
-{
-    int          err{0};
-    CellType     cellType{CellType::INT8};
-    int          tapeLength{30000};
-    std::string  bfFile;
-    std::ostream *outStream{&std::cout};
-    bool         random{false};
-    bool         gaming{false};
-    bool         randomWarning{true};
-};
 
 void printHelp(std::string const &progName)
 {
@@ -28,7 +11,6 @@ void printHelp(std::string const &progName)
               << "-t, --type [Type]   Specify the number of bytes per BF-cell, where [Type] is one of\n"
                  "                    int8, int16 and int32 (int8 by default).\n"
               << "-n [N]              Specify the number of cells (30,000 by default).\n"
-              << "-o [file, stdout]   Specify the output stream (defaults to stdout).\n\n"
 #ifdef USE_CURSES        
               << "--gaming            Enable gaming-mode.\n"
               << "--gaming-help       Display additional information about gaming-mode.\n"
@@ -38,11 +20,10 @@ void printHelp(std::string const &progName)
               << "Example: " << progName << " --random -t int16 -o output.txt program.bf\n";
 }
 
-#ifdef USE_CURSES
 void printGamingHelp(std::string const &progName)
 {
     std::cout <<
-        "When " << progName << " is run with the --gaming option, all writes and reads are performed\n"
+        "\nWhen " << progName << " is run with the --gaming option, all writes and reads are performed\n"
         "by ncurses, in order to establish non-blocking IO. This allowes you to run games written in\n"
         "BF that require keyboard-input (',' in BF) to be processed immediately, without waiting for\n"
         "the user to press enter. If no key was pressed, a 0 is stored to the current BF-cell.\n\n"
@@ -64,7 +45,6 @@ void printGamingHelp(std::string const &progName)
         "              ==> n = 1: clear all lines above cursor, including current line.\n"
         "              ==> n = 2: clear entire screen.\n\n";
 }
-#endif
 
 Options parseCmdLine(std::vector<std::string> const &args)
 {
@@ -135,55 +115,27 @@ Options parseCmdLine(std::vector<std::string> const &args)
                 return opt;
             }
         }
-        else if (args[idx] == "-o")
-        {
-            if (idx == args.size() - 1)
-            {
-                std::cerr << "ERROR: No argument passed to option \'-o\'.\n";
-                opt.err = 1;
-                return opt;
-            }
-
-            if (args[idx + 1] == "stdout")
-            {
-                opt.outStream = &std::cout;
-                idx += 2;
-            }
-            else
-            {
-                std::string const &fname = args[idx + 1];
-                static std::ofstream file;
-                file.open(fname);
-                if (!file.good())
-                {
-                    std::cerr << "ERROR: could not open output-file " << fname << ".\n";
-                    opt.err = 1;
-                    return opt;
-                }
-
-                opt.outStream = &file;
-                idx += 2;
-            }
-        }
         else if (args[idx] == "--random")
         {
-            opt.random = true;
+            opt.randomEnabled = true;
             ++idx;
         }
+#ifdef USE_CURSES        
         else if (args[idx] == "--gaming")
         {
-            opt.gaming = true;
+            opt.gamingMode = true;
             ++idx;
         }
         else if (args[idx] == "--gaming-help")
         {
-            opt.gaming = true;
+            opt.gamingMode = true;
             opt.err = 1;
             return opt;
         }
+#endif        
         else if (args[idx] == "--no-random-warning")
         {
-            opt.randomWarning = false;
+            opt.randomWarningEnabled = false;
             ++idx;
         }
         
@@ -219,7 +171,7 @@ try
     if (opt.err == 1)
     {
 #ifdef USE_CURSES        
-        if (opt.gaming)
+        if (opt.gamingMode)
             printGamingHelp(argv[0]);
         else
             printHelp(argv[0]);
@@ -229,15 +181,8 @@ try
         return 1;
     }
 
-    std::ifstream file(opt.bfFile);
-    if (!file.is_open())
-        throw std::string("File not found: ") + opt.bfFile;
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-
-    BFInterpreter bfint(opt.tapeLength, buffer.str(), opt.cellType);
-    bfint.run(std::cin, *opt.outStream, opt.random, opt.randomWarning, opt.gaming);
+    BFInterpreter bfint(opt);
+    bfint.run();
 }
  catch (std::string const &msg)
 {
