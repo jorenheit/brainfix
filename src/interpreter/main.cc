@@ -16,6 +16,8 @@ void printHelp(std::string const &progName)
               << "--gaming-help       Display additional information about gaming-mode.\n"
 #endif        
               << "--random            Enable Random Brainf*ck extension (support ?-symbol)\n"
+              << "--rand-max [N]      Specifiy maximum value returned by RNG.\n"
+              << "                      Defaults to maximum supported value of cell-type\n"
               << "--no-random-warning Don't display a warning when ? occurs without running --random.\n\n"
               << "Example: " << progName << " --random -t int16 -o output.txt program.bf\n";
 }
@@ -102,10 +104,15 @@ Options parseCmdLine(std::vector<std::string> const &args)
                 opt.err = 1;
                 return opt;
             }
-            
             try
             {
                 opt.tapeLength = std::stoi(args[idx + 1]);
+                if (opt.tapeLength <= 0)
+                {
+                    std::cerr << "ERROR: tape length must be a positive integer.\n";
+                    opt.err = 1;
+                    return opt;
+                }
                 idx += 2;
             }
             catch (std::invalid_argument const&)
@@ -119,6 +126,33 @@ Options parseCmdLine(std::vector<std::string> const &args)
         {
             opt.randomEnabled = true;
             ++idx;
+        }
+        else if (args[idx] == "--rand-max")
+        {
+            if (idx == args.size() - 1)
+            {
+                std::cerr << "ERROR: No argument passed to option '--rand-max'.\n";
+                opt.err = 1;
+                return opt;
+            }
+            try
+            {
+                opt.randMax = std::stoi(args[idx + 1]);
+                if (opt.randMax <= 0)
+                {
+                    std::cerr << "ERROR: rand-max must be a positive integer.\n";
+                    opt.err = 1;
+                    return opt;
+                }
+                
+                idx += 2;
+            }
+            catch (std::invalid_argument const&)
+            {
+                std::cerr << "ERROR: Invalid argument passed to option --rand-max\n";
+                opt.err = 1;
+                return opt;
+            }
         }
 #ifdef USE_CURSES        
         else if (args[idx] == "--gaming")
@@ -181,6 +215,12 @@ try
         return 1;
     }
 
+    if (opt.randMax > 0 && !opt.randomEnabled)
+    {
+        std::cerr << "Warning: a value for rand-max was specified but the random extension was not "
+            "enabled. Use --random to enable this feature.\n";
+    }
+    
     BFInterpreter bfint(opt);
     bfint.run();
 }

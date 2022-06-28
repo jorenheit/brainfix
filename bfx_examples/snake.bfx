@@ -4,9 +4,17 @@ include "std.bfx"
 
    Simple implementation of the classic Snake game.
    
-   - Optionally edit the controls and screen-dimensions below
+   - Optionally edit the controls and screen-dimensions below.
+
    - The speed at which it runs, depends on your system. Edit 
-     SLEEP_TIME to modify framerate (higher = slower). 
+     SLEEP_TIME to modify framerate (higher = slower). If 255
+     is not enough, consider compiling and running with 
+     --type int16 to unlock larger values. Don't forget to specify
+     a maximum value for the RNG, e.g.
+
+     $ bfx --random --type int16 -o snake.bf bfx_examples/snake.bfx
+     $ bfint --random --rand-max 255 --type int16 --gaming snake.bf
+
    - Compile with --random 
    - Run with --random --gaming
 
@@ -106,7 +114,7 @@ function game = initGame()
     game.dir = E;
     
     game.snake[0] = toIndex(GRID_HEIGHT / 2, 1);
-    game.snake[0] = toIndex(GRID_HEIGHT / 2, 0);
+    game.snake[1] = toIndex(GRID_HEIGHT / 2, 0);
 
     spawnFruit(game);
 }
@@ -126,9 +134,8 @@ function drawEmptyGrid()
     {
         printc('|');
         for (let col = 0; col != GRID_WIDTH; ++col)
-        {
             prints("  ");
-        }
+
         printc('|');
         endl();
     }

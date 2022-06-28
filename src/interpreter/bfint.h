@@ -21,6 +21,7 @@ struct Options
     std::string  bfFile;
     std::ostream *outStream{&std::cout};
     bool         randomEnabled{false};
+    int          randMax{0};
     bool         randomWarningEnabled{true};
     bool         gamingMode{false};
 };
@@ -41,6 +42,7 @@ class BFInterpreter
     CellType const d_cellType;
     std::ostream &d_out;
     bool const d_randomEnabled{false};
+    int  const d_randMax{0};
     bool const d_randomWarningEnabled{true};
     bool const d_gamingMode{false};
     

@@ -32,10 +32,11 @@ namespace _MaxInt
 
 BFInterpreter::BFInterpreter(Options const &opt):
     d_array(opt.tapeLength),
-    d_uniformDist(0, _MaxInt::get(opt.cellType)),
+    d_uniformDist(0, (opt.randMax != 0) ? opt.randMax : _MaxInt::get(opt.cellType)),
     d_cellType(opt.cellType),
     d_out(*opt.outStream),
     d_randomEnabled(opt.randomEnabled),
+    d_randMax(opt.randMax),
     d_randomWarningEnabled(opt.randomWarningEnabled),
     d_gamingMode(opt.gamingMode)
 {
@@ -43,7 +44,7 @@ BFInterpreter::BFInterpreter(Options const &opt):
     std::ifstream file(opt.bfFile);
     if (!file.is_open())
         throw std::string("File not found: ") + opt.bfFile;
-    
+ 
     std::stringstream buffer;
     buffer << file.rdbuf();
     d_code = buffer.str();
@@ -108,7 +109,8 @@ void BFInterpreter::run()
                     random();
                 else if (d_randomWarningEnabled && !warned)
                 {
-                    std::cerr << "\n"
+                    static std::string const warning =
+                        "\n"
                         "=========================== !!!!!! ==============================\n"
                         "Warning: BF-code contains '?'-commands, which may be\n"
                         "interpreted as the random-operation, an extension to the\n"
@@ -116,6 +118,17 @@ void BFInterpreter::run()
                         "with the --random option.\n"
                         "This warning can be disabled with the --no-random-warning option.\n"
                         "=========================== !!!!!! ==============================\n";
+                        
+                    if (!d_gamingMode)
+                        std::cerr << warning;
+                    else
+                    {
+#ifdef USE_CURSES
+                        addstr(warning.c_str());
+#else
+                        assert(false);
+#endif
+                    }
                     warned = true;
                 }
                 break;
