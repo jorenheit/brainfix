@@ -966,6 +966,7 @@ function main()
         }
     }
 }
+```
 
 ##### Rand-Max
 As mentioned briefly above, the maximum value for the RNG can be specified using the `--rand-max` option. This is particularly useful when running `bfint` in int16-mode when the RNG enabled, which would by default generate very large numbers. These numbers are hard to deal with in BF, causing the resulting program to perform very poorly. It's often not needed to generate random numbers in this range, which is why the maximum can be specified, e.g.
