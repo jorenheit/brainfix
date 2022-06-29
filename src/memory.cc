@@ -314,10 +314,10 @@ int &Memory::value(int const addr)
     return d_memory[addr].value;
 }
 
-bool Memory::valueUnknown(int const addr) const
+bool Memory::valueKnown(int const addr) const
 {
     assert(addr >= 0 && addr < (int)d_memory.size() && "address out of bounds");
-    return d_memory[addr].value == -1;
+    return d_memory[addr].value != -1;
 }
 
 void Memory::setValueUnknown(int const addr)

@@ -77,7 +77,7 @@ public:
     bool isTemp(int const addr) const;
     int value(int const addr) const;
     int &value(int const addr);
-    bool valueUnknown(int const addr) const;
+    bool valueKnown(int const addr) const;
     void setValueUnknown(int const addr);
     void setSync(int const addr, bool val);
     bool isSync(int const addr) const;

@@ -404,7 +404,7 @@ int Compiler::staticAssert(Instruction const &check, std::string const &msg)
     
     State state = save();
     int const result = check();
-    compilerErrorIf(d_memory.valueUnknown(result),
+    compilerErrorIf(!d_memory.valueKnown(result),
                     "Could not evaluate static_assert at compiletime.");
 
     compilerErrorIf(!d_memory.value(result), msg);
@@ -599,7 +599,7 @@ void Compiler::sync(int const addr)
 {
     assert(d_constEvalEnabled && "Cannot sync when constant evaluation is disabled");
 
-    bool const valueKnown = not d_memory.valueUnknown(addr);
+    bool const valueKnown = d_memory.valueKnown(addr);
     bool const synced     = d_memory.isSync(addr);
     if (valueKnown && !synced)
         runtimeSetToValue(addr, d_memory.value(addr));
@@ -654,7 +654,7 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
     if (leftSize > 1 && rightSize == 1)
     {
         // Fill array with value
-        if (d_constEvalEnabled && !d_memory.valueUnknown(rhs))
+        if (d_constEvalEnabled && d_memory.valueKnown(rhs))
         {
             for (int i = 0; i != leftSize; ++i)
                 constEvalSetToValue(lhs + i, d_memory.value(rhs));
@@ -672,7 +672,7 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
         {
             for (int i = 0; i != leftSize; ++i)
             {
-                if (!d_memory.valueUnknown(rhs + i))
+                if (d_memory.valueKnown(rhs + i))
                     constEvalSetToValue(lhs + i, d_memory.value(rhs + i));
                 else
                     runtimeAssign(lhs + i, rhs + i);
@@ -686,7 +686,7 @@ int Compiler::assign(AddressOrInstruction const &lhs, AddressOrInstruction const
     }
     else if (leftSize == 1)
     {
-        if (d_constEvalEnabled && !d_memory.valueUnknown(rhs))
+        if (d_constEvalEnabled && d_memory.valueKnown(rhs))
             constEvalSetToValue(lhs, d_memory.value(rhs));
         else
             runtimeAssign(lhs, rhs);
@@ -758,7 +758,7 @@ int Compiler::arrayFromList(std::vector<Instruction> const &list)
     for (int idx = 0; idx != sz; ++idx)
     {
         int const elementAddr = list[idx]();
-        if (d_constEvalEnabled && !d_memory.valueUnknown(elementAddr))
+        if (d_constEvalEnabled && d_memory.valueKnown(elementAddr))
         {
             constEvalSetToValue(start + idx, d_memory.value(elementAddr));
         }
@@ -831,7 +831,7 @@ int Compiler::fetchElement(AddressOrInstruction const &arr, AddressOrInstruction
               "Array index (", indexValue, ") out of bounds: sizeof(",
               d_memory.identifier(arr), ") = ", sz, ".");
 
-    if (d_constEvalEnabled && !d_memory.valueUnknown(index))
+    if (d_constEvalEnabled && d_memory.valueKnown(index))
     {
         return arr + d_memory.value(index);
     }
@@ -859,14 +859,14 @@ int Compiler::assignElement(AddressOrInstruction const &arr, AddressOrInstructio
               "Array index (", indexValue, ") out of bounds: sizeof(",
               d_memory.identifier(arr), ") = ", sz, ".");
     
-    if (d_constEvalEnabled && !d_memory.valueUnknown(index) && !d_memory.valueUnknown(rhs))
+    if (d_constEvalEnabled && d_memory.valueKnown(index) && d_memory.valueKnown(rhs))
     {
         // Case 1: index and rhs both known
         int const addr = arr + d_memory.value(index);
         constEvalSetToValue(addr, d_memory.value(rhs));
         return addr;
     }
-    else if (d_constEvalEnabled && !d_memory.valueUnknown(index))
+    else if (d_constEvalEnabled && d_memory.valueKnown(index))
     {
         // Case 2: only index known
         sync(rhs);
@@ -1543,7 +1543,7 @@ int Compiler::ifStatement(Instruction const &condition, Instruction const &ifBod
     int const conditionAddr = condition();
     compilerErrorIf(conditionAddr < 0, "Use of void-expression in if-condition.");
 
-    if (d_constEvalEnabled && !d_memory.valueUnknown(conditionAddr))
+    if (d_constEvalEnabled && d_memory.valueKnown(conditionAddr))
     {
         if (scoped)
             enterScope(Scope::Type::If);
@@ -1626,7 +1626,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
     init();
     int conditionAddr = condition();
     
-    if (d_memory.valueUnknown(conditionAddr))
+    if (!d_memory.valueKnown(conditionAddr))
     {
         restore(std::move(state));
         return forStatementRuntime(init, condition, increment, body);
@@ -1635,14 +1635,13 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
     int count = 0;
     while (d_memory.value(conditionAddr))
     {
-        //        std::cerr << d_instructionLineNr << ": " << count << ", unrolling = " << d_loopUnrolling << '\n';
         body();
         resetContinueFlag();
         increment();
         conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
-        ++d_loopUnrolling; // = true;
+        ++d_loopUnrolling;
 
-        if (d_memory.valueUnknown(conditionAddr) || ++count > MAX_LOOP_UNROLL_ITERATIONS)
+        if (!d_memory.valueKnown(conditionAddr) || ++count > MAX_LOOP_UNROLL_ITERATIONS)
         {
             restore(std::move(state));
             return forStatementRuntime(init, condition, increment, body);
@@ -1650,7 +1649,7 @@ int Compiler::forStatement(Instruction const &init, Instruction const &condition
 
     }    
 
-    --d_loopUnrolling;// = false;
+    --d_loopUnrolling;
     exitScope();
     
     return -1;
@@ -1716,11 +1715,11 @@ int Compiler::forRangeStatement(BFXFunction::Parameter const &param, Instruction
             assign(elementAddr, arrayAddr + i);
             body();
             resetContinueFlag();
-            ++d_loopUnrolling; // = true;
+            ++d_loopUnrolling;
         }    
     }
     
-    --d_loopUnrolling; // = false;
+    --d_loopUnrolling;
     exitScope();
     
     return -1;
@@ -1775,7 +1774,7 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
     enterScope(Scope::Type::While);
     
     int conditionAddr = condition();
-    if (d_memory.valueUnknown(conditionAddr))
+    if (!d_memory.valueKnown(conditionAddr))
     {
         restore(std::move(state));
         return whileStatementRuntime(condition, body);
@@ -1787,16 +1786,16 @@ int Compiler::whileStatement(Instruction const &condition, Instruction const &bo
         body();
         resetContinueFlag();
         conditionAddr = d_bcrEnabled ? logicalAnd(condition, getCurrentBreakFlag()) : condition();
-        ++d_loopUnrolling; // = true;
+        ++d_loopUnrolling;
         
-        if (d_memory.valueUnknown(conditionAddr) || (count++ > MAX_LOOP_UNROLL_ITERATIONS))
+        if (!d_memory.valueKnown(conditionAddr) || (count++ > MAX_LOOP_UNROLL_ITERATIONS))
         {
             restore(std::move(state));
             return whileStatementRuntime(condition, body);
         }
     }
     
-    --d_loopUnrolling;// = false;
+    --d_loopUnrolling;
     exitScope();
     return -1;    
 }

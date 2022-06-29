@@ -352,7 +352,7 @@ int Compiler::eval(BFGenFunc&& bfFunc, ConstFunc&& constFunc, int const resultAd
             return VolatileMask & (1 << (N - argIdx - 1));
         };
 
-    bool const canBeConstEvaluated = (not d_memory.valueUnknown(args) && ...);
+    bool const canBeConstEvaluated = (d_memory.valueKnown(args) && ...);
     if (canBeConstEvaluated && d_constEvalEnabled)
     {
         // Evaluate using constfunc
