@@ -4,6 +4,11 @@
 # any compiled files
 *.bf
 
+# testing files
+*.test
+*.input
+*.expect
+
 # generated files and executables
 src/*.o
 src/interpreter/*.o
