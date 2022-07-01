@@ -1011,7 +1011,7 @@ Number of cells required:          1201
 
 ### Unit Testing
 
-Brainfix supports unit-testing blocks, which tell the `bfint` interpreter what output is to be expected at given input (if any). Tests are defined in test-blocks, surrounded by `@start_test <test-name>` and `@end_test` respectively. Within a test-block, multiple test-cases can be defined using `\`\`\`input`and`\`\`\`expect`:
+Brainfix supports unit-testing blocks, which tell the `bfint` interpreter what output is to be expected at given input (if any). Tests are defined in test-blocks, surrounded by `@start_test <test-name>` and `@end_test` respectively. Within a test-block, multiple test-cases can be defined using `input` and `expect`:
 
 ````javascript
 include "std.bfx"
