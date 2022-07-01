@@ -1098,7 +1098,6 @@ function main()
 
 ```expect
 ${28}4
-
 ```
 
 <no_newline>
