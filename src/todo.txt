@@ -44,3 +44,6 @@
 [x] Shortcircuit on && and ||? ==> hard! Make note in readme that this is not supported.
 [ ] Gaming mode does not always work in with int16 type.
 [x] Use Options struct for bfint as well
+[ ] Create git wiki to document the BF algorithms/compiler implementation details
+[ ] Unit test framework / test suite
+[ ] In the lexer, remove more() before miniscanner to simplify substring

@@ -34,11 +34,11 @@ BFInterpreter::BFInterpreter(Options const &opt):
     d_array(opt.tapeLength),
     d_uniformDist(0, (opt.randMax != 0) ? opt.randMax : _MaxInt::get(opt.cellType)),
     d_cellType(opt.cellType),
-    d_out(*opt.outStream),
     d_randomEnabled(opt.randomEnabled),
     d_randMax(opt.randMax),
     d_randomWarningEnabled(opt.randomWarningEnabled),
-    d_gamingMode(opt.gamingMode)
+    d_gamingMode(opt.gamingMode),
+    d_testFile(opt.testFile)
 {
     // init code
     std::ifstream file(opt.bfFile);
@@ -54,9 +54,108 @@ BFInterpreter::BFInterpreter(Options const &opt):
     auto ms = duration_cast<std::chrono::milliseconds>(t0).count();
     d_rng.seed(ms);
 }
-    
+
+void BFInterpreter::reset()
+{
+    std::fill(d_array.begin(), d_array.end(), 0);
+    d_arrayPointer = 0;
+    d_codePointer = 0;
+    d_loopStack = std::stack<int>{};
+}
+
 void BFInterpreter::run()
 {
+    if (d_testFile.empty())
+        return run(std::cin, std::cout);
+        
+    auto const report =
+        [](std::string const &testName, std::string const &caseName,
+           std::string const &output, std::string const &expect)
+        {
+            std::cout << '<' << testName << "::" << caseName << "> ";
+            if (output == expect)
+            {
+                std::cout << "PASS\n";
+                return;
+            }
+                
+            std::cout << "FAIL\n"
+                      << "\tExpected: \"";
+            for (char c: expect)
+                std::cout << (std::isprint(c) ? c : '.');
+            std::cout << "\"\n\tGot:      \"";
+            for (char c: output)
+                std::cout << (std::isprint(c) ? c : '.');
+            std::cout << "\"\n";
+        };
+
+    auto const split = [](std::string const &str, char const s)
+                       {
+                           std::vector<std::string> result;
+                           std::string current;
+                           for (char c: str)
+                           {
+                               if (c == s)
+                               {
+                                   result.push_back(current);
+                                   current = "";
+                               }
+                               else
+                                   current += c;
+                           }
+                           result.push_back(current);
+                           return result;
+                       };
+
+    auto const loadStringStream =
+        [](std::stringstream &ss, std::string const &filename)
+        {
+            std::ifstream file(filename);
+            if (!file)
+            {
+                std::cerr << "ERROR: coult not open file " << filename << '\n';
+                return;
+            }
+            ss << file.rdbuf();
+        };
+
+    
+    std::ifstream file(d_testFile);
+    if (!file)
+    {
+        std::cerr << "ERROR: coult not open test-file " << d_testFile << '\n';
+        return;
+    }
+
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(file, line))
+        lines.push_back(line);
+        
+    for (std::string const &base: lines)
+    {
+        std::vector<std::string> parts = split(base, '-');
+        assert(parts.size() == 3);
+            
+        std::string const testName = parts[1];
+        std::string const caseName = parts[2];
+
+        std::stringstream inputString;
+        loadStringStream(inputString, base + ".input");
+
+        std::stringstream expectString;
+        loadStringStream(expectString, base + ".expect");
+        
+        std::ostringstream bfOutput;
+        run(inputString, bfOutput);
+        report(testName, caseName, bfOutput.str(), expectString.str());
+    }
+}
+
+void BFInterpreter::run(std::istream &in, std::ostream &out)
+{
+    reset();
+    
 #ifdef USE_CURSES
     // Setup ncurses window
     if (d_gamingMode)
@@ -87,9 +186,9 @@ void BFInterpreter::run()
         case PRINT:
             {
                 if (d_gamingMode)
-                    printCurses(d_out);
+                    printCurses();
                 else
-                    print(d_out);
+                    print(out);
                 break;
             }
         case READ:
@@ -97,7 +196,7 @@ void BFInterpreter::run()
                 if (d_gamingMode)
                     readCurses();
                 else
-                    read();
+                    read(in);
                 break;
             }
         case START_LOOP: startLoop(); break;
@@ -251,7 +350,7 @@ void BFInterpreter::print(std::ostream &out)
     out << (char)d_array[d_arrayPointer] << std::flush;
 }
 
-void BFInterpreter::printCurses(std::ostream &out)
+void BFInterpreter::printCurses()
 {
 #ifdef USE_CURSES
     static char const ESC = 27; // Control char
@@ -466,10 +565,10 @@ void BFInterpreter::handleAnsi(std::string &ansiStr, bool const force)
 #endif
 }
 
-void BFInterpreter::read()
+void BFInterpreter::read(std::istream &in)
 {
     char c;
-    std::cin.get(c);
+    in.get(c);
     d_array[d_arrayPointer] = c;
 }
 
@@ -506,3 +605,4 @@ void BFInterpreter::finish(int sig)
     assert(false && "finish() called but not compiled with USE_CURSES");
 #endif
 }
+

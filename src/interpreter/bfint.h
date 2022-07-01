@@ -19,7 +19,7 @@ struct Options
     CellType     cellType{CellType::INT8};
     int          tapeLength{30000};
     std::string  bfFile;
-    std::ostream *outStream{&std::cout};
+    std::string  testFile;
     bool         randomEnabled{false};
     int          randMax{0};
     bool         randomWarningEnabled{true};
@@ -40,11 +40,11 @@ class BFInterpreter
 
     // Options
     CellType const d_cellType;
-    std::ostream &d_out;
     bool const d_randomEnabled{false};
     int  const d_randMax{0};
     bool const d_randomWarningEnabled{true};
     bool const d_gamingMode{false};
+    std::string const d_testFile;
     
     enum Ops: char
         {
@@ -64,6 +64,7 @@ public:
     void run();
 
 private:
+    void run(std::istream &in, std::ostream &out);
     int consume(Ops op);
     void plus();
     void minus();
@@ -71,14 +72,16 @@ private:
     void pointerDec();
     void startLoop();
     void endLoop();
-    void print(std::ostream &out);
-    void printCurses(std::ostream &out);
-    void read();
+    void print(std::ostream &);
+    void printCurses();
+    void read(std::istream &);
     void readCurses();
     void random();
     void printState();
     void handleAnsi(std::string &ansiStr, bool const force);
     static void finish(int sig);
+    void runTests();
+    void reset();
 };
 
 

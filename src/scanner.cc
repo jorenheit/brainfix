@@ -1,5 +1,13 @@
 #include "scanner.ih"
 
+
+Scanner::Scanner(std::string const &infile, std::string const &outfile):
+    ScannerBase(infile, outfile)
+{
+    //    d_startConditionStack.push(StartCondition_::INITIAL);
+}
+
+
 std::string Scanner::escape(char c)
 {
     switch (c)
@@ -11,12 +19,25 @@ std::string Scanner::escape(char c)
     }
 }
 
-std::string Scanner::escape(std::string const &matched)
+char Scanner::escapeTestContent(std::string const &str)
 {
-    std::string result =
-        matched.substr(0, matched.size() - 2) // remove escape sequence from the back
-        + escape(matched.back());             // replace by escaped charater
-
-    return result;
+    try{
+        return static_cast<char>(std::stoi(str));
+    } catch(std::invalid_argument const &)
+    {
+        std::cerr << "ERROR: escape sequence does not contain a number.\n";
+        std::exit(1);
+    }
 }
 
+void Scanner::pushStartCondition(StartCondition_ next)
+{
+    d_startConditionStack.push(startCondition());
+    begin(next);
+}
+
+void Scanner::popStartCondition()
+{
+    begin(d_startConditionStack.top());
+    d_startConditionStack.pop();
+}

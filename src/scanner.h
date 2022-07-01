@@ -3,6 +3,8 @@
 #ifndef Scanner_H_INCLUDED_
 #define Scanner_H_INCLUDED_
 
+#include <stack>
+
 // $insert baseclass_h
 #include "scannerbase.h"
 #include "compilerbase.h"
@@ -11,6 +13,7 @@
 class Scanner: public ScannerBase
 {
     int d_nestedCommentLevel{0};
+    std::stack<StartCondition_> d_startConditionStack;
     
 public:
     Scanner(std::string const &infile, std::string const &outfile);
@@ -31,14 +34,12 @@ private:
     // re-implement this function for code that must 
     // be exec'ed after the rules's actions.
 
+    void pushStartCondition(StartCondition_ next);
+    void popStartCondition();
+    
     static std::string escape(char c);
-    static std::string escape(std::string const &matched);
+    static char escapeTestContent(std::string const &matched);
 };
-
-inline Scanner::Scanner(std::string const &infile, std::string const &outfile)
-    :
-    ScannerBase(infile, outfile)
-{}
 
 // $insert inlineLexFunction
 inline int Scanner::lex()

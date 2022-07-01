@@ -36,7 +36,8 @@ Compiler::Compiler(Options const &opt):
     d_includeWarningEnabled(opt.includeWarningEnabled),
     d_assertWarningEnabled(opt.assertWarningEnabled),
     d_outStream(*opt.outStream),
-    d_profileFile(opt.profileFile)
+    d_profileFile(opt.profileFile),
+    d_testFile(opt.testFile)
 {
     d_includePaths.push_back(".");
     d_includePaths.push_back(BFX_DEFAULT_INCLUDE_PATH_STRING);
@@ -216,6 +217,7 @@ int Compiler::compile()
     d_stage = Stage::FINISHED;
 
     writeProfile();
+    writeTestList();
     
     return 0;
 }
@@ -252,6 +254,64 @@ void Compiler::write()
 {
     d_outStream << cancelOppositeCommands(d_codeBuffer.str()) << '\n';
 }
+
+void Compiler::addTest(std::string const &testName,
+                       std::vector<std::tuple<std::string, std::string, std::string>> const &testBody)
+    
+{
+    if (d_testFile.empty())
+        return;
+    
+    enum class Type
+    {
+     BASE,
+     INPUT,
+     EXPECT
+    };
+    
+    auto const generateFilename =
+        [&](std::string const &caseName) -> std::string
+        {
+            return std::string(".bfxtest-") + testName + "-" + caseName;
+        };
+    
+    for (auto const &test: testBody)
+    {
+        auto const &[caseName, inputText, expectText] = test;
+
+        
+        std::string const base = generateFilename(caseName);
+        compilerErrorIf(std::find(d_testVector.begin(), d_testVector.end(), base) != d_testVector.end(),
+                        "Multiple definitions of test-case <", caseName, "> in test-block <",
+                        testName, ">.");
+
+        std::string const inputFile = base + ".input";
+        std::string const expectFile = base + ".expect";
+
+        std::ofstream input(inputFile);
+        std::ofstream expect(expectFile);
+        compilerErrorIf(!input, "Could not open file ", inputFile, ".");
+        compilerErrorIf(!expect, "Could not open file ", expectFile, ".");
+
+        d_testVector.push_back(base);
+        input << inputText;
+        expect << expectText;
+    }
+}
+
+void Compiler::writeTestList()
+{
+    assert(d_stage == Stage::FINISHED && "call writeTests after compiling.");
+    if (d_testFile.empty())
+        return;
+
+    std::ofstream file(d_testFile);
+    compilerErrorIf(!file, "Could not open file for tests: ", d_testFile, ".");
+
+    for (std::string const &testFilename: d_testVector)
+        file << testFilename << '\n';
+}
+
 
 void Compiler::error()
 {

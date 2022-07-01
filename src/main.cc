@@ -19,6 +19,8 @@ void printHelp(std::string const &progName)
               << "--max-unroll-iterations [N]\n"
               << "                    Specify the maximum number of loop-iterations that will be unrolled.\n"
               << "                      Defaults to 20.\n"
+              << "--test [file]       Produce test-files and write a list of generated files to [file], to\n"
+              << "                      be used by bfint for unit-testing.\n"
               << "--random            Enable random number generation (generates the ?-symbol).\n"
               << "                      Your interpreter must support this extension!\n"
               << "--profile [file]    Write the memory profile to a file. In this file, the number of visits\n"
@@ -141,6 +143,18 @@ std::pair<Compiler::Options, int> parseCmdLine(std::vector<std::string> const &a
                 std::cerr << "Could not convert argument to --max-unroll-iterations to integer.";
                 return {opt, 1};
             }
+        }
+        else if (args[idx] == "--test")
+        {
+            if (idx == args.size() - 1)
+            {
+                std::cerr << "ERROR: No filename passed to option \'--test\'.\n";
+                return {opt, 1};
+            }
+
+            opt.testFile = args[idx + 1];
+            idx += 2;
+
         }
         else if (args[idx] == "--random")
         {

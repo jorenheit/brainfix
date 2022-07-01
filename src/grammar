@@ -9,6 +9,7 @@
                 CHAR:                   char;
                 STRING:                 std::string;
                 STRING_LIST:            std::vector<std::string>;
+                STRING_TUPLE:           std::tuple<std::string, std::string, std::string>;
                 INSTRUCTION:            Instruction;
                 INSTRUCTION_LIST:       std::vector<Instruction>;
                 DECLARATION:            std::pair<std::string, TypeSystem::Type>;
@@ -18,10 +19,12 @@
                 INSTRUCTION_PAIR:       std::pair<Instruction, Instruction>;
                 CASE_LIST:              std::vector<std::pair<Instruction, Instruction>>;
                 BFX_FUNCTION:           BFXFunction;
+                TEST_VECTOR:            std::vector<std::tuple<std::string, std::string, std::string>>;
 
 // Keywords
 %token LET FUNCTION GLOBAL INCLUDE SCAN PRINT RAND
 %token SIZEOF FOR IF WHILE CONST SWITCH CASE DEFAULT STRUCT BREAK CONTINUE RETURN ASSERT
+%token START_TEST END_TEST INPUT EXPECT END_TEST_CONTENT
 
 %nonassoc then
 %nonassoc ELSE
@@ -82,6 +85,14 @@
 %type <PARAMETER_LIST>      optional_parameter_list
 %type <BFX_FUNCTION>        function_header
 %type <STRING_LIST>         field
+%type <STRING>              unit_test_content
+%type <STRING>              unit_test_label
+%type <STRING>              unit_test_input
+%type <STRING>              unit_test_expect
+%type <STRING_TUPLE>        unit_test_case
+%type <TEST_VECTOR>         unit_test_body
+
+
 %%
 
 program:
@@ -98,6 +109,8 @@ program:
     program const_definition
 |
     program struct_definition
+|
+    program unit_test_block
 ;
 
 include_directive:
@@ -920,3 +933,68 @@ optional_expression_list:
 ;
 
 
+unit_test_block:
+    START_TEST unit_test_label unit_test_body END_TEST
+    {
+        addTest($2, $3);
+    }
+;
+
+unit_test_label:
+    '<' IDENT '>'
+    {
+        $$ = $2;
+    }
+;
+
+unit_test_body:
+    unit_test_case
+    {
+        $$ = std::vector<std::tuple<std::string, std::string, std::string>>{};
+        ($$).push_back($1);
+    }
+|
+    unit_test_body unit_test_case
+    {
+        ($1).push_back($2);
+        $$ = $1;
+    }
+;
+
+unit_test_case:
+    unit_test_label unit_test_input unit_test_expect
+    {
+        $$ = std::make_tuple($1, $2, $3);
+    }
+|
+    unit_test_label unit_test_expect
+    {
+        $$ = std::make_tuple($1, std::string{}, $2);
+    }
+;
+
+unit_test_input:
+    INPUT unit_test_content END_TEST_CONTENT
+    {
+        $$ = $2;
+    }
+;
+
+unit_test_expect:
+    EXPECT unit_test_content END_TEST_CONTENT
+    {
+        $$ = $2;
+    }
+;
+
+unit_test_content:
+    //  empty
+    {
+        $$ = std::string("");
+    }
+|
+    unit_test_content CHR
+    {
+        $$  = $1 + $2;
+    }
+;    

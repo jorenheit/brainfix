@@ -32,6 +32,7 @@ public:
         Compiler::CellType        cellType{Compiler::CellType::INT8};
         std::vector<std::string>  includePaths;
         std::string               bfxFile;
+        std::string               testFile;;
         std::string               profileFile;
         std::ostream*             outStream{&std::cout};
         bool                      constEvalAllowed{true};
@@ -88,6 +89,10 @@ private:
     std::ostream& d_outStream;
     std::string const d_profileFile;
 
+    std::string const d_testFile;
+    std::vector<std::string> d_testVector;
+    std::ofstream d_testStream;
+
     struct State
     {
         Memory memory;
@@ -125,6 +130,10 @@ private:
     void addConstant(std::string const &ident, int const num);
     void addStruct(std::string const &name,
                    std::vector<std::pair<std::string, TypeSystem::Type>> const &fields);
+    
+    void addTest(std::string const &testName,
+                 std::vector<std::tuple<std::string, std::string, std::string>> const &testBody);
+    void writeTestList();
 
     int  compileTimeConstant(std::string const &ident) const;
     bool isCompileTimeConstant(std::string const &ident) const;

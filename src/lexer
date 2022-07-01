@@ -9,6 +9,9 @@ blanks [[:blank:]\n]
 %x character
 %x eolcomment
 %x ccomment
+%x test
+%x test_content
+%x escape_test_content
 
 %%
 
@@ -52,7 +55,6 @@ blanks [[:blank:]\n]
 "__rand"                    return CompilerBase::RAND;
 "sizeof"                    return CompilerBase::SIZEOF;
 
-
 [[:digit:]]+                return CompilerBase::NUM;
 {ident}                     return CompilerBase::IDENT;
 
@@ -67,31 +69,37 @@ blanks [[:blank:]\n]
 
 \"                          {
                                 more();
-                                begin(StartCondition_::string);
+                                pushStartCondition(StartCondition_::string);
                             }
 
 "//"                        {
                                 more();
-                                begin(StartCondition_::eolcomment);
+                                pushStartCondition(StartCondition_::eolcomment);
                             }
 
 "/*"                        {
                                 ++d_nestedCommentLevel;
                                 more();
-                                begin(StartCondition_::ccomment);
+                                pushStartCondition(StartCondition_::ccomment);
+                            }
+
+
+"@start_test"               {
+                                pushStartCondition(StartCondition_::test);
+                                return CompilerBase::START_TEST;
                             }
 
 .|\n|\r                     return matched()[0];
-                            
+
 <string>{
 \"                          {
-                                begin(StartCondition_::INITIAL);
+                                popStartCondition();
                                 setMatched(matched().substr(1, matched().size() - 2));
                                 return CompilerBase::STR;
                             }
 
 "\\".                       {
-                                setMatched(escape(matched()));
+                                setMatched(escape(matched()[1]));
                                 more();
                             }
                             
@@ -99,7 +107,7 @@ blanks [[:blank:]\n]
 }
 
 <eolcomment>{
-\n|\r                       begin(StartCondition_::INITIAL);
+\n|\r                       popStartCondition();
 .                           
 }
                 
@@ -109,7 +117,84 @@ blanks [[:blank:]\n]
                             }
 "*/"                        {
                                 if (--d_nestedCommentLevel == 0)
-                                   begin(StartCondition_::INITIAL);
+                                   popStartCondition();
                             }
 .|\n|\r                     
 }
+
+<test>{
+
+"<"|">"                     return matched()[0];
+{ident}                     return CompilerBase::IDENT;
+
+\"                          {
+                                more();
+                                pushStartCondition(StartCondition_::string);
+                            }
+^"```input"{blanks}*\n      {
+                                pushStartCondition(StartCondition_::test_content);
+                                return CompilerBase::INPUT;
+                            }      
+
+^"```expect"{blanks}*\n     {
+                                 pushStartCondition(StartCondition_::test_content);
+                                 return CompilerBase::EXPECT;
+                            }      
+
+"@end_test"                 {
+                                popStartCondition();
+                                return CompilerBase::END_TEST;
+                            }
+
+"//"                        {
+                                more();
+                                pushStartCondition(StartCondition_::eolcomment);
+                            }
+
+"/*"                        {
+                                ++d_nestedCommentLevel;
+                                more();
+                                pushStartCondition(StartCondition_::ccomment);
+                            }
+
+.|\n                        // ignore                           
+} // test
+
+
+<test_content>{
+
+\\\n                       // ignore \ at end of line
+
+"\\".                      {
+                                setMatched(escape(matched()[1]));
+                                return CompilerBase::CHR;
+                           }
+
+"${"                       {
+                                pushStartCondition(StartCondition_::escape_test_content);
+                           }
+
+
+^"```"{blanks}*\n          {
+                                popStartCondition();
+                                return CompilerBase::END_TEST_CONTENT;
+                            }
+
+.|\n                        {
+                                return CompilerBase::CHR;
+                            }
+
+} // test_content
+
+<escape_test_content>{
+                            
+"}"                         {
+                                char c = escapeTestContent(matched().substr(0, matched().size() - 1));
+                                setMatched(std::string(1, c));
+                                popStartCondition();
+                                return CompilerBase::CHR;
+                            }
+
+.                           more();
+
+} // escape
