@@ -207,7 +207,7 @@ A function without a return-value is defined like we saw in the 'Hello World' ex
 
 ```javascript
 function foo(x, y, z) {
-  // body
+    // body
 }
 ```
 
@@ -228,7 +228,7 @@ function foo()
     let x = 31;
     let y = 38;
 
-    let nice = bar(x, y); // works, even if bar is defined below
+		let nice = bar(x, y); // works, even if bar is defined below
 }
 
 function z = bar(x, y)
@@ -243,17 +243,17 @@ Functions can be overloaded on their number of arguments (not on return-value). 
 
 ```javascript
 function bestNumber(x) {
-  printd(x);
-  prints(" is the best number.");
+    printd(x);
+    prints(" is the best number.");
 }
 
 function bestNumber() {
-  bestNumber(42);
+    bestNumber(42);
 }
 
 function main() {
-  bestNumber();
-  bestNumber(69);
+    bestNumber();
+    bestNumber(69);
 }
 ```
 
@@ -263,14 +263,14 @@ By default, all arguments are passed by value to a function: every argument is c
 
 ```javascript
 function foo() {
-  let x = 2;
-  bar(x);
+    let x = 2;
+    bar(x);
 
-  // x == 2, still
+    // x == 2, still
 }
 
 function bar(x) {
-  ++x;
+    ++x;
 }
 ```
 
@@ -479,7 +479,7 @@ The `sizeof()` operator (it's not really a function, as it's a compiler intrinsi
 
 ```javascript
 function looper(arr) {
-  for (let i = 0; i != sizeof(arr); ++i) printd(arr[i]);
+    for (let i = 0; i != sizeof(arr); ++i) printd(arr[i]);
 }
 ```
 
@@ -632,9 +632,9 @@ for (let i = 0; i != 10; ++i) printd(i);
 
 // Compound statement
 for (let i = 0; i != 10; ++i) {
-  let j = i + 10;
-  printd(j);
-  endl();
+    let j = i + 10;
+    printd(j);
+    endl();
 }
 ```
 
@@ -684,7 +684,7 @@ let x = scand();
 if (x < 10) println("Small");
 else if (x < 20) println("Medium");
 else {
-  println("Large!");
+    println("Large!");
 }
 ```
 
@@ -696,24 +696,24 @@ Each label has to be followed by either a single or compound statement, of which
 
 ```javascript
 while (true) {
-  prints("Enter a number 0-3, or 9 to quit: ");
-  let x = scand();
-  switch (x) {
-    case 0:
-      println("Zero");
-    case 1:
-      println("One");
-    case 2:
-      println("Two");
-    case 3:
-      println("Three");
-    case 9: {
-      println("Quitting ...");
-      break; // will break out of the while!
+    prints("Enter a number 0-3, or 9 to quit: ");
+    let x = scand();
+    switch (x) {
+        case 0:
+            println("Zero");
+        case 1:
+            println("One");
+        case 2:
+            println("Two");
+        case 3:
+            println("Three");
+        case 9: {
+            println("Quitting ...");
+            break; // will break out of the while!
+        }
+        default:
+            println("Not sure ...");
     }
-    default:
-      println("Not sure ...");
-  }
 }
 ```
 
@@ -724,10 +724,10 @@ let x = scand();
 let y = scand();
 
 switch (x) {
-  case y:
-    println("Same");
-  default:
-    println("Different");
+    case y:
+        println("Same");
+    default:
+        println("Different");
 }
 ```
 
@@ -780,9 +780,9 @@ Will force flow to break out of the enclosing scope (skipping all statements unt
 
 ```javascript
 for (let i = 0; i != 10; ++i) {
-  if (i == 5) break;
+    if (i == 5) break;
 
-  printd(i);
+    printd(i);
 }
 // Prints "01234"
 ```
@@ -793,10 +793,10 @@ Like `break`, a `continue` statement will skip all statements until the closing 
 
 ```javascript
 for (let i = 0; i != 10; ++i) {
-  printd(i);
-  if (i > 5) continue;
+    printd(i);
+    if (i > 5) continue;
 
-  printd(i);
+    printd(i);
 }
 // Prints "0011223344556789"
 ```
@@ -1125,4 +1125,3 @@ If a test should fail, `bfint` will report both the expect string and actual out
 	Expected: ".4."
 	Got:      ".4"
 ```
-
