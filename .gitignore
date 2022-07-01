@@ -6,8 +6,7 @@
 
 # testing files
 *.test
-*.input
-*.expect
+.bfxtest*
 
 # generated files and executables
 src/*.o
