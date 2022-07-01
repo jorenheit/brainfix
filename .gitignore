@@ -4,6 +4,10 @@
 # any compiled files
 *.bf
 
+# testing files
+*.test
+.bfxtest*
+
 # generated files and executables
 src/*.o
 src/interpreter/*.o
