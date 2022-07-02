@@ -20,7 +20,7 @@ include "std.bfx"
     $ bfx gol.bf bfx_examples/gol.bfx 
 
   - Run the interpreter while redirecting the prepared file to stdin:
-    $ bfint gol.bf < bfx_examples/gol/golglider5x5.txt
+    $ bfint gol.bf < bfx_examples/gol/golpenta11x18.txt
 
   - The output becomes very slow very fast for larger grids. However, 
     if you insist on grids larger than 250 cells in total, use the
@@ -29,9 +29,9 @@ include "std.bfx"
 */
 
 
-const GRID_WIDTH = 5;
-const GRID_HEIGHT = 5;
-const ARRAY_SIZE = 25; // should be GRID_WIDTH * GRID_HEIGHT
+const GRID_WIDTH = 11;
+const GRID_HEIGHT = 18;
+const ARRAY_SIZE = 198; // should be GRID_WIDTH * GRID_HEIGHT
 
 // Don't alter values for DEAD and ALIVE!
 const DEAD = 0;
@@ -64,7 +64,7 @@ function g = getGridFromStdin()
     }
 }
 
-function dispGrid(&g)
+function dispGrid(&g, &count)
 {
     printc('+');
     for (let col = 0; col != 2 * GRID_WIDTH; ++col)
@@ -91,6 +91,8 @@ function dispGrid(&g)
         printc('-');
     printc('+');
     endl();
+    prints("Iterations: ");
+    printd(count); endl();
 }
 
 function row = rowAbove(row)
@@ -179,9 +181,7 @@ function main()
     while* (true)
     {
         cursor_home();
-        dispGrid(g);
+        dispGrid(g, count++);
         iterate(g);
-        prints("Iterations: ");
-        printd(count++); endl();
     }
 }

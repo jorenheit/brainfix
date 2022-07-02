@@ -23,16 +23,18 @@ include "std.bfx"
    |                        |
    |                        |
    |                        |
-   |                      ()|
-   |    <>                  |
-   |    <>  You died!       |
-   |    <>**<>              |
-   |    <>  <>              |
-   |    <><><>              |
+   |          <><><>        |
+   |              <>        |
+   |              <>        |
+   |              **        |
+   |        ()              |
+   |                        |
    |                        |
    |                        |
    |                        |
    +------------------------+
+   Score: 4
+
 */
 
 // Controls
@@ -47,9 +49,6 @@ const GRID_HEIGHT = 12;
 const ARRAY_SIZE = 144;
 const MAX_LENGTH = 15;
 
-// Speed
-const SLEEP_TIME = 100;
-
 // Do not alter
 const N = 0;
 const E = 1;
@@ -60,6 +59,7 @@ struct Game
 {
     [ARRAY_SIZE] snake;
     snakeLength, dir, fruitIndex;
+    score;
 };
 
 function i = toIndex(&row, &col)
@@ -166,6 +166,11 @@ function drawGame(&game)
     let [2] fruit = toRowCol(game.fruitIndex);
     cursor_to(2 + fruit[0], 2 + 2 * fruit[1]);
     prints("()");
+
+    // Draw score
+    cursor_to(GRID_HEIGHT + 3, 1);    
+    prints("Score: ");
+    printd(game.score);
 }
 
 function iterate(&game)
@@ -232,6 +237,7 @@ function spawnFruit(&game)
 
 function eatFruit(&game)
 {
+    ++game.score;
     if (game.snakeLength < MAX_LENGTH)
     {
         let tailIndex = game.snake[game.snakeLength - 1];
@@ -254,6 +260,46 @@ function dead = died(&game)
     }
 }
 
+function ans = restartPrompt()
+{
+    prints("Press 'r' to restart or 'q' to quit");
+
+    let ans = 0;
+    while (!ans)
+    {
+        ans = scanc();
+        switch (ans)
+        {
+            case 'r': break;
+            case 'q': break;
+        }
+    }
+}
+
+function endScreen(&game)
+{
+    cursor_to(GRID_HEIGHT + 3, 1);
+    clear_line();
+    cursor_down();
+    println("GAME OVER!");
+    prints("Final score: "); printd(game.score); endl();
+}
+
+function t = speedPrompt()
+{
+    cursor_to(GRID_HEIGHT / 2, GRID_WIDTH / 2);
+    prints("Enter speed (1-5)");
+    let t = 0;
+    while (!t)
+    {
+        t = scanc();
+        if (t < '1' || t > '5')
+            continue;
+
+        t = 250 - (t - '1') * 40;
+    }
+}
+
 function sleep(n)
 {
     for* (let i = 0; i != n; ++i)
@@ -268,19 +314,29 @@ function main()
     static_assert(MAX_LENGTH <= ARRAY_SIZE,
                   "Maximum snake-length must be less or equal to width * height.");
 
-
-    let [struct Game] game = initGame();
     while* (true)
     {
-        if (died(game))
-            break;
+        let [struct Game] game = initGame();
+        let sleepTime = speedPrompt();
+        
+        while* (true)
+        {
+            if (died(game))
+                break;
 
-        handleInput(game);
-        drawEmptyGrid();
-        drawGame(game);
-        iterate(game);
-        sleep(SLEEP_TIME);
+            handleInput(game);
+            drawEmptyGrid();
+            drawGame(game);
+            iterate(game);
+            sleep(sleepTime);
+        }
+
+        endScreen(game);
+        if (restartPrompt() == 'q')
+            break;
     }
 
-    println("You died!");
+    clear_screen();
+    cursor_to(GRID_HEIGHT / 2, GRID_WIDTH / 2);
+    prints("Press any key to exit");
 }
