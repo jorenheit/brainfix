@@ -61,10 +61,10 @@ class BFInterpreter
 
 public:
     BFInterpreter(Options const &opt);
-    void run();
+    int run();
 
 private:
-    void run(std::istream &in, std::ostream &out);
+    int run(std::istream &in, std::ostream &out);
     int consume(Ops op);
     void plus();
     void minus();

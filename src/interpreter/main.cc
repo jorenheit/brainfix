@@ -234,7 +234,7 @@ try
     }
     
     BFInterpreter bfint(opt);
-    bfint.run();
+    return bfint.run();
 }
  catch (std::string const &msg)
 {

@@ -63,7 +63,7 @@ void BFInterpreter::reset()
     d_loopStack = std::stack<int>{};
 }
 
-void BFInterpreter::run()
+int BFInterpreter::run()
 {
     if (d_testFile.empty())
         return run(std::cin, std::cout);
@@ -76,7 +76,7 @@ void BFInterpreter::run()
             if (output == expect)
             {
                 std::cout << "PASS\n";
-                return;
+                return 0;
             }
                 
             std::cout << "FAIL\n"
@@ -87,6 +87,7 @@ void BFInterpreter::run()
             for (char c: output)
                 std::cout << (std::isprint(c) ? c : '.');
             std::cout << "\"\n";
+            return 1;
         };
 
     auto const split = [](std::string const &str, char const s)
@@ -114,9 +115,10 @@ void BFInterpreter::run()
             if (!file)
             {
                 std::cerr << "ERROR: coult not open file " << filename << '\n';
-                return;
+                return false;
             }
             ss << file.rdbuf();
+            return true;
         };
 
     
@@ -124,14 +126,15 @@ void BFInterpreter::run()
     if (!file)
     {
         std::cerr << "ERROR: coult not open test-file " << d_testFile << '\n';
-        return;
+        return -1;
     }
 
     std::vector<std::string> lines;
     std::string line;
     while (std::getline(file, line))
         lines.push_back(line);
-        
+
+    int errCount = 0;
     for (std::string const &base: lines)
     {
         std::vector<std::string> parts = split(base, '-');
@@ -141,18 +144,22 @@ void BFInterpreter::run()
         std::string const caseName = parts[2];
 
         std::stringstream inputString;
-        loadStringStream(inputString, base + ".input");
+        if (!loadStringStream(inputString, base + ".input"))
+            return -1;
 
         std::stringstream expectString;
-        loadStringStream(expectString, base + ".expect");
+        if (!loadStringStream(expectString, base + ".expect"))
+            return -1;
         
         std::ostringstream bfOutput;
         run(inputString, bfOutput);
-        report(testName, caseName, bfOutput.str(), expectString.str());
+        errCount += report(testName, caseName, bfOutput.str(), expectString.str());
     }
+
+    return errCount;
 }
 
-void BFInterpreter::run(std::istream &in, std::ostream &out)
+int BFInterpreter::run(std::istream &in, std::ostream &out)
 {
     reset();
     
@@ -246,7 +253,9 @@ void BFInterpreter::run(std::istream &in, std::ostream &out)
         getch();
         finish(0);
     }
-#endif    
+#endif
+
+    return 0;
 }
 
 int BFInterpreter::consume(Ops op)

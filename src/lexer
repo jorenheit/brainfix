@@ -68,18 +68,15 @@ blanks [[:blank:]\n]
                             }
 
 \"                          {
-                                more();
                                 pushStartCondition(StartCondition_::string);
                             }
 
 "//"                        {
-                                more();
                                 pushStartCondition(StartCondition_::eolcomment);
                             }
 
 "/*"                        {
                                 ++d_nestedCommentLevel;
-                                more();
                                 pushStartCondition(StartCondition_::ccomment);
                             }
 
@@ -94,7 +91,7 @@ blanks [[:blank:]\n]
 <string>{
 \"                          {
                                 popStartCondition();
-                                setMatched(matched().substr(1, matched().size() - 2));
+                                setMatched(matched().substr(0, matched().size() - 1));
                                 return CompilerBase::STR;
                             }
 
@@ -108,7 +105,7 @@ blanks [[:blank:]\n]
 
 <eolcomment>{
 \n|\r                       popStartCondition();
-.                           
+.                           // ignore
 }
                 
 <ccomment>{
@@ -147,13 +144,11 @@ blanks [[:blank:]\n]
                             }
 
 "//"                        {
-                                more();
                                 pushStartCondition(StartCondition_::eolcomment);
                             }
 
 "/*"                        {
                                 ++d_nestedCommentLevel;
-                                more();
                                 pushStartCondition(StartCondition_::ccomment);
                             }
 
