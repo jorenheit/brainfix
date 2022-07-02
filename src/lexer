@@ -1,4 +1,4 @@
- %class-name Scanner
+%class-name Scanner
 %filenames scanner
 %lex-source = "lex_flexcpp_generated.cc"
 
