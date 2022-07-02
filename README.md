@@ -206,7 +206,8 @@ A BrainFix program consists of a series of functions (one of which is called `ma
 A function without a return-value is defined like we saw in the 'Hello World' example and may take any number of parameters. For example:
 
 ```javascript
-function foo(x, y, z) {
+function foo(x, y, z)
+{
     // body
 }
 ```
@@ -242,16 +243,19 @@ function z = bar(x, y)
 Functions can be overloaded on their number of arguments (not on return-value). This allows you to define multiple functions with the same name. In the example below, overloading is used to implement a default argument.
 
 ```javascript
-function bestNumber(x) {
+function bestNumber(x)
+{
     printd(x);
-    prints(" is the best number.");
+    println(" is the best number.");
 }
 
-function bestNumber() {
+function bestNumber()
+{
     bestNumber(42);
 }
 
-function main() {
+function main()
+{
     bestNumber();
     bestNumber(69);
 }
@@ -262,14 +266,16 @@ function main() {
 By default, all arguments are passed by value to a function: every argument is copied into the local scope of the function. Modifications to the arguments will therefore have no effect on the corresponding variables in the calling scope.
 
 ```javascript
-function foo() {
+function foo()
+{
     let x = 2;
     bar(x);
 
     // x == 2, still
 }
 
-function bar(x) {
+function bar(x)
+{
     ++x;
 }
 ```
@@ -478,8 +484,10 @@ function main()
 The `sizeof()` operator (it's not really a function, as it's a compiler intrinsic and not defined in terms of the BrainFix language itself) returns the size of a variable and can be used, for example, to loop over an array (more on control-flow in the relevant sections below).
 
 ```javascript
-function looper(arr) {
-    for (let i = 0; i != sizeof(arr); ++i) printd(arr[i]);
+function looper(arr)
+{
+    for (let i = 0; i != sizeof(arr); ++i)
+        printd(arr[i]);
 }
 ```
 
@@ -628,10 +636,12 @@ The first kind of `for`-loop has the classic C-syntax we all know and love. You 
 
 ```javascript
 // Single statement, no curly braces necessary
-for (let i = 0; i != 10; ++i) printd(i);
+for (let i = 0; i != 10; ++i)
+    printd(i);
 
 // Compound statement
-for (let i = 0; i != 10; ++i) {
+for (let i = 0; i != 10; ++i)
+{
     let j = i + 10;
     printd(j);
     endl();
@@ -681,9 +691,12 @@ The if-syntax is again identical to that of C. It supports arbitrarily long if-e
 
 ```javascript
 let x = scand();
-if (x < 10) println("Small");
-else if (x < 20) println("Medium");
-else {
+if (x < 10)
+   println("Small");
+else if (x < 20)
+     println("Medium");
+else
+{
     println("Large!");
 }
 ```
@@ -695,24 +708,21 @@ In BrainFix, a `switch` statement is simply a syntactic alternative to an `if-el
 Each label has to be followed by either a single or compound statement, of which only the body of the first match will be executed (it's not possible to 'fall through' cases). The `break` and `continue` control statements will be seen as local to the enclosing scope around the switch (like any old `if`-statement). A `break` statement is therefore not required in the body of a case and in fact will probably have different semantics compared to what you're used to. Beware! If you need to skip part of the switch-body, consider using `continue` instead. For more information on `break`, `continue` and `return`, see below.
 
 ```javascript
-while (true) {
+while (true)
+{
     prints("Enter a number 0-3, or 9 to quit: ");
     let x = scand();
     switch (x) {
-        case 0:
-            println("Zero");
-        case 1:
-            println("One");
-        case 2:
-            println("Two");
-        case 3:
-            println("Three");
-        case 9: {
+        case 0: println("Zero");
+        case 1: println("One");
+        case 2: println("Two");
+        case 3: println("Three");
+        case 9:
+        {
             println("Quitting ...");
             break; // will break out of the while!
         }
-        default:
-            println("Not sure ...");
+        default: println("Not sure ...");
     }
 }
 ```
@@ -723,11 +733,10 @@ Unlike in C, case labels in Brainfix do not have to be constant expressions, whi
 let x = scand();
 let y = scand();
 
-switch (x) {
-    case y:
-        println("Same");
-    default:
-        println("Different");
+switch (x)
+{
+    case y:  println("Same");
+    default: println("Different");
 }
 ```
 
@@ -779,9 +788,10 @@ By default, the familiar `break`, `continue` and `return` statements are support
 Will force flow to break out of the enclosing scope (skipping all statements until the closing brace). When issued at function-scope-level, it will return from the function.
 
 ```javascript
-for (let i = 0; i != 10; ++i) {
-    if (i == 5) break;
-
+for (let i = 0; i != 10; ++i)
+{
+    if (i == 5)
+       break;
     printd(i);
 }
 // Prints "01234"
@@ -792,10 +802,11 @@ for (let i = 0; i != 10; ++i) {
 Like `break`, a `continue` statement will skip all statements until the closing brace. However, at this point flow will restore and (if issued in a loop-context) the next iteration will be executed as normal. Again, if `continue` is used at function-scope-level, it will simply return from the function.
 
 ```javascript
-for (let i = 0; i != 10; ++i) {
+for (let i = 0; i != 10; ++i)
+{
     printd(i);
-    if (i > 5) continue;
-
+    if (i > 5)
+       continue;
     printd(i);
 }
 // Prints "0011223344556789"
@@ -803,7 +814,7 @@ for (let i = 0; i != 10; ++i) {
 
 ##### `return`
 
-At any scope-level, return will immediately return from the enclosing function-scope. If the function returns a value, it needs to be declared (and initialized, probably) before this point. Beware that even though the return-value might have been declared at the scope of the return-statement, a return-value _must_ be declared at function-scope.
+At any scope-level, return will immediately return from the enclosing function-scope. If the function returns a value, it needs to be declared (and initialized, probably) before this point. Beware that it's therefore not possible to declare the return-value at the scope of the return-statement; it _must_ be declared at function-scope.
 
 ```javascript
 function x = get()
@@ -864,7 +875,7 @@ function main()
     static_assert(fun(x) == 1, "This is weird!");
     printd(x); // prints 0
     endl();
-
+    
     fun(x);
     printd(x); // prints 1
     endl();
@@ -958,7 +969,7 @@ include "std.bfx"
 
 function main()
 {
-    for*(let i = 0; i != 20; ++i)
+    for* (let i = 0; i != 20; ++i)
     {
         switch(rand() % 3)
         {
@@ -1114,9 +1125,38 @@ ${28}4\
 
 ````
 
+#### Programs without input
+When a program does not depend on input, it's possible to either define an empty input-sequence or omit the input-sequence entirely:
+
+````javascript
+include "std.bfx"
+
+function main()
+{
+    println("Hello World");
+}
+
+@start_test <println>
+
+<hello1>
+```expect
+Hello World
+```
+
+<hello2>
+```input
+```
+
+```expect
+Hello World
+```
+
+@end_test
+````
+
 #### Failing tests
 
-If a test should fail, `bfint` will report both the expect string and actual output. Non-printable characters, including newlines, will be printed as a dot `.`. For example, when the backslash in the final expect-block of the example below is omitted, `bfint` will report the following:
+If a test should fail, `bfint` will report both the expect string and actual output. Non-printable characters, including newlines, will be printed as a dot `.`. For example, when the backslash in the final expect-block of the increment-example above is omitted, `bfint` will report the following:
 
 ```
 <increment::newline> PASS
@@ -1124,3 +1164,5 @@ If a test should fail, `bfint` will report both the expect string and actual out
 	Expected: ".4."
 	Got:      ".4"
 ```
+
+
