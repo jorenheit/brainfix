@@ -63,7 +63,8 @@ blanks [[:blank:]\n]
                                 return CompilerBase::CHR;
                             }
 "'\\"."'"                   {
-                                setMatched(escape(matched()[2]));
+                                char escaped = escape(matched()[2]);
+                                setMatched(std::string(1, escaped));
                                 return CompilerBase::CHR;
                             }
 
@@ -96,7 +97,8 @@ blanks [[:blank:]\n]
                             }
 
 "\\".                       {
-                                setMatched(escape(matched()[1]));
+                                char escaped = escape(matched().back());
+                                setMatched(matched().substr(0, matched().size() - 2) + escaped);
                                 more();
                             }
                             
@@ -161,7 +163,7 @@ blanks [[:blank:]\n]
 \\\n                       // ignore \ at end of line
 
 "\\".                      {
-                                setMatched(escape(matched()[1]));
+                                setMatched(std::string(1, escape(matched()[1])));
                                 return CompilerBase::CHR;
                            }
 

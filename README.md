@@ -1143,14 +1143,6 @@ function main()
 Hello World
 ```
 
-<hello2>
-```input
-```
-
-```expect
-Hello World
-```
-
 @end_test
 ````
 

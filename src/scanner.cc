@@ -8,14 +8,16 @@ Scanner::Scanner(std::string const &infile, std::string const &outfile):
 }
 
 
-std::string Scanner::escape(char c)
+char Scanner::escape(char c)
 {
+    std::cerr << "Escape: " << c << '\n';
+    
     switch (c)
     {
-    case 'n': return std::string(1, '\n');
-    case 't': return std::string(1, '\t');
-    case '0': return std::string(1, '\0');
-    default: return std::string(1, c);
+    case 'n': return '\n';
+    case 't': return '\t';
+    case '0': return '\0';
+    default: return c;
     }
 }
 

@@ -37,7 +37,7 @@ private:
     void pushStartCondition(StartCondition_ next);
     void popStartCondition();
     
-    static std::string escape(char c);
+    static char escape(char c);
     static char escapeTestContent(std::string const &matched);
 };
 
