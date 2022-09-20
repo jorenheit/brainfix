@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <algorithm>
 #include "bfint.h"
 
 void printHelp(std::string const &progName)
