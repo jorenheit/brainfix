@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "scope.ih"
 
 bool Scope::empty() const
