@@ -10,8 +10,6 @@ Scanner::Scanner(std::string const &infile, std::string const &outfile):
 
 char Scanner::escape(char c)
 {
-    std::cerr << "Escape: " << c << '\n';
-    
     switch (c)
     {
     case 'n': return '\n';
