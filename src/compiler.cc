@@ -28,6 +28,7 @@ Compiler::Compiler(Options const &opt):
     d_cellType(opt.cellType),
     d_scanner(opt.bfxFile, ""),
     d_memory(TAPE_SIZE_INITIAL),
+    d_bfGen(MAX_INT),
     d_includePaths(opt.includePaths),
     d_constEvalEnabled(opt.constEvalAllowed),
     d_constEvalAllowed(opt.constEvalAllowed),
@@ -232,6 +233,21 @@ void Compiler::writeProfile() const
     std::ofstream file(d_profileFile);
     compilerErrorIf(!file, "Could not open file for profile: ", d_profileFile, ".");
 
+    auto maxLoops = [&]() -> int {
+      int count = 0;
+      int countMax = 0;
+      for (char c: d_codeBuffer.str()) {
+	if (c == '[') {
+	  if (++count > countMax)
+	    countMax = count;
+	}
+	else if (c == ']') {
+	  --count;
+	}
+      }
+      return countMax;
+    };
+    
     file << "Profile for " << d_sourceFile << ":\n"
          << "    cell-type:        " << d_cellType << '\n'
          << "    optimization:     " << (d_constEvalEnabled ? "O1" : "O0") << '\n'
@@ -241,6 +257,7 @@ void Compiler::writeProfile() const
          << '\n'
          << "Number of BF operations generated: " << d_codeBuffer.str().size() << '\n'
          << "Number of cells required:          " << d_memory.cellsRequired() << '\n'
+	 << "Maximum number of nested loops:    " << maxLoops() << '\n'
          << '\n'
          << "+---------+---------+\n"
          << "| address | #visits |\n"

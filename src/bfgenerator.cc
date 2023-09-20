@@ -597,8 +597,8 @@ std::string BFGenerator::divmod(int const num, int const denom, int const divRes
         << logicalNot(denom, tmp_zeroflag)
         << "["                                      // 2
         <<     setToValue(tmp_loopflag, 0)
-        <<     setToValue(divResult, 255)
-        <<     setToValue(modResult, 255)
+        <<     setToValue(divResult, d_maxCellValue)
+        <<     setToValue(modResult, d_maxCellValue)
         <<     setToValue(tmp_zeroflag, 0)
         << "]"
         << logicalNot(num, tmp_zeroflag)
