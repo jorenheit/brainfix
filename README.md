@@ -229,7 +229,7 @@ function foo()
     let x = 31;
     let y = 38;
 
-		let nice = bar(x, y); // works, even if bar is defined below
+    let nice = bar(x, y); // works, even if bar is defined below
 }
 
 function z = bar(x, y)
@@ -296,7 +296,6 @@ function bar(&x)
 {
     ++x;
 }
-
 ```
 
 #### Recursion
